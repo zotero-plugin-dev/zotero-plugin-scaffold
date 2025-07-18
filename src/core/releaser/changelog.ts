@@ -1,7 +1,7 @@
 import type { GitCommit } from "changelogen";
 import { execSync } from "node:child_process";
 import process from "node:process";
-import { generateMarkDown, getGitDiff, loadChangelogConfig } from "changelogen";
+import { generateMarkDown, getGitDiff, loadChangelogConfig, parseCommits } from "changelogen";
 import { escapeRegExp } from "es-toolkit";
 
 export async function getConventionalChangelog(commits: GitCommit[]) {
