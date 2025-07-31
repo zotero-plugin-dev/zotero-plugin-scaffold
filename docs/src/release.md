@@ -211,22 +211,16 @@ export default defineConfig({
 
 ## Changelog
 
-By default, Scaffold uses `git log` for the changelog, but you can modify this via `release.changelog`.
-
-To generate a changelog based on [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/), install `conventional-changelog`:
-
-```bash
-npm install -D conventional-changelog
-```
-
-Then, set `release.changelog` to `conventional-changelog`:
+By default, Scaffold uses [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) for the changelog, but you can modify this via `release.changelog`.
 
 ```ts twoslash
 import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
 export default defineConfig({
   release: {
-    changelog: "conventional-changelog"
+    changelog: (ctx, commits) => {
+      return commits.map(c => c.message).join("\n");
+    }
   }
 });
 ```
