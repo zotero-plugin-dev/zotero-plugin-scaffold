@@ -88,8 +88,8 @@ importers:
         specifier: ^16.1.2
         version: 16.1.2
       node-style-text:
-        specifier: ^0.0.8
-        version: 0.0.8
+        specifier: ^1.0.0
+        version: 1.0.0
       tsx:
         specifier: ^4.20.3
         version: 4.20.3
@@ -2762,8 +2762,8 @@ packages:
   node-releases@2.0.19:
     resolution: {integrity: sha512-xxOWJsBKtzAq7DY0J+DTzuz58K8e7sJbdgwkbMWQe8UYB6ekmsQ45q0M/tJDsGaZmbC+l7n57UV8Hl5tHxO9uw==}
 
-  node-style-text@0.0.8:
-    resolution: {integrity: sha512-v39fbY0IMoxgNw5ORe5cipL02uY2MQBSKCgYxUwQ3JdX3FyicTycFY8qtDxwCetHgGGRUB08Qn6xS8X+HBX65w==}
+  node-style-text@1.0.0:
+    resolution: {integrity: sha512-MUGbhO5t4QPtnS4J4RTO24SApWgdFkwbytFb9wqHF3RuED+jCD8R155vdyFk4bLtPQ5PnKJnnqrSFxsW7b+gmg==}
 
   normalize-range@0.1.2:
     resolution: {integrity: sha512-bdok/XvKII3nUpklnV6P2hxtMNrCboOjAcyBuQnWEhO665FwrSNRxU+AqpsyvO6LgGYPspN+lu5CLtw4jPRKNA==}
@@ -6546,7 +6546,7 @@ snapshots:
 
   node-releases@2.0.19: {}
 
-  node-style-text@0.0.8: {}
+  node-style-text@1.0.0: {}
 
   normalize-range@0.1.2: {}
 
