@@ -2,9 +2,11 @@ import type { Stats } from "node:fs";
 import chokidar from "chokidar";
 import { debounce } from "es-toolkit";
 import { logger } from "./logger.js";
+import { toArray } from "./string.js";
 
 export function watch(
   source: string | string[],
+  ignore: string | string[] | RegExp | RegExp[],
   event: {
     onReady?: () => any;
     onChange: (path: string) => any | Promise<any>;
@@ -13,7 +15,14 @@ export function watch(
   },
 ) {
   const watcher = chokidar.watch(source, {
-    ignored: /(^|[/\\])\../, // ignore dotfiles
+    ignored: [
+      /(^|[/\\])\../, // ignore dotfiles
+      /[\\/]\.git[\\/]/,
+      /[\\/]node_modules[\\/]/,
+      ...toArray(ignore),
+    ],
+    ignoreInitial: true,
+    ignorePermissionErrors: true,
     persistent: true,
   });
 

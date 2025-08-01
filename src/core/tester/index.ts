@@ -76,6 +76,7 @@ export default class Test extends Base {
 
     watch(
       [this.ctx.source, this.ctx.test.entries].flat(),
+      this.ctx.watchIgnore,
       {
         onChange: async (path) => {
           if (isSource(path)) {

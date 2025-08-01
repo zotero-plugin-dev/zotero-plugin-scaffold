@@ -62,10 +62,11 @@ export default class Serve extends Base {
    * watch source dir and build when file changed
    */
   async watch() {
-    const { source } = this.ctx;
+    const { source, watchIgnore } = this.ctx;
 
     watch(
       source,
+      watchIgnore,
       {
         onReady: async () => {
           await this.ctx.hooks.callHook("serve:ready", this.ctx);

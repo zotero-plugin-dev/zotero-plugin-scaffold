@@ -85,6 +85,7 @@ function resolveConfig(config: Config): Context {
 
 const defaultConfig = {
   source: "src",
+  watchIgnore: [],
   dist: ".scaffold/build",
 
   name: "",

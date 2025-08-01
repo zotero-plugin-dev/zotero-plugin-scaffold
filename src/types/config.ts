@@ -7,17 +7,33 @@ import type { UpdateJSON } from "./update-json.js";
 
 export interface Config {
   /**
-   * The source code directories.
+   * Source root directory or directories for the plugin.
    *
-   * Can be multiple directories, and changes to these directories will be watched when `server` is running.
+   * These paths are:
+   * - Watched during development to trigger rebuilds on changes.
+   * - Used to remove the top-level asset directory (e.g. `assets/`) during build,
+   *   so that only its contents are copied directly to the output root.
    *
-   * 源码目录。
+   * 插件的源码根目录（可为字符串或字符串数组）。
    *
-   * 可以是多个目录，将在 `server` 运行时监听这些目录的变更。
+   * 用于以下两个目的：
+   * - 在开发模式下监听这些目录，以便在文件变更时触发重建；
+   * - 在构建阶段中，用于识别 assets 所在的顶层目录，以移除该目录本身，仅将其内容复制到输出目录的根部。
    *
+   * @example ["src", "addon"]
    * @default "src"
    */
   source: string | string[];
+
+  /**
+   * The files to ignore when watching.
+   *
+   * 忽略的监听文件。
+   *
+   * @default []
+   */
+  watchIgnore: string | string[] | RegExp | RegExp[];
+
   /**
    * The build directories.
    *
