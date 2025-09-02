@@ -3,15 +3,15 @@
   "type": "module",
   "version": "0.8.0",
   "private": "true",
-  "packageManager": "pnpm@10.14.0",
+  "packageManager": "pnpm@10.15.1",
   "scripts": {
     "dev": "vitepress dev src",
     "build": "vitepress build src",
     "preview": "vitepress preview src"
   },
   "devDependencies": {
-    "@shikijs/vitepress-twoslash": "^3.9.1",
-    "vitepress": "^1.6.3",
+    "@shikijs/vitepress-twoslash": "^3.12.1",
+    "vitepress": "^1.6.4",
     "zotero-plugin-scaffold": "workspace:^"
   }
 }
