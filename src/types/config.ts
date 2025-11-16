@@ -421,6 +421,14 @@ export interface ServerConfig {
    */
   startArgs: string[];
   /**
+   * The default preferences for the dev server.
+   * These preferences will be set before Zotero starts.
+   *
+   * 开发服务器的默认首选项。
+   * 这些首选项将在 Zotero 启动前设置。
+   */
+  prefs: Record<string, string | number | boolean>;
+  /**
    * Install the plugin as a Proxy File mode.
    *
    * 以 Proxy File 方式载入插件

@@ -133,6 +133,7 @@ const defaultConfig = {
   server: {
     devtools: true,
     startArgs: [],
+    prefs: {},
     asProxy: false,
     prebuild: true,
     // keepProfileChanges: true,

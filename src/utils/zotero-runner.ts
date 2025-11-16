@@ -130,9 +130,9 @@ export class ZoteroRunner {
     const prefsPath = join(this.options.profile.path, "prefs.js");
     const prefsManager = new PrefsManager("user_pref");
     prefsManager.setPrefs(defaultPrefs);
-    prefsManager.setPrefs(this.options.profile.customPrefs);
     if (await pathExists(prefsPath))
       await prefsManager.read(prefsPath);
+    prefsManager.setPrefs(this.options.profile.customPrefs);
     prefsManager.setPrefs({
       "extensions.lastAppBuildId": null,
       "extensions.lastAppVersion": null,
