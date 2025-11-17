@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
 import { logger } from "./logger.js";
 
-export async function checkGitIgnore() {
+export async function checkGitIgnore(): Promise<void> {
   if (!pathExists(".git"))
     return;
 
