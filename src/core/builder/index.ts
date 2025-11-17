@@ -1,7 +1,7 @@
 import type { Context } from "../../types/index.js";
 import process from "node:process";
+import { styleText } from "node:util";
 import { emptyDir } from "fs-extra/esm";
-import styleText from "node-style-text";
 import { dateFormat } from "../../utils/string.js";
 import { Base } from "../base.js";
 
@@ -29,7 +29,7 @@ export default class Build extends Base {
     const { dist, version } = this.ctx;
     const t = new Date();
     this.buildTime = dateFormat("YYYY-mm-dd HH:MM:SS", t);
-    this.logger.info(`Building version ${styleText.blue(version)} to ${styleText.blue(dist)} at ${styleText.blue(this.buildTime)} in ${styleText.blue(process.env.NODE_ENV)} mode.`);
+    this.logger.info(`Building version ${styleText("blue", version)} to ${styleText("blue", dist)} at ${styleText("blue", this.buildTime)} in ${styleText("blue", process.env.NODE_ENV)} mode.`);
     await this.ctx.hooks.callHook("build:init", this.ctx);
 
     this.logger.tip("Preparing static assets", { space: 1 });

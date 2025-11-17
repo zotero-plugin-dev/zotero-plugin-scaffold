@@ -3,8 +3,8 @@ import type { Prefs } from "../../utils/prefs-manager.js";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { styleText } from "node:util";
 import { outputFile } from "fs-extra/esm";
-import styleText from "node-style-text";
 import { glob } from "tinyglobby";
 import { logger } from "../../utils/logger.js";
 import { is32BitNumber } from "../../utils/number.js";
@@ -39,7 +39,7 @@ export default async function buildPrefs(dist: string, options: BuildConfig["pre
   Object.entries(prefs).forEach(([key, value]) => {
     if (typeof value === "number") {
       if (!is32BitNumber(value)) {
-        logger.warn(`Pref key '${styleText.blue(key)}' is a number, but is more than 4 bytes, which can be problematic on some OS.`);
+        logger.warn(`Pref key '${styleText("blue", key)}' is a number, but is more than 4 bytes, which can be problematic on some OS.`);
       }
     }
   });
@@ -67,20 +67,20 @@ export default async function buildPrefs(dist: string, options: BuildConfig["pre
       for (const match of matchs) {
         const [matched, key] = match;
         if (key.startsWith(prefix)) {
-          logger.debug(`Pref key '${styleText.blue(key)}' is already starts with '${prefix}', skip prefixing it.`);
+          logger.debug(`Pref key '${styleText("blue", key)}' is already starts with '${prefix}', skip prefixing it.`);
           continue;
         }
         else if (key.startsWith("extensions.")) {
-          logger.warn(`Pref key '${styleText.blue(key)}' in ${styleText.gray(path)} starts with 'extensions.' but not '${styleText.blue(prefix)}', skip prefixing it.`);
+          logger.warn(`Pref key '${styleText("blue", key)}' in ${styleText("gray", path)} starts with 'extensions.' but not '${styleText("blue", prefix)}', skip prefixing it.`);
           continue;
         }
         else if (!(key in prefsWithPrefix) && !(key in prefsWithoutPrefix)) {
-          logger.warn(`Pref key '${styleText.blue(key)}' in ${styleText.gray(path)} is not found in prefs.js, skip prefixing it.`);
+          logger.warn(`Pref key '${styleText("blue", key)}' in ${styleText("gray", path)} is not found in prefs.js, skip prefixing it.`);
           continue;
         }
         else {
           const prefixed = `${prefix}.${key}`;
-          logger.debug(`Pref key '${styleText.blue(key)}' in ${styleText.gray(path)} is prefixed to ${styleText.blue(prefixed)}.`);
+          logger.debug(`Pref key '${styleText("blue", key)}' in ${styleText("gray", path)} is prefixed to ${styleText("blue", prefixed)}.`);
           content = content.replace(matched, `preference="${prefixed}"`);
         }
       }

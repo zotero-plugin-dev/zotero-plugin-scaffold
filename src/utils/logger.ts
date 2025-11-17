@@ -1,7 +1,7 @@
 import process from "node:process";
 import readline from "node:readline";
+import { styleText } from "node:util";
 import { isPlainObject } from "es-toolkit";
-import styleText from "node-style-text";
 import { isDebug } from "std-env";
 
 /**
@@ -19,13 +19,13 @@ export type LogLevelType = keyof typeof LOG_LEVEL;
 
 // Configuration constants
 const SYMBOLS = {
-  SUCCESS: styleText.green("✔"),
-  INFO: styleText.blue("ℹ"),
-  FAIL: styleText.red("✖"),
-  TIP: styleText.blue("→"),
-  ERROR: styleText.bgRed(" ERROR "),
-  WARN: styleText.bgYellow(" WARN "),
-  DEBUG: styleText.grey("⚙"),
+  SUCCESS: styleText("green", "✔"),
+  INFO: styleText("blue", "ℹ"),
+  FAIL: styleText("red", "✖"),
+  TIP: styleText("blue", "→"),
+  ERROR: styleText("bgRed", " ERROR "),
+  WARN: styleText("bgYellow", " WARN "),
+  DEBUG: styleText("grey", "⚙"),
   NONE: "",
 };
 
@@ -140,7 +140,7 @@ export class Logger {
   }
 
   private formatError(error: Error): string {
-    return `${styleText.red(error.name)}: ${styleText.red(error.message)}\n${error.stack}`;
+    return `${styleText("red", error.name)}: ${styleText("red", error.message)}\n${error.stack}`;
   }
 
   /**
@@ -200,7 +200,7 @@ export class Logger {
   }
 
   public ready(content: string): void {
-    this.logInternal(styleText.green(content), LOG_METHODS_CONFIG.success);
+    this.logInternal(styleText("green", content), LOG_METHODS_CONFIG.success);
   }
 
   public log(content: unknown, options?: LoggerOptions): void {

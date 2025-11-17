@@ -2,9 +2,9 @@ import type { BaseNode, Message, MessageReference, Resource } from "@fluent/synt
 import type { BuildConfig } from "../../types/config.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { basename, dirname } from "node:path";
+import { styleText } from "node:util";
 import { parse, serialize, Transformer } from "@fluent/syntax";
 import { move, outputFile } from "fs-extra/esm";
-import styleText from "node-style-text";
 import { glob } from "tinyglobby";
 import { logger } from "../../utils/logger.js";
 import { toArray } from "../../utils/string.js";
@@ -195,7 +195,7 @@ export class MessageManager {
         .filter(([_, messages]) => !messages.has(msg))
         .map(([locale]) => locale);
       if (missingLocales.length > 0)
-        logger.warn(`I10N id ${styleText.blue(msg)} missing in locale: ${missingLocales.join(", ")}`);
+        logger.warn(`I10N id ${styleText("blue", msg)} missing in locale: ${missingLocales.join(", ")}`);
     });
   }
 
@@ -231,12 +231,12 @@ export function processHTMLFile(
     foundMessages.add(id);
 
     if (ignores.includes(id)) {
-      logger.debug(`Skipped ignored ID: ${styleText.blue(id)} in ${styleText.gray(filePath)}`);
+      logger.debug(`Skipped ignored ID: ${styleText("blue", id)} in ${styleText("gray", filePath)}`);
       return match;
     }
 
     if (!allMessages.has(id)) {
-      logger.warn(`I10N id ${styleText.blue(id)} in path ${styleText.gray(filePath)} does not exist in any locale, skip renaming it.`);
+      logger.warn(`I10N id ${styleText("blue", id)} in path ${styleText("gray", filePath)} does not exist in any locale, skip renaming it.`);
       return match;
     }
 

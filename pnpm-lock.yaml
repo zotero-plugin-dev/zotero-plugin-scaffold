@@ -87,9 +87,6 @@ importers:
       lint-staged:
         specifier: ^16.2.6
         version: 16.2.6
-      node-style-text:
-        specifier: ^2.1.2
-        version: 2.1.2
       tsx:
         specifier: ^4.20.6
         version: 4.20.6
@@ -2739,9 +2736,6 @@ packages:
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
 
-  node-style-text@2.1.2:
-    resolution: {integrity: sha512-TqdKJsqVjYjLZ0se1/b24KQh1SwfzYgGJav41gqiK9TkMQl6sjRZ8c9bioLesZvlzPcgLug+XCL8d6+UrPpdFw==}
-
   normalize-range@0.1.2:
     resolution: {integrity: sha512-bdok/XvKII3nUpklnV6P2hxtMNrCboOjAcyBuQnWEhO665FwrSNRxU+AqpsyvO6LgGYPspN+lu5CLtw4jPRKNA==}
     engines: {node: '>=0.10.0'}
@@ -3834,7 +3828,7 @@ snapshots:
   '@babel/types@7.28.4':
     dependencies:
       '@babel/helper-string-parser': 7.27.1
-      '@babel/helper-validator-identifier': 7.27.1
+      '@babel/helper-validator-identifier': 7.28.5
 
   '@clack/core@0.5.0':
     dependencies:
@@ -6554,8 +6548,6 @@ snapshots:
   node-releases@2.0.19: {}
 
   node-releases@2.0.27: {}
-
-  node-style-text@2.1.2: {}
 
   normalize-range@0.1.2: {}
 

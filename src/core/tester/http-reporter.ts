@@ -1,5 +1,5 @@
 import http from "node:http";
-import styleText from "node-style-text";
+import { styleText } from "node:util";
 import { logger } from "../../utils/logger.js";
 import { findFreeTcpPort } from "../../utils/zotero/remote-zotero.js";
 
@@ -132,10 +132,10 @@ export class TestHttpReporter {
           logger.tip(data.title, logger_option);
         break;
       case "pass":
-        logger.success(`${data.title} ${styleText.gray(`${data.duration}ms`)}`, logger_option);
+        logger.success(`${data.title} ${styleText("gray", `${data.duration}ms`)}`, logger_option);
         break;
       case "fail":{
-        logger.fail(styleText.red(`${data.title}, ${data?.error?.message}`), logger_option);
+        logger.fail(styleText("red", `${data.title}, ${data?.error?.message}`), logger_option);
         let expected = data.error.expected;
         let received = data.error.actual;
 
@@ -154,8 +154,8 @@ export class TestHttpReporter {
         if (received && typeof received === "object")
           received = formatOutput(received, data.indents + 1);
 
-        logger.log(`Expected: ${styleText.green(String(expected))}`, { space: data.indents + 0.5 });
-        logger.log(`Received: ${styleText.red(String(received))}`, { space: data.indents + 0.5 });
+        logger.log(`Expected: ${styleText("green", String(expected))}`, { space: data.indents + 0.5 });
+        logger.log(`Received: ${styleText("red", String(received))}`, { space: data.indents + 0.5 });
         break;
       }
       case "pending":
