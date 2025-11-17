@@ -1,14 +1,15 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "nodenext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "strict": true,
     "declaration": true,
     "outDir": "dist",
     "esModuleInterop": true,
+    "isolatedDeclarations": true,
     "skipLibCheck": true
   },
-  "include": ["src", "test", "src/types"]
+  "include": ["src", "test"]
 }

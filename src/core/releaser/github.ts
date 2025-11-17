@@ -14,7 +14,7 @@ export default class GitHub extends ReleaseBase {
     this.client = this.getClient();
   }
 
-  async run() {
+  async run(): Promise<Context> {
     this.checkFiles();
 
     this.logger.info("Uploading XPI to GitHub...");
@@ -29,7 +29,7 @@ export default class GitHub extends ReleaseBase {
   /**
    * Create new release and upload XPI to asset
    */
-  async uploadXPI() {
+  async uploadXPI(): Promise<void> {
     const { version, dist, xpiName } = this.ctx;
 
     const release = await this.createRelease({
@@ -52,7 +52,105 @@ export default class GitHub extends ReleaseBase {
     await this.uploadAsset(release.id, join(dist, `${xpiName}.xpi`));
   }
 
-  async getReleaseByTag(tag: string) {
+  async getReleaseByTag(tag: string): Promise<{
+    url: string;
+    html_url: string;
+    assets_url: string;
+    upload_url: string;
+    tarball_url: string | null;
+    zipball_url: string | null;
+    id: number;
+    node_id: string;
+    tag_name: string;
+    target_commitish: string;
+    name: string | null;
+    body?: string | null;
+    draft: boolean;
+    prerelease: boolean;
+    immutable?: boolean;
+    created_at: string;
+    published_at: string | null;
+    updated_at?: string | null;
+    author: {
+      name?: string | null;
+      email?: string | null;
+      login: string;
+      id: number;
+      node_id: string;
+      avatar_url: string;
+      gravatar_id: string | null;
+      url: string;
+      html_url: string;
+      followers_url: string;
+      following_url: string;
+      gists_url: string;
+      starred_url: string;
+      subscriptions_url: string;
+      organizations_url: string;
+      repos_url: string;
+      events_url: string;
+      received_events_url: string;
+      type: string;
+      site_admin: boolean;
+      starred_at?: string;
+      user_view_type?: string;
+    };
+    assets: {
+      url: string;
+      browser_download_url: string;
+      id: number;
+      node_id: string;
+      name: string;
+      label: string | null;
+      state: "uploaded" | "open";
+      content_type: string;
+      size: number;
+      digest: string | null;
+      download_count: number;
+      created_at: string;
+      updated_at: string;
+      uploader: {
+        name?: string | null;
+        email?: string | null;
+        login: string;
+        id: number;
+        node_id: string;
+        avatar_url: string;
+        gravatar_id: string | null;
+        url: string;
+        html_url: string;
+        followers_url: string;
+        following_url: string;
+        gists_url: string;
+        starred_url: string;
+        subscriptions_url: string;
+        organizations_url: string;
+        repos_url: string;
+        events_url: string;
+        received_events_url: string;
+        type: string;
+        site_admin: boolean;
+        starred_at?: string;
+        user_view_type?: string;
+      } | null;
+    }[];
+    body_html?: string;
+    body_text?: string;
+    mentions_count?: number;
+    discussion_url?: string;
+    reactions?: {
+      "url": string;
+      "total_count": number;
+      "+1": number;
+      "-1": number;
+      "laugh": number;
+      "confused": number;
+      "heart": number;
+      "hooray": number;
+      "eyes": number;
+      "rocket": number;
+    };
+  } | undefined> {
     return await this.client.rest.repos
       .getReleaseByTag({
         ...this.remote,
@@ -72,7 +170,105 @@ export default class GitHub extends ReleaseBase {
 
   async createRelease(
     options: Parameters<Octokit["rest"]["repos"]["createRelease"]>[0],
-  ) {
+  ): Promise<{
+    url: string;
+    html_url: string;
+    assets_url: string;
+    upload_url: string;
+    tarball_url: string | null;
+    zipball_url: string | null;
+    id: number;
+    node_id: string;
+    tag_name: string;
+    target_commitish: string;
+    name: string | null;
+    body?: string | null;
+    draft: boolean;
+    prerelease: boolean;
+    immutable?: boolean;
+    created_at: string;
+    published_at: string | null;
+    updated_at?: string | null;
+    author: {
+      name?: string | null;
+      email?: string | null;
+      login: string;
+      id: number;
+      node_id: string;
+      avatar_url: string;
+      gravatar_id: string | null;
+      url: string;
+      html_url: string;
+      followers_url: string;
+      following_url: string;
+      gists_url: string;
+      starred_url: string;
+      subscriptions_url: string;
+      organizations_url: string;
+      repos_url: string;
+      events_url: string;
+      received_events_url: string;
+      type: string;
+      site_admin: boolean;
+      starred_at?: string;
+      user_view_type?: string;
+    };
+    assets: {
+      url: string;
+      browser_download_url: string;
+      id: number;
+      node_id: string;
+      name: string;
+      label: string | null;
+      state: "uploaded" | "open";
+      content_type: string;
+      size: number;
+      digest: string | null;
+      download_count: number;
+      created_at: string;
+      updated_at: string;
+      uploader: {
+        name?: string | null;
+        email?: string | null;
+        login: string;
+        id: number;
+        node_id: string;
+        avatar_url: string;
+        gravatar_id: string | null;
+        url: string;
+        html_url: string;
+        followers_url: string;
+        following_url: string;
+        gists_url: string;
+        starred_url: string;
+        subscriptions_url: string;
+        organizations_url: string;
+        repos_url: string;
+        events_url: string;
+        received_events_url: string;
+        type: string;
+        site_admin: boolean;
+        starred_at?: string;
+        user_view_type?: string;
+      } | null;
+    }[];
+    body_html?: string;
+    body_text?: string;
+    mentions_count?: number;
+    discussion_url?: string;
+    reactions?: {
+      "url": string;
+      "total_count": number;
+      "+1": number;
+      "-1": number;
+      "laugh": number;
+      "confused": number;
+      "heart": number;
+      "hooray": number;
+      "eyes": number;
+      "rocket": number;
+    };
+  } | undefined> {
     this.logger.debug("Creating release...");
     this.logger.debug(options);
     return await this.client.rest.repos
@@ -89,7 +285,45 @@ export default class GitHub extends ReleaseBase {
       });
   }
 
-  async uploadAsset(releaseID: number, asset: string) {
+  async uploadAsset(releaseID: number, asset: string): Promise<{
+    url: string;
+    browser_download_url: string;
+    id: number;
+    node_id: string;
+    name: string;
+    label: string | null;
+    state: "uploaded" | "open";
+    content_type: string;
+    size: number;
+    digest: string | null;
+    download_count: number;
+    created_at: string;
+    updated_at: string;
+    uploader: {
+      name?: string | null;
+      email?: string | null;
+      login: string;
+      id: number;
+      node_id: string;
+      avatar_url: string;
+      gravatar_id: string | null;
+      url: string;
+      html_url: string;
+      followers_url: string;
+      following_url: string;
+      gists_url: string;
+      starred_url: string;
+      subscriptions_url: string;
+      organizations_url: string;
+      repos_url: string;
+      events_url: string;
+      received_events_url: string;
+      type: string;
+      site_admin: boolean;
+      starred_at?: string;
+      user_view_type?: string;
+    } | null;
+  }> {
     this.logger.debug(`Uploading ${asset} to release ${releaseID}`);
     return await this.client.rest.repos
       .uploadReleaseAsset({
@@ -108,7 +342,7 @@ export default class GitHub extends ReleaseBase {
       });
   }
 
-  async refreshUpdateManifest() {
+  async refreshUpdateManifest(): Promise<void> {
     const updater = this.ctx.release.github.updater;
     if (!updater) {
       this.logger.debug(`Skip refresh update.json because release.github.updater = false`);
@@ -167,7 +401,7 @@ export default class GitHub extends ReleaseBase {
     });
   }
 
-  async getChangelog() {
+  async getChangelog(): Promise<string> {
     const { release } = this.ctx;
     const { github } = release;
     const { releaseNote } = github;
@@ -185,7 +419,10 @@ export default class GitHub extends ReleaseBase {
     return client;
   }
 
-  get remote() {
+  get remote(): {
+    owner: string;
+    repo: string;
+  } {
     const [owner, repo] = this.ctx.release.github.repository.split("/");
     return {
       owner,

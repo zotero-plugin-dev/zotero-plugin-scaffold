@@ -23,7 +23,7 @@ export class PrefsManager {
   /**
    * Parse Method 3 - Using AST
    */
-  parse(content: string) {
+  parse(content: string): Prefs {
     const _map: Prefs = {};
     const ast = parseSync(content, { syntax: "ecmascript" });
     for (const node of ast.body) {
@@ -113,7 +113,7 @@ export class PrefsManager {
   //   return _map;
   // }
 
-  cleanValue(value: string) {
+  cleanValue(value: string): string | number | boolean {
     if (value === "true")
       return true;
     else if (value === "false")
@@ -129,7 +129,7 @@ export class PrefsManager {
   /**
    * Render Method 2 - Using swc
    */
-  render() {
+  render(): string {
     const span = { start: 0, end: 0, ctxt: 0 };
 
     function getExpression(value: unknown) {
@@ -213,19 +213,19 @@ export class PrefsManager {
     }).join("\n");
   }
 
-  async read(path: string) {
+  async read(path: string): Promise<void> {
     const content = await readFile(path, "utf-8");
     const map = this.parse(content);
     this.setPrefs(map);
   }
 
-  async write(path: string) {
+  async write(path: string): Promise<void> {
     const content = this.render();
     await outputFile(path, content, "utf-8");
     logger.debug("The prefs.js has been modified.");
   }
 
-  setPref(key: string, value: PrefValue | undefined | null) {
+  setPref(key: string, value: PrefValue | undefined | null): void {
     if (value === null || value === undefined) {
       if (key in this.prefs)
         delete this.prefs[key];
@@ -235,25 +235,25 @@ export class PrefsManager {
     this.prefs[key] = value;
   };
 
-  setPrefs(prefs: Record<string, PrefValue | undefined | null>) {
+  setPrefs(prefs: Record<string, PrefValue | undefined | null>): void {
     Object.entries(prefs).forEach(([key, value]) => {
       this.setPref(key, value);
     });
   }
 
-  getPref(key: string) {
+  getPref(key: string): PrefValue {
     return this.prefs[key] ?? undefined;
   }
 
-  getPrefs() {
+  getPrefs(): Prefs {
     return this.prefs;
   }
 
-  clearPrefs() {
+  clearPrefs(): void {
     this.prefs = {};
   }
 
-  getPrefsWithPrefix(prefix: string) {
+  getPrefsWithPrefix(prefix: string): Prefs {
     const _prefs: Prefs = {};
     for (const pref in this.prefs) {
       if (pref.startsWith(prefix))
@@ -264,7 +264,7 @@ export class PrefsManager {
     return _prefs;
   }
 
-  getPrefsWithoutPrefix(prefix: string) {
+  getPrefsWithoutPrefix(prefix: string): Prefs {
     const _prefs: Prefs = {};
     for (const pref in this.prefs) {
       _prefs[pref.replace(`${prefix}.`, "")] = this.prefs[pref];

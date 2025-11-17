@@ -106,14 +106,14 @@ type Constructor<T> = new (ctx: Context) => T;
 export async function runCommand<T extends Base>(
   CommandClass: Constructor<T>,
   config: OverrideConfig,
-) {
+): Promise<void> {
   const ctx = await Config.loadConfig(config);
   const instance = new CommandClass(ctx);
   process.on("SIGINT", instance.exit.bind(instance));
   await instance.run();
 }
 
-export default async function mainWithErrorHandler() {
+export default async function mainWithErrorHandler(): Promise<void> {
   main()
     .then(() => {
       checkGitIgnore();
