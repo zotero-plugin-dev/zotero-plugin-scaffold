@@ -1,49 +1,8 @@
-import type { GitCommit, ResolvedChangelogConfig } from "changelogen";
+import type { GitCommit } from "changelogen";
 import { execSync } from "node:child_process";
 import process from "node:process";
-import { generateMarkDown, getGitDiff, parseCommits } from "changelogen";
+import { generateMarkDown, getGitDiff, loadChangelogConfig, parseCommits } from "changelogen";
 import { escapeRegExp } from "es-toolkit";
-
-const changelogen_config: ResolvedChangelogConfig = {
-  types: {
-    add: { title: "🚀 Enhancements", semver: "minor" },
-    change: { title: "🩹 Fixes", semver: "patch" },
-    remove: { title: "🩹 Fixes", semver: "minor" },
-    feat: { title: "\u{1F680} Enhancements", semver: "minor" },
-    perf: { title: "\u{1F525} Performance", semver: "patch" },
-    fix: { title: "\u{1FA79} Fixes", semver: "patch" },
-    refactor: { title: "\u{1F485} Refactors", semver: "patch" },
-    docs: { title: "\u{1F4D6} Documentation", semver: "patch" },
-    build: { title: "\u{1F4E6} Build", semver: "patch" },
-    types: { title: "\u{1F30A} Types", semver: "patch" },
-    chore: { title: "\u{1F3E1} Chore" },
-    examples: { title: "\u{1F3C0} Examples" },
-    test: { title: "\u2705 Tests" },
-    style: { title: "\u{1F3A8} Styles" },
-    ci: { title: "\u{1F916} CI" },
-  },
-  cwd: process.cwd(),
-  from: "",
-  to: "",
-  output: "CHANGELOG.md",
-  scopeMap: {},
-  tokens: {
-    github: process.env.CHANGELOGEN_TOKENS_GITHUB || process.env.GITHUB_TOKEN || process.env.GH_TOKEN,
-  },
-  publish: {
-    private: false,
-    tag: "latest",
-    args: [],
-  },
-  templates: {
-    commitMessage: "chore(release): v{{newVersion}}",
-    tagMessage: "v{{newVersion}}",
-    tagBody: "v{{newVersion}}",
-  },
-  excludeAuthors: [],
-  noAuthors: false,
-  hideAuthorEmail: true,
-};
 
 export async function getConventionalChangelog(commits: GitCommit[]): Promise<string> {
   // If user do not use Conventional Commit,
@@ -59,7 +18,15 @@ export async function getConventionalChangelog(commits: GitCommit[]): Promise<st
     return c;
   });
 
-  const md = await generateMarkDown(resolvedCommits, changelogen_config);
+  const _config = await loadChangelogConfig(process.cwd(), {
+    types: {
+      add: { title: "🚀 Enhancements", semver: "minor" },
+      change: { title: "🩹 Fixes", semver: "patch" },
+      remove: { title: "🩹 Fixes", semver: "minor" },
+    },
+    hideAuthorEmail: true,
+  });
+  const md = await generateMarkDown(resolvedCommits, _config);
   return md.split("\n").slice(3).join("\n");
 }
 
