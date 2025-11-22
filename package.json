@@ -38,7 +38,7 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "zotero-plugin": "./bin/zotero-plugin.js"
+    "zotero-plugin": "./bin/zotero-plugin.mjs"
   },
   "files": [
     "bin",
