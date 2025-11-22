@@ -23,22 +23,22 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./cli": {
-      "import": "./dist/cli.mjs"
+      "import": "./dist/cli.js"
     },
     "./vendor": {
-      "types": "./dist/vendor.d.mts",
-      "import": "./dist/vendor.mjs"
+      "types": "./dist/vendor.d.ts",
+      "import": "./dist/vendor.js"
     }
   },
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.mts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": {
-    "zotero-plugin": "./bin/zotero-plugin.mjs"
+    "zotero-plugin": "./bin/zotero-plugin.js"
   },
   "files": [
     "bin",
@@ -48,8 +48,10 @@
     "node": ">=22.8.0"
   },
   "scripts": {
-    "dev": "unbuild --stub",
-    "build": "tsc --noEmit && unbuild",
+    "dev": "tsdown --watch",
+    "build": "pnpm build:tsdown && pnpm build:tsc",
+    "build:tsdown": "tsdown",
+    "build:tsc": "tsc --noEmit",
     "lint:check": "eslint .",
     "lint:fix": "eslint . --fix",
     "docs:dev": "pnpm -C docs run dev",
@@ -61,7 +63,7 @@
   },
   "publishConfig": {
     "access": "public",
-    "registry": "https://registry.npmjs.org"
+    "registry": "https://registry.npjs.org"
   },
   "directories": {
     "lib": "dist"
