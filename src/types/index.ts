@@ -1,8 +1,7 @@
 import type { Hookable } from "hookable";
 import type { Logger } from "../utils/logger.js";
-import type { Hooks } from "./config.js";
+import type { Config, Hooks } from "./config.js";
 import type { RecursivePartial } from "./utils.js";
-import { Config } from "./config.js";
 
 export { Config, Hooks };
 

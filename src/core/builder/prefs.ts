@@ -10,7 +10,7 @@ import { logger } from "../../utils/logger.js";
 import { is32BitNumber } from "../../utils/number.js";
 import { PrefsManager } from "../../utils/prefs-manager.js";
 
-export default async function buildPrefs(dist: string, options: BuildConfig["prefs"]) {
+export default async function buildPrefs(dist: string, options: BuildConfig["prefs"]): Promise<void> {
   const { dts, prefixPrefKeys, prefix } = options;
 
   // Skip if not enable this builder

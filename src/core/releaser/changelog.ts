@@ -4,7 +4,7 @@ import process from "node:process";
 import { generateMarkDown, getGitDiff, loadChangelogConfig, parseCommits } from "changelogen";
 import { escapeRegExp } from "es-toolkit";
 
-export async function getConventionalChangelog(commits: GitCommit[]) {
+export async function getConventionalChangelog(commits: GitCommit[]): Promise<string> {
   // If user do not use Conventional Commit,
   // return commit messages directly.
   if (!commits[0].type) {

@@ -1,3 +1,3 @@
-export default async function clean() {
+export default async function clean(): Promise<void> {
   //
 }

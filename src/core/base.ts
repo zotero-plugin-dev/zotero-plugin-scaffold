@@ -1,4 +1,5 @@
 import type { Context } from "../types/index.js";
+import type { Logger } from "../utils/logger.js";
 
 export abstract class Base {
   ctx: Context;
@@ -10,7 +11,7 @@ export abstract class Base {
 
   abstract exit(): void;
 
-  get logger() {
+  get logger(): Logger {
     return this.ctx.logger;
   }
 }
