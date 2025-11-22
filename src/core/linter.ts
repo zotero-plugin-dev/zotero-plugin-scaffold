@@ -7,9 +7,9 @@ export default class Lint extends Base {
     super(ctx);
   }
 
-  run(): void {
+  run() {
     // webext.cmd.lint({});
   }
 
-  exit(): void {}
+  exit() {}
 }

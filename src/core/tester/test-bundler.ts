@@ -19,7 +19,7 @@ export class TestBundler {
     //
   }
 
-  async generate(): Promise<void> {
+  async generate() {
     // this.generatePluginRes
     //   bootstrape
     //   manifest
@@ -33,7 +33,7 @@ export class TestBundler {
     await this.createTestHtml();
   }
 
-  async regenerate(changedFile: string): Promise<void> {
+  async regenerate(changedFile: string) {
     // re-bundle tests
     const esbuildResult = await this.esbuildContext?.rebuild();
 

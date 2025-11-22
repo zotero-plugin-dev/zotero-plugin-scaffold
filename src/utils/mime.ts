@@ -5,7 +5,7 @@ const mimeTypes: { [key: string]: string } = {
   xpi: "application/x-xpinstall",
 };
 
-export function getMimeTypeByFileName(filename: string): string | undefined {
+export function getMimeTypeByFileName(filename: string) {
   const ext = extname(filename);
 
   for (const type in mimeTypes) {

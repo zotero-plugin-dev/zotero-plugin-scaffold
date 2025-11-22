@@ -11,7 +11,7 @@ export default async function copyAssets(
   source: string | string[],
   dist: string,
   assets: string | string[],
-): Promise<void> {
+) {
   const sourceArr = toArray(source);
   const paths = await glob(assets, {
     ignore: [...DEFAULT_IGNORE, dist],

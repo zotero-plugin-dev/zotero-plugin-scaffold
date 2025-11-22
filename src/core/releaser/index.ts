@@ -18,7 +18,7 @@ export default class Release extends Base {
    * if is CI, do not bump version, do not run git, create release (tag is `v${version}`) and upload xpi,
    *    then, create or update release (tag is "release"), update `update.json`.
    */
-  async run(): Promise<void> {
+  async run() {
     const t = new Date();
 
     const { release, version } = this.ctx;
@@ -68,7 +68,7 @@ export default class Release extends Base {
     );
   }
 
-  async getChangelog(): Promise<string> {
+  async getChangelog() {
     const { commit, tag } = this.ctx.release.bumpp;
     let changelog: string;
     const rawCommit = await getGitCommits(tag, commit);
@@ -100,9 +100,9 @@ export default class Release extends Base {
     return false;
   }
 
-  exit(): void {}
+  exit() {}
 
-  get resolvedCommitMessage(): string {
+  get resolvedCommitMessage() {
     return this.ctx.release.bumpp.commit.replace("%s", this.ctx.version);
   }
 }

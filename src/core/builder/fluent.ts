@@ -13,7 +13,7 @@ export default async function buildLocale(
   dist: string,
   namespace: string,
   options: BuildConfig["fluent"],
-): Promise<void> {
+) {
   const ignores = toArray(options.ignore);
   const localeNames = await getLocales(dist);
   const messageManager = new MessageManager(ignores);
@@ -81,13 +81,13 @@ export class FluentManager {
   constructor() {}
 
   // Parse Fluent source into an AST and extract messages
-  public parse(source: string): void {
+  public parse(source: string) {
     this.source = source;
     this.resource = parse(source, {});
   }
 
   // Read a file, parse its content, and extract messages
-  public async read(path: string): Promise<void> {
+  public async read(path: string) {
     const content = await readFile(path, "utf-8");
     this.parse(content);
   }
@@ -106,7 +106,7 @@ export class FluentManager {
   }
 
   // Apply namespace prefix to message IDs in the resource
-  public prefixMessages(namespace: string): void {
+  public prefixMessages(namespace: string) {
     if (!this.resource) {
       throw new Error("Resource must be parsed before applying prefix.");
     }
@@ -122,7 +122,7 @@ export class FluentManager {
   }
 
   // Write the serialized resource to a file
-  public async write(path: string): Promise<void> {
+  public async write(path: string) {
     const result = this.serialize();
     if (result !== this.source)
       await writeFile(path, this.serialize());
@@ -163,7 +163,7 @@ export class MessageManager {
   }
 
   // Add a set of messages (FTL or HTML) for a specific locale or for HTML globally
-  addMessages(target: string | "html", messages: string[]): void {
+  addMessages(target: string | "html", messages: string[]) {
     if (target === "html") {
       messages.forEach(msg => this.htmlMessages.add(msg));
     }
@@ -177,7 +177,7 @@ export class MessageManager {
     }
   }
 
-  validateMessages(): void {
+  validateMessages() {
     // Check miss 1: Cross check in diff locale - seems no need
     // messagesByLocale.forEach((messageInThisLang, lang) => {
     //   // Needs Nodejs 22
@@ -223,10 +223,7 @@ export function processHTMLFile(
   allMessages: Set<string>,
   ignores: string[],
   filePath: string,
-): {
-  processedContent: string;
-  foundMessages: string[];
-} {
+) {
   const foundMessages = new Set<string>();
 
   const L10N_PATTERN = new RegExp(`(data-l10n-id)="((?!${namespace})\\S*)"`, "g");

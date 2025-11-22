@@ -8,7 +8,7 @@ export default class Bump extends ReleaseBase {
     super(ctx);
   }
 
-  async run(): Promise<void> {
+  async run() {
     const bumppConfig: VersionBumpOptions = {
       ...this.ctx.release.bumpp,
       push: true,

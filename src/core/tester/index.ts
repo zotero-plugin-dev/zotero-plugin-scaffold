@@ -31,7 +31,7 @@ export default class Test extends Base {
     }
   }
 
-  async run(): Promise<void> {
+  async run() {
     // Empty dirs
     await emptyDir(TESTER_PROFILE_DIR);
     await emptyDir(TESTER_DATA_DIR);
@@ -64,7 +64,7 @@ export default class Test extends Base {
     }
   }
 
-  async watch(): Promise<void> {
+  async watch() {
     const source = toArray(this.ctx.source).map(p => resolve(p));
     const tests = toArray(this.ctx.test.entries).map(p => resolve(p));
     function isSource(_path: string) {
@@ -104,7 +104,7 @@ export default class Test extends Base {
     );
   }
 
-  async startZotero(): Promise<void> {
+  async startZotero() {
     if (this.ctx.test.headless) {
       await prepareHeadless();
     }
@@ -146,7 +146,7 @@ export default class Test extends Base {
       process.exit(0);
   };
 
-  exit = (code?: string | number): never => {
+  exit = (code?: string | number) => {
     if (code === "SIGINT") {
       this.logger.info("Tester shutdown by user request");
     }

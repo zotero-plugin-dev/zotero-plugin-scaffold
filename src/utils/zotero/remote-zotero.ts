@@ -38,7 +38,7 @@ function requestErrorToMessage(err: any) {
   return `${err.error}: ${err.message}`;
 }
 
-export function isErrorWithCode(codeWanted: any, error: any): boolean {
+export function isErrorWithCode(codeWanted: any, error: any) {
   if (Array.isArray(codeWanted) && codeWanted.includes(error.code)) {
     return true;
   }
@@ -50,8 +50,8 @@ export function isErrorWithCode(codeWanted: any, error: any): boolean {
 }
 
 export class RemoteFirefox {
-  client: MessagingClient;
-  checkedForAddonReloading: boolean;
+  client;
+  checkedForAddonReloading;
 
   constructor() {
     this.client = new MessagingClient();
@@ -74,7 +74,7 @@ export class RemoteFirefox {
     });
   }
 
-  async connect(port: number): Promise<MessagingClient> {
+  async connect(port: number) {
     let lastError;
 
     for (const _ of Array.from({ length: MAX_RETRIES })) {
@@ -99,7 +99,7 @@ export class RemoteFirefox {
     throw lastError;
   }
 
-  disconnect(): void {
+  disconnect() {
     this.client.disconnect();
   }
 
@@ -162,7 +162,7 @@ export class RemoteFirefox {
     }
   }
 
-  async installTemporaryAddon(addonPath: string): Promise<any> {
+  async installTemporaryAddon(addonPath: string) {
     const addonsActor = await this.getAddonsActor();
 
     try {
@@ -243,7 +243,7 @@ export class RemoteFirefox {
     }
   }
 
-  async reloadAddon(addonId: string): Promise<void> {
+  async reloadAddon(addonId: string) {
     const addon = await this.getInstalledAddon(addonId);
     // logger.debug(`Reload addon: ${JSON.stringify(addon)}`);
     // Reload addon: {"actor":"server1.conn0.webExtensionDescriptor8","debuggable":true,"hidden":false,"iconURL":"file:///D:/Code/Zotero/zotero-format-metadata/build/addon/content/icons/favicon@0.5x.png","id":"zotero-format-metadata@northword.cn","isSystem":false,"isWebExtension":true,"manifestURL":"moz-extension://d6d93075-0004-4850-b421-30347a44928c/manifest.json","name":"Linter for Zotero","temporarilyInstalled":true,"traits":{"supportsReloadDescriptor":true,"watcher":true},"url":"file:///D:/Code/Zotero/zotero-format-metadata/build/addon/","warnings":[]}

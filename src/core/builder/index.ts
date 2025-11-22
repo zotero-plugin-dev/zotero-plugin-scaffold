@@ -25,7 +25,7 @@ export default class Build extends Base {
   /**
    * Default build runner
    */
-  async run(): Promise<void> {
+  async run() {
     const { dist, version } = this.ctx;
     const t = new Date();
     this.buildTime = dateFormat("YYYY-mm-dd HH:MM:SS", t);
@@ -71,13 +71,13 @@ export default class Build extends Base {
     await buildPrefs(dist, build.prefs);
   }
 
-  async bundle(): Promise<void> {
+  async bundle() {
     const { dist, build: { esbuildOptions } } = this.ctx;
     await esbuild(dist, esbuildOptions);
     await this.ctx.hooks.callHook("build:bundle", this.ctx);
   }
 
-  async buildInProduction(): Promise<void> {
+  async buildInProduction() {
     const { dist, xpiName } = this.ctx;
 
     await pack(dist, xpiName);
@@ -87,5 +87,5 @@ export default class Build extends Base {
     await this.ctx.hooks.callHook("build:makeUpdateJSON", this.ctx);
   }
 
-  exit(): void {}
+  exit() {}
 }
