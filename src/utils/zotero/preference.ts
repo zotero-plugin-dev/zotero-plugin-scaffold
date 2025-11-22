@@ -16,7 +16,7 @@
  * For details, see the LICENSE file in the root of this project.
  */
 
-export const nonOverridablePreferences: string[] = [
+export const nonOverridablePreferences = [
   "devtools.debugger.remote-enabled",
   "devtools.debugger.prompt-connection",
   "xpinstall.signatures.required",
@@ -135,7 +135,7 @@ const prefsZotero = {
   "extensions.zoteroOpenOfficeIntegration.skipInstallation": true,
 };
 
-export const prefs: typeof prefsCommon & typeof prefsFirefox & typeof prefsZotero = {
+export const prefs = {
   ...prefsCommon,
   ...prefsFirefox,
   ...prefsZotero,

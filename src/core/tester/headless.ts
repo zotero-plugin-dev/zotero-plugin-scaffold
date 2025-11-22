@@ -5,7 +5,7 @@ import { Xvfb } from "xvfb-ts";
 import { CACHE_DIR } from "../../constant.js";
 import { LOG_LEVEL, logger } from "../../utils/logger.js";
 
-export async function prepareHeadless(): Promise<void> {
+export async function prepareHeadless() {
   // Ensure xvfb installing
   await installXvfb();
   await installDepsForUbuntu24();
@@ -53,7 +53,7 @@ function checkAndInstallDependencies(packages: string[]): void {
   });
 }
 
-export async function installXvfb(): Promise<void> {
+export async function installXvfb() {
   if (!isLinux) {
     logger.error("Unsupported platform. Please install Xvfb manually.");
     return;
@@ -68,7 +68,7 @@ export async function installXvfb(): Promise<void> {
   checkAndInstallDependencies(["xvfb", "x11-xkb-utils", "xkb-data"]);
 }
 
-export async function installDepsForUbuntu24(): Promise<void> {
+export async function installDepsForUbuntu24() {
   const version = execSync("cat /etc/os-release | grep '^VERSION_ID='").toString();
   if (!(version.includes("24"))) {
     logger.error("Skip to install deps due to version not 24.04.");
@@ -78,7 +78,7 @@ export async function installDepsForUbuntu24(): Promise<void> {
   checkAndInstallDependencies(["libasound2t64", "libdbus-glib-1-2"]);
 }
 
-export async function installZoteroLinux(): Promise<void> {
+export async function installZoteroLinux() {
   if (process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH) {
     logger.debug("Local Zotero found, skip to download.");
     return;

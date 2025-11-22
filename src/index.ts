@@ -4,10 +4,7 @@ import Release from "./core/releaser/index.js";
 import Serve from "./core/server.js";
 import Test from "./core/tester/index.js";
 
-const Config: {
-  defineConfig: typeof defineConfig;
-  loadConfig: typeof loadConfig;
-} = {
+const Config = {
   defineConfig,
   loadConfig,
 };

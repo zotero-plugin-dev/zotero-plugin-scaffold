@@ -38,7 +38,7 @@ export function generateHashSync(
   return `${algorithm}:${hash}`;
 }
 
-export default async function buildUpdateJson(ctx: Context): Promise<void> {
+export default async function buildUpdateJson(ctx: Context) {
   const { dist, xpiName, id, version, xpiDownloadLink, build } = ctx;
 
   const manifest = await readJSON(

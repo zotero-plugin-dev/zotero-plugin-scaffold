@@ -4,7 +4,7 @@ import { toMerged } from "es-toolkit";
 import { outputJSON, readJSON } from "fs-extra/esm";
 import { logger } from "../../utils/logger.js";
 
-export default async function buildManifest(ctx: Context): Promise<void> {
+export default async function buildManifest(ctx: Context) {
   if (!ctx.build.makeManifest.enable)
     return;
 
@@ -33,6 +33,6 @@ export default async function buildManifest(ctx: Context): Promise<void> {
 }
 
 // TODO: process i10n in manifest.json
-export function locale(): void {
+export function locale() {
   //
 }

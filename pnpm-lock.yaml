@@ -88,7 +88,7 @@ importers:
         specifier: ^16.2.7
         version: 16.2.7
       tsdown:
-        specifier: ^0.16.4
+        specifier: ^0.16.6
         version: 0.16.8(synckit@0.11.12)(typescript@5.9.3)
       tsx:
         specifier: ^4.21.0
