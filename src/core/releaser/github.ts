@@ -14,7 +14,7 @@ export default class GitHub extends ReleaseBase {
     this.client = this.getClient();
   }
 
-  async run() {
+  async run(): Promise<Context> {
     this.checkFiles();
 
     this.logger.info("Uploading XPI to GitHub...");
@@ -29,7 +29,7 @@ export default class GitHub extends ReleaseBase {
   /**
    * Create new release and upload XPI to asset
    */
-  async uploadXPI() {
+  async uploadXPI(): Promise<void> {
     const { version, dist, xpiName } = this.ctx;
 
     const release = await this.createRelease({
@@ -52,7 +52,7 @@ export default class GitHub extends ReleaseBase {
     await this.uploadAsset(release.id, join(dist, `${xpiName}.xpi`));
   }
 
-  async getReleaseByTag(tag: string) {
+  async getReleaseByTag(tag: string): Promise<{ id: number } | undefined> {
     return await this.client.rest.repos
       .getReleaseByTag({
         ...this.remote,
@@ -72,7 +72,7 @@ export default class GitHub extends ReleaseBase {
 
   async createRelease(
     options: Parameters<Octokit["rest"]["repos"]["createRelease"]>[0],
-  ) {
+  ): Promise<{ id: number } | undefined> {
     this.logger.debug("Creating release...");
     this.logger.debug(options);
     return await this.client.rest.repos
@@ -89,7 +89,7 @@ export default class GitHub extends ReleaseBase {
       });
   }
 
-  async uploadAsset(releaseID: number, asset: string) {
+  async uploadAsset(releaseID: number, asset: string): Promise<{ id: number }> {
     this.logger.debug(`Uploading ${asset} to release ${releaseID}`);
     return await this.client.rest.repos
       .uploadReleaseAsset({
@@ -108,7 +108,7 @@ export default class GitHub extends ReleaseBase {
       });
   }
 
-  async refreshUpdateManifest() {
+  async refreshUpdateManifest(): Promise<void> {
     const updater = this.ctx.release.github.updater;
     if (!updater) {
       this.logger.debug(`Skip refresh update.json because release.github.updater = false`);
@@ -167,7 +167,7 @@ export default class GitHub extends ReleaseBase {
     });
   }
 
-  async getChangelog() {
+  async getChangelog(): Promise<string> {
     const { release } = this.ctx;
     const { github } = release;
     const { releaseNote } = github;
@@ -185,7 +185,10 @@ export default class GitHub extends ReleaseBase {
     return client;
   }
 
-  get remote() {
+  get remote(): {
+    owner: string;
+    repo: string;
+  } {
     const [owner, repo] = this.ctx.release.github.repository.split("/");
     return {
       owner,

@@ -1,9 +1,10 @@
+import type { BuildOptions, BuildResult } from "esbuild";
 import type { BuildConfig } from "../../types/config.js";
 import { resolve } from "node:path";
 import { build as buildAsync } from "esbuild";
 import { logger } from "../../utils/logger.js";
 
-export function resolveConfig(dist: string, esbuildOptions: BuildConfig["esbuildOptions"]) {
+export function resolveConfig(dist: string, esbuildOptions: BuildConfig["esbuildOptions"]): BuildOptions[] {
   const distAbsolute = resolve(dist);
 
   // ensure outfile and outdir are in dist folder
@@ -20,7 +21,7 @@ export function resolveConfig(dist: string, esbuildOptions: BuildConfig["esbuild
   });
 }
 
-export default async function esbuild(dist: string, esbuildOptions: BuildConfig["esbuildOptions"]) {
+export default async function esbuild(dist: string, esbuildOptions: BuildConfig["esbuildOptions"]): Promise<BuildResult<BuildOptions>[] | undefined> {
   if (esbuildOptions.length === 0)
     return;
 
