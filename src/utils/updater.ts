@@ -3,7 +3,7 @@ import tinyUpdateNotifier from "tiny-update-notifier";
 import { logger } from "./logger.js";
 import { ExitSignals } from "./process.js";
 
-export function updateNotifier(name: string, version: string) {
+export function updateNotifier(name: string, version: string): void {
   tinyUpdateNotifier({ pkg: { name, version } }).then((update) => {
     if (update) {
       const notify = () => {

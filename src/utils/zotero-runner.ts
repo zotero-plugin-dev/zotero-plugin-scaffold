@@ -84,11 +84,11 @@ export class ZoteroRunner {
     logger.debug(this.options);
   }
 
-  get default_profile_path() {
+  get default_profile_path(): string {
     return default_options.profile.path;
   }
 
-  async run() {
+  async run(): Promise<void> {
     // Get a Zotero profile with the custom Prefs set (a new or a cloned one)
     // Pre-install extensions as proxy if needed (and disable auto-reload if you do)
     await this.setupProfile();
@@ -259,11 +259,14 @@ export class ZoteroRunner {
     }
   }
 
-  public async reloadTemporaryPluginById(id: string) {
+  public async reloadTemporaryPluginById(id: string): Promise<void> {
     await this.remoteFirefox.reloadAddon(id);
   }
 
-  public async reloadTemporaryPluginBySourceDir(sourceDir: string) {
+  public async reloadTemporaryPluginBySourceDir(sourceDir: string): Promise<{
+    sourceDir: string;
+    reloadError: unknown;
+  }> {
     const addonId = this.options.plugins.list.find(p => p.sourceDir === sourceDir)?.id;
 
     if (!addonId) {
@@ -298,7 +301,7 @@ export class ZoteroRunner {
     }
   }
 
-  public async reloadProxyPluginByZToolkit(id: string, name: string, version: string) {
+  public async reloadProxyPluginByZToolkit(id: string, name: string, version: string): Promise<void> {
     const reloadScript = `
     (async () => {
     Services.obs.notifyObservers(null, "startupcache-invalidate", null);
@@ -332,14 +335,14 @@ export class ZoteroRunner {
     }
   }
 
-  public async reloadAllPlugins() {
+  public async reloadAllPlugins(): Promise<void> {
     if (this.options.plugins.asProxy)
       await this.reloadAllProxyPlugins();
     else
       await this.reloadAllTemporaryPlugins();
   }
 
-  public exit() {
+  public exit(): void {
     this.zotero?.kill();
     // Sometimes `process.kill()` cannot kill the Zotero,
     // so we force kill it.
@@ -347,7 +350,7 @@ export class ZoteroRunner {
   }
 }
 
-export function killZotero() {
+export function killZotero(): void {
   function kill() {
     try {
       if (process.env.ZOTERO_PLUGIN_KILL_COMMAND) {
