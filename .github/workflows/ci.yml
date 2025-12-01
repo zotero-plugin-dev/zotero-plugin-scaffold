@@ -12,77 +12,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    env:
-      GITHUB_TOKEN: ${{ secrets.GitHub_TOKEN }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.11.1
-          cache: pnpm
-
-      - name: Install deps
-        run: pnpm install
-
-      - name: Lint
-        run: pnpm lint:check
-
   test:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GitHub_TOKEN }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.11.1
-          cache: pnpm
-
-      - name: Install deps
-        run: pnpm install
+      - name: Setup JS
+        uses: zotero-plugin-dev/workflows/setup-js@main
 
       - name: Test
-        run: |
-          pnpm test
+        run: pnpm test
 
   build:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GitHub_TOKEN }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.11.1
-          cache: pnpm
-
-      - name: Install deps
-        run: pnpm install
+      - name: Setup JS
+        uses: zotero-plugin-dev/workflows/setup-js@main
 
       - name: Build Packages
-        run: |
-          pnpm build
+        run: pnpm build
 
       - name: Upload build result
         uses: actions/upload-artifact@v5
@@ -103,30 +49,18 @@ jobs:
       pages: write
       id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Setup JS
+        uses: zotero-plugin-dev/workflows/setup-js@main
         with:
-          fetch-depth: 0
+          fetch-all: 0
 
       - name: Restore Build Result
         uses: actions/download-artifact@v6
         with:
           name: build-result
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.11.1
-          cache: pnpm
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
-      - name: Install deps
-        run: pnpm install
 
       - name: Build Documentation
         run: pnpm docs:build
@@ -140,51 +74,3 @@ jobs:
         if: github.event_name == 'push'
         id: deployment
         uses: actions/deploy-pages@v4
-
-  publish:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
-    needs:
-      - build
-    env:
-      GITHUB_TOKEN: ${{ secrets.GitHub_TOKEN }}
-      NODE_AUTH_TOKEN: ${{secrets.npm_token}}
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-      id-token: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Restore Build Result
-        uses: actions/download-artifact@v6
-        with:
-          name: build-result
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24.11.1
-          registry-url: https://registry.npmjs.org/
-          cache: pnpm
-
-      - run: pnpm i
-
-      - name: Publish to NPM and sync to GitHub
-        if: github.event_name == 'push' && github.ref_type == 'tag' && startsWith(github.ref, 'refs/tags/v')
-        run: |
-          pnpm publish --no-git-checks
-          pnpx changelogithub
-        env:
-          NPM_CONFIG_PROVENANCE: true
-
-      - name: Publish to pkg-pr-new
-        if: github.ref_type != 'tag'
-        run: pnpx pkg-pr-new publish --compact --no-template --pnpm
