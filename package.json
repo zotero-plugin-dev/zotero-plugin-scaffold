@@ -72,7 +72,7 @@
     "adm-zip": "^0.5.16",
     "bumpp": "^10.3.2",
     "c12": "^3.3.2",
-    "chokidar": "^4.0.3",
+    "chokidar": "^5.0.0",
     "commander": "^14.0.2",
     "es-toolkit": "^1.42.0",
     "esbuild": "^0.27.0",
