@@ -35,7 +35,9 @@ export default class GitHub extends ReleaseBase {
     const release = await this.createRelease({
       ...this.remote,
       tag_name: this.ctx.release.bumpp
-        .tag!.toString().replaceAll("%s", version),
+        .tag!
+        .toString()
+        .replaceAll("%s", version),
       name: `Release v${version}`,
       body: await this.getChangelog(),
       prerelease: version.includes("-"),
