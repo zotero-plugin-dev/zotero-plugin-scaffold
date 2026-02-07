@@ -42,7 +42,7 @@ export default class Build extends Base {
 
     if (process.env.NODE_ENV === "production") {
       this.logger.tip("Packing plugin", { space: 1 });
-      this.buildInProduction();
+      await this.buildInProduction();
     }
 
     await this.ctx.hooks.callHook("build:done", this.ctx);
