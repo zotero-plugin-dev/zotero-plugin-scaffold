@@ -2,14 +2,13 @@ import type { Base } from "./core/base.js";
 import type { Context, OverrideConfig } from "./types/index.js";
 import process from "node:process";
 import { Command } from "commander";
-import pkg from "../package.json" with { type: "json" };
+import { name, version } from "../package.json" with { type: "json" };
 import { Build, Config, Release, Serve, Test } from "./index.js";
 import { checkGitIgnore } from "./utils/gitignore.js";
 import { logger } from "./utils/logger.js";
 import { updateNotifier } from "./utils/updater.js";
 
 async function main() {
-  const { name, version } = pkg;
   updateNotifier(name, version);
 
   // Env variables are initialized to dev, but can be overridden by each command
@@ -106,14 +105,14 @@ type Constructor<T> = new (ctx: Context) => T;
 export async function runCommand<T extends Base>(
   CommandClass: Constructor<T>,
   config: OverrideConfig,
-) {
+): Promise<void> {
   const ctx = await Config.loadConfig(config);
   const instance = new CommandClass(ctx);
   process.on("SIGINT", instance.exit.bind(instance));
   await instance.run();
 }
 
-export default async function mainWithErrorHandler() {
+export default async function mainWithErrorHandler(): Promise<void> {
   main()
     .then(() => {
       checkGitIgnore();

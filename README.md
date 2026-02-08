@@ -30,8 +30,6 @@ corepack enable
 pnpm install
 
 # Development Mode
-# This command creates a typescript runtime using jiti,
-# and the modified code does not need to be built again.
 pnpm run dev
 
 # link local scaffold to your plugin

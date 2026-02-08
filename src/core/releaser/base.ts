@@ -1,4 +1,5 @@
 import type { Context } from "../../types/index.js";
+import type { Logger } from "../../utils/logger.js";
 import { isCI } from "std-env";
 import { globSync } from "tinyglobby";
 
@@ -12,7 +13,7 @@ export abstract class ReleaseBase {
 
   abstract run(): Context | Promise<Context> | void | Promise<void>;
 
-  checkFiles() {
+  checkFiles(): void {
     const { dist } = this.ctx;
 
     if (globSync(`${dist}/*.xpi`).length === 0) {
@@ -20,7 +21,7 @@ export abstract class ReleaseBase {
     }
   }
 
-  get logger() {
+  get logger(): Logger {
     return this.ctx.logger;
   }
 }
