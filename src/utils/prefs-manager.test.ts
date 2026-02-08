@@ -205,14 +205,13 @@ pref("test.boolean.true", true);
       });
 
       const result = [
-        "pref(\"test.string\", \"hello\");",
-        "pref(\"test.quote\", '{\"key\": \"value\"}');",
-        "pref(\"test.singleQuote\", \"{key: value}\");",
-        "pref(\"test.path\", \"C:\\\\path\\\\to\\\\file\");",
-        "pref(\"test.number\", 42);",
-        "pref(\"test.-1\", -1);",
-        "pref(\"test.boolean\", true);",
-        "",
+        `pref(\"test.string\", \"hello\");`,
+        `pref(\"test.quote\", "{\\"key\\": \\"value\\"}");`,
+        `pref(\"test.singleQuote\", \"{key: value}\");`,
+        `pref(\"test.path\", \"C:\\\\path\\\\to\\\\file\");`,
+        `pref(\"test.number\", 42);`,
+        `pref(\"test.-1\", -1);`,
+        `pref(\"test.boolean\", true);`,
       ].join("\n");
 
       expect(prefsManager.render()).toBe(result);
@@ -239,9 +238,8 @@ describe("prefs-manager (user_pref)", () => {
     });
 
     const result = [
-      "user_pref(\"test.string\", \"hello\");",
-      "user_pref(\"test.number\", 42);",
-      "",
+      `user_pref(\"test.string\", \"hello\");`,
+      `user_pref(\"test.number\", 42);`,
     ].join("\n");
 
     expect(prefsManager.render()).toBe(result);

@@ -1,8 +1,18 @@
-import type { Program } from "@swc/core";
+import type { BooleanLiteral, NumericLiteral, StringLiteral, UnaryExpression } from "@oxc-project/types";
+import type { ParseResult } from "rolldown/experimental";
 import { readFile } from "node:fs/promises";
-import { parseSync, printSync } from "@swc/core";
+import { print } from "esrap";
+import ts from "esrap/languages/ts";
 import { outputFile } from "fs-extra/esm";
+import { parseSync } from "rolldown/experimental";
 import { logger } from "./logger.js";
+
+class PrefFileError extends Error {
+  constructor(message: string) {
+    super();
+    this.message = `Invalid prefs.js file - ${message}`;
+  }
+}
 
 /**
  * type of pref value only supports string (Char, String), number (Int), and boolean (Boolean)
@@ -25,54 +35,61 @@ export class PrefsManager {
    */
   parse(content: string): Prefs {
     const _map: Prefs = {};
-    const ast = parseSync(content, { syntax: "ecmascript" });
-    for (const node of ast.body) {
+    const { program, errors } = parseSync("prefs.js", content);
+    if (errors.length)
+      throw new PrefFileError(errors.map(e => e.message).join("\n"));
+
+    for (const node of program.body) {
       if (
         node.type !== "ExpressionStatement"
         || node.expression.type !== "CallExpression"
         || node.expression.callee.type !== "Identifier"
-        || node.expression.callee.value !== this.namespace
+        || node.expression.callee.name !== this.namespace
         || node.expression.arguments.length !== 2
       ) {
-        throw new Error("Invalid prefs.js file.");
+        throw new PrefFileError(`No ${this.namespace} callee found`);
       }
 
       const [arg1, arg2] = node.expression.arguments;
 
-      if (arg1.expression.type !== "StringLiteral") {
-        throw new Error("Invalid prefs.js file - unsupported key type.");
+      if (arg1.type !== "Literal" || typeof arg1.value !== "string") {
+        throw new PrefFileError(`Unsupported key type for ${arg1}`);
       }
-      const key = arg1.expression.value.trim();
+      const key = arg1.value?.trim();
 
       let value: PrefValue;
-      switch (arg2.expression.type) {
-        // https://babeljs.io/docs/babel-parser#output
-        case "StringLiteral":
-        case "NumericLiteral":
-        case "BooleanLiteral":
-          value = arg2.expression.value;
+      switch (arg2.type) {
+        case "Literal":
+          if (
+            typeof arg2.value !== "boolean"
+            && typeof arg2.value !== "string"
+            && typeof arg2.value !== "number"
+          ) {
+            throw new PrefFileError(`Unsupported value type for ${arg2}`);
+          }
+          value = arg2.value;
           break;
 
         // https://github.com/estree/estree/blob/master/es5.md#unaryexpression
         // https://github.com/northword/zotero-plugin-scaffold/issues/98
         case "UnaryExpression":
-          if (arg2.expression.argument.type !== "NumericLiteral")
-            throw new Error("Invalid prefs.js file - unsupported value type.");
+          if (arg2.argument.type !== "Literal" || typeof arg2.argument.value !== "number")
+            throw new PrefFileError(`Unsupported value type for ${arg2}`);
 
-          if (arg2.expression.operator === "-")
-            value = -arg2.expression.argument.value;
-          else if (arg2.expression.operator === "+")
-            value = arg2.expression.argument.value;
+          if (arg2.operator === "-")
+            value = -arg2.argument.value;
+          else if (arg2.operator === "+")
+            value = arg2.argument.value;
           else
-            throw new Error("Invalid prefs.js file - unsupported value type.");
+            throw new PrefFileError(`Unsupported value type for ${arg2}`);
           break;
 
         case "TemplateLiteral":
-          value = arg2.expression.quasis[0]?.cooked ?? "";
+          value = arg2.quasis[0]?.value.cooked ?? "";
           break;
 
         default:
-          throw new Error("Invalid prefs.js file - unsupported value type.");
+          throw new PrefFileError(`Unsupported value type for ${arg2}`);
       }
 
       _map[key] = value;
@@ -133,69 +150,68 @@ export class PrefsManager {
   render(): string {
     const span = { start: 0, end: 0, ctxt: 0 };
 
-    function getExpression(value: unknown) {
+    function getExpression(value: unknown): StringLiteral | NumericLiteral | BooleanLiteral | UnaryExpression {
       switch (typeof value) {
         case "string":
-          return {
-            type: "StringLiteral",
-            span,
-            value,
-          };
         case "boolean":
           return {
-            type: "BooleanLiteral",
-            span,
+            type: "Literal",
+            ...span,
             value,
-          };
+            raw: null,
+          } satisfies StringLiteral | BooleanLiteral;
         case "number":
           if (value < 0) {
             return {
               type: "UnaryExpression",
-              span,
+              ...span,
               operator: "-",
               argument: {
-                type: "NumericLiteral",
-                span,
+                type: "Literal",
+                ...span,
                 value: Math.abs(value),
+                raw: null,
               },
-            };
+              prefix: true,
+            } satisfies UnaryExpression;
           }
           return {
-            type: "NumericLiteral",
-            span,
+            type: "Literal",
+            ...span,
             value,
-          };
+            raw: null,
+          } satisfies NumericLiteral;
         default:
           throw new Error(`Unsupported value type: ${typeof value}`);
       }
     }
 
-    const ast: Program = {
-      type: "Module",
-      span,
-      // @ts-expect-error no raw property
+    const program: ParseResult["program"] = {
+      type: "Program",
+      sourceType: "script",
+      hashbang: null,
+      ...span,
       body: Object.entries(this.prefs).map(([key, value]) => ({
         type: "ExpressionStatement",
-        span,
+        ...span,
         expression: {
           type: "CallExpression",
-          span,
-          ctxt: 0,
+          ...span,
+          optional: false,
           callee: {
             type: "Identifier",
-            span,
-            ctxt: 0,
-            value: this.namespace,
-            optional: false,
+            name: this.namespace,
+            ...span,
           },
           arguments: [
-            { expression: getExpression(key) },
-            { expression: getExpression(value) },
+            getExpression(key),
+            getExpression(value),
           ],
         },
       })),
     };
-    const { code } = printSync(ast);
+    // @ts-expect-error no comments, loc, token
+    const { code } = print(program, ts({ quotes: "double" }));
     return code;
   }
 
@@ -298,124 +314,84 @@ export class PrefsManager {
  * pref("key1", -1)
  */
 const _ast_example = {
-  type: "Module",
-  span: {
-    start: 0,
-    end: 39,
-  },
+  type: "Program",
   body: [
     {
       type: "ExpressionStatement",
-      span: {
+      expression: {
+        type: "CallExpression",
+        callee: {
+          type: "Identifier",
+          name: "pref",
+          start: 0,
+          end: 4,
+        },
+        arguments: [
+          {
+            type: "Literal",
+            value: "key2",
+            raw: "\"key2\"",
+            start: 5,
+            end: 11,
+          },
+          {
+            type: "Literal",
+            value: "value",
+            raw: "\"value\"",
+            start: 13,
+            end: 20,
+          },
+        ],
+        optional: false,
         start: 0,
         end: 21,
       },
-      expression: {
-        type: "CallExpression",
-        span: {
-          start: 0,
-          end: 21,
-        },
-        ctxt: 0,
-        callee: {
-          type: "Identifier",
-          span: {
-            start: 0,
-            end: 4,
-          },
-          ctxt: 1,
-          value: "pref",
-          optional: false,
-        },
-        arguments: [
-          {
-            spread: null,
-            expression: {
-              type: "StringLiteral",
-              span: {
-                start: 5,
-                end: 11,
-              },
-              value: "key2",
-              raw: "\"key2\"",
-            },
-          },
-          {
-            spread: null,
-            expression: {
-              type: "StringLiteral",
-              span: {
-                start: 13,
-                end: 20,
-              },
-              value: "value",
-              raw: "\"value\"",
-            },
-          },
-        ],
-        typeArguments: null,
-      },
+      start: 0,
+      end: 21,
     },
     {
       type: "ExpressionStatement",
-      span: {
-        start: 23,
-        end: 39,
-      },
       expression: {
         type: "CallExpression",
-        span: {
-          start: 23,
-          end: 39,
-        },
-        ctxt: 0,
         callee: {
           type: "Identifier",
-          span: {
-            start: 23,
-            end: 27,
-          },
-          ctxt: 1,
-          value: "pref",
-          optional: false,
+          name: "pref",
+          start: 22,
+          end: 26,
         },
         arguments: [
           {
-            spread: null,
-            expression: {
-              type: "StringLiteral",
-              span: {
-                start: 28,
-                end: 34,
-              },
-              value: "key1",
-              raw: "\"key1\"",
-            },
+            type: "Literal",
+            value: "key1",
+            raw: "\"key1\"",
+            start: 27,
+            end: 33,
           },
           {
-            spread: null,
-            expression: {
-              type: "UnaryExpression",
-              span: {
-                start: 36,
-                end: 38,
-              },
-              operator: "-",
-              argument: {
-                type: "NumericLiteral",
-                span: {
-                  start: 37,
-                  end: 38,
-                },
-                value: 1,
-                raw: "1",
-              },
+            type: "UnaryExpression",
+            operator: "-",
+            argument: {
+              type: "Literal",
+              value: 1,
+              raw: "1",
+              start: 36,
+              end: 37,
             },
+            prefix: true,
+            start: 35,
+            end: 37,
           },
         ],
-        typeArguments: null,
+        optional: false,
+        start: 22,
+        end: 38,
       },
+      start: 22,
+      end: 38,
     },
   ],
-  interpreter: null,
+  sourceType: "script",
+  hashbang: null,
+  start: 0,
+  end: 38,
 };
