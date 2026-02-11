@@ -27,7 +27,7 @@ export function generateHtml(
   setupCode: string,
   testFiles: string[],
 ): string {
-  const tests = testFiles.map(f => `<script src="${f}"></script>`).join("\n    ");
+  const tests = testFiles.map(f => `<script src="units/${f}"></script>`).join("\n    ");
 
   return htmlRaw
     .replaceAll("__TEST_FILES__", tests)
