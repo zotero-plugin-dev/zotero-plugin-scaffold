@@ -47,8 +47,8 @@
     "@zotero-plugin/core": "workspace:*",
     "@zotero-plugin/utils": "workspace:*",
     "@zotero-plugin/zotero-runner": "workspace:*",
-    "esbuild": "catalog:",
     "fs-extra": "catalog:",
+    "rolldown": "catalog:",
     "std-env": "catalog:",
     "tinyglobby": "catalog:",
     "xvfb-ts": "catalog:"
