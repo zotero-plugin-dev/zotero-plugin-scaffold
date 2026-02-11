@@ -1,10 +1,14 @@
 {
-  "name": "test-plugin",
+  "name": "@zotero-plugin-scaffold/e2e",
   "type": "module",
   "version": "1.0.0",
-  "private": "true",
+  "private": true,
+  "description": "Test plugin for zotero-plugin-scaffold e2e tests",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/northword/zotero-plugin-scaffold.git"
+    "url": "git+https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git"
+  },
+  "dependencies": {
+    "zotero-plugin-scaffold": "workspace:*"
   }
 }

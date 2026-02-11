@@ -118,6 +118,16 @@ importers:
         specifier: workspace:^
         version: link:..
 
+  test/e2e:
+    dependencies:
+      tinyglobby:
+        specifier: ^0.2.11
+        version: 0.2.15
+    devDependencies:
+      zotero-plugin-scaffold:
+        specifier: workspace:*
+        version: link:../..
+
 packages:
 
   '@algolia/autocomplete-core@1.17.7':

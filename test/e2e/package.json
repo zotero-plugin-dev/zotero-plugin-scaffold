@@ -1,0 +1,17 @@
+{
+  "name": "zotero-plugin-scaffold-e2e",
+  "type": "module",
+  "version": "0.8.3",
+  "private": true,
+  "description": "E2E tests for zotero-plugin-scaffold",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "dependencies": {
+    "tinyglobby": "^0.2.11"
+  },
+  "devDependencies": {
+    "zotero-plugin-scaffold": "workspace:*"
+  }
+}

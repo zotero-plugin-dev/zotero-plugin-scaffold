@@ -6,3 +6,4 @@ packages:
   - src
   - "!**/dist/**"
   - docs
+  - test/e2e

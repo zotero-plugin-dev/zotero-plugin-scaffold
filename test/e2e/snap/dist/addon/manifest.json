@@ -5,7 +5,7 @@
       "strict_min_version": "6.999",
       "strict_max_version": "7.*",
       "id": "test-plugin",
-      "update_url": "https://github.com/northword/zotero-plugin-scaffold/releases/download/releaser/update.json"
+      "update_url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold/releases/download/releaser/update.json"
     }
   },
   "name": "Test Plugin",
