@@ -110,6 +110,7 @@ const defaultConfig = {
       dts: "typings/prefs.d.ts",
     },
     esbuildOptions: [],
+    bundle: [],
     makeManifest: {
       enable: true,
       template: {
