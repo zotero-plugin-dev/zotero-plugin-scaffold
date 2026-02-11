@@ -1,0 +1,13 @@
+{
+  "manifest_version": 2,
+  "name": "Zotero Plugin Scaffold Test Runner",
+  "version": "0.0.1",
+  "description": "Test suite for the Zotero plugin. This is a runtime-generated plugin only for testing purposes.",
+  "applications": {
+    "zotero": {
+      "id": "__TESTER_PLUGIN_ID__",
+      "update_url": "https://example.com",
+      "strict_max_version": "999.*.*"
+    }
+  }
+}

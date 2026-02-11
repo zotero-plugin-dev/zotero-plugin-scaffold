@@ -102,6 +102,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "unbuild": "^3.6.1",
+    "unplugin-raw": "^0.6.4",
     "vitest": "^4.0.18"
   },
   "workspaces": [
