@@ -4,6 +4,7 @@ import type { Config, Hooks } from "./config.js";
 import type { RecursivePartial } from "./utils.js";
 
 export { Config, Hooks };
+export type { BuildConfig } from "./config.js";
 
 /**
  * User config
