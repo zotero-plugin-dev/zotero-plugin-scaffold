@@ -23,3 +23,6 @@ type RecursiveOptionalKeys<T> = {
 export type RecursivePickOptional<T> = {
   [K in keyof T as K extends RecursiveOptionalKeys<T> ? K : never]?: T[K] extends object ? RecursivePickOptional<T[K]> : T[K];
 };
+
+export type Awaitable<T> = T | Promise<T>;
+export type Arrayable<T> = T | T[];

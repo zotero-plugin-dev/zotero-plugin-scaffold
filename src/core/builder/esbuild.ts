@@ -1,7 +1,7 @@
 import type { BuildOptions, BuildResult } from "esbuild";
 import type { BuildConfig } from "../../types/config.js";
 import { resolve } from "node:path";
-import { build as buildAsync } from "esbuild";
+
 import { logger } from "../../utils/logger.js";
 
 export function resolveConfig(dist: string, esbuildOptions: BuildConfig["esbuildOptions"]): BuildOptions[] {
@@ -26,6 +26,8 @@ export default async function esbuild(dist: string, esbuildOptions: BuildConfig[
     return;
 
   const options = resolveConfig(dist, esbuildOptions);
+
+  const { build: buildAsync } = await import("esbuild");
 
   return await Promise.all(
     options.map(esbuildOption =>
