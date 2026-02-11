@@ -7,6 +7,8 @@ export { is32BitNumber } from "./number.js";
 export { ExitSignals, isRunning, whenExit } from "./process.js";
 export { dateFormat, normalizePath, parseRepoUrl, template, toArray } from "./string.js";
 export type {
+  Arrayable,
+  Awaitable,
   RecursiveNonNullable,
   RecursivePartial,
   RecursivePickOptional,

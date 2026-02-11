@@ -42,6 +42,14 @@
   "scripts": {
     "build:tsc": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "esbuild": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "esbuild": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "@fluent/syntax": "catalog:",
     "@zotero-plugin/config": "workspace:*",
@@ -49,8 +57,8 @@
     "@zotero-plugin/zotero-runner": "workspace:*",
     "adm-zip": "catalog:",
     "es-toolkit": "catalog:",
-    "esbuild": "catalog:",
     "fs-extra": "catalog:",
+    "rolldown": "catalog:",
     "tinyglobby": "catalog:"
   },
   "devDependencies": {
