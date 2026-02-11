@@ -60,15 +60,15 @@ export class TestHttpReporter {
 
   constructor() { }
 
-  async getPort() {
+  async getPort(): Promise<void> {
     this._port = await findFreeTcpPort();
   }
 
-  get port() {
+  get port(): number {
     return this._port!;
   }
 
-  async start() {
+  async start(): Promise<this> {
     if (!this._port)
       await this.getPort();
 
@@ -116,7 +116,7 @@ export class TestHttpReporter {
       }
   }
 
-  async onData(body: Result) {
+  async onData(body: Result): Promise<void> {
     const { type, data } = body;
     const logger_option = { space: data.indents - 1 };
 
@@ -179,7 +179,7 @@ export class TestHttpReporter {
     }
   }
 
-  stop() {
+  stop(): void {
     this._server?.close();
   }
 }
