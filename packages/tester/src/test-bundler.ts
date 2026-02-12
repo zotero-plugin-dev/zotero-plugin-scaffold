@@ -197,5 +197,5 @@ export function findImpactedTests(
     }
   }
 
-  return Array.from(impactedTestFiles);
+  return [...impactedTestFiles];
 }
