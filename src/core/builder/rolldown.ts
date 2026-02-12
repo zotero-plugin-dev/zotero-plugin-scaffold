@@ -1,13 +1,11 @@
-import type { InputOptions, OutputOptions } from "rolldown";
+import type { RolldownOptions } from "rolldown";
 import type { BuildConfig, BundleItem, Config } from "../../types/config.js";
 import { resolve } from "node:path";
 import process from "node:process";
 import { rolldown } from "rolldown";
 import { toArray } from "../../utils/string.js";
 
-export type RolldownBuildOptions = InputOptions & { output?: OutputOptions | OutputOptions[] };
-
-export function resolveConfig(dist: Config["dist"], configs: BundleItem[]): RolldownBuildOptions[] {
+export function resolveConfig(dist: Config["dist"], configs: BundleItem[]): RolldownOptions[] {
   const distAbsolute = resolve(dist);
 
   // ensure output.file and output.dir are in dist folder
@@ -34,12 +32,13 @@ export function resolveConfig(dist: Config["dist"], configs: BundleItem[]): Roll
       },
       output: {
         dir: resolvedDir,
-        format: "esm",
-        minify,
+        format: "iife",
+        // format: "esm",
         // Since the Zotero sandbox environment does not support loading subpackages,
         // we hope to output a single file
         // Error: export declarations may only appear at top level of a module
-        codeSplitting: false,
+        // codeSplitting: false,
+        minify,
       },
     };
   });
