@@ -1,7 +1,7 @@
 import type { Context } from "../../types/index.js";
 import type { Manifest } from "../../types/manifest.js";
 import { toMerged } from "es-toolkit";
-import { outputJSON, readJSON } from "fs-extra/esm";
+import { outputJSON, pathExists, readJSON } from "fs-extra/esm";
 import { logger } from "../../utils/logger.js";
 
 export default async function buildManifest(ctx: Context): Promise<void> {
@@ -10,13 +10,14 @@ export default async function buildManifest(ctx: Context): Promise<void> {
 
   const { name, id, updateURL, dist, version } = ctx;
 
-  const userData = await readJSON(
-    `${dist}/addon/manifest.json`,
-  ) as Manifest;
+  const manifestPath = `${dist}/addon/manifest.json`;
+  const manifestExists = await pathExists(manifestPath);
+  const userData = (manifestExists ? await readJSON(manifestPath) : {}) as Partial<Manifest>;
+
   const template: Manifest = {
-    ...userData,
-    ...((!userData.name && name) && { name }),
-    ...(version && { version }),
+    ...(userData as Manifest),
+    name: userData.name || name,
+    version: userData.version || version,
     manifest_version: 2,
     applications: {
       zotero: {
@@ -29,7 +30,7 @@ export default async function buildManifest(ctx: Context): Promise<void> {
   const data: Manifest = toMerged(userData, template);
   logger.debug(`manifest: ${JSON.stringify(data, null, 2)}`);
 
-  outputJSON(`${dist}/addon/manifest.json`, data, { spaces: 2 });
+  outputJSON(manifestPath, data, { spaces: 2 });
 }
 
 // TODO: process i10n in manifest.json
