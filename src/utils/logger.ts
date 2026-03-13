@@ -25,7 +25,7 @@ const SYMBOLS = {
   TIP: styleText("blue", "→"),
   ERROR: styleText("bgRed", " ERROR "),
   WARN: styleText("bgYellow", " WARN "),
-  DEBUG: styleText("grey", "⚙"),
+  DEBUG: styleText("gray", "⚙"),
   NONE: "",
 };
 
