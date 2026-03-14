@@ -28,11 +28,11 @@ export function isRunning(query: string): boolean {
 
 export const ExitSignals = ["exit", "SIGABRT", "SIGALRM", "SIGHUP", "SIGINT", "SIGTERM"] as const;
 
-export function whenExit(cb: (_code: number, _signal: string) => any): void {
+export function whenExit(cb: (_code: number | string) => any): void {
   ExitSignals.forEach((signal) => {
     process.once(
       signal,
-      (_code, _signal) => cb(_code, _signal),
+      _code => cb(_code),
     );
   });
 }

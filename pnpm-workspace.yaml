@@ -7,3 +7,7 @@ packages:
   - "!**/dist/**"
   - docs
   - test/e2e
+
+ignoredBuiltDependencies:
+  - "@swc/core"
+  - esbuild

@@ -9,7 +9,7 @@
     "test:watch": "vitest watch"
   },
   "dependencies": {
-    "tinyglobby": "^0.2.11"
+    "tinyglobby": "^0.2.15"
   },
   "devDependencies": {
     "zotero-plugin-scaffold": "workspace:*"
