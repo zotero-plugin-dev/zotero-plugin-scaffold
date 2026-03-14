@@ -1,7 +1,7 @@
 {
   "name": "zotero-plugin-scaffold-e2e",
   "type": "module",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "private": true,
   "description": "E2E tests for zotero-plugin-scaffold",
   "scripts": {
