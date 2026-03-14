@@ -1,7 +1,7 @@
 # Zotero Plugin Development Scaffold
 
-[![NPM Version](https://img.shields.io/npm/v/zotero-plugin-scaffold)](https://www.npmjs.com/package/zotero-plugin-scaffold)
-[![NPM Downloads](https://img.shields.io/npm/dm/zotero-plugin-scaffold)](https://www.npmjs.com/package/zotero-plugin-scaffold)
+[![NPM Version](https://img.shields.io/npm/v/zotero-plugin-scaffold)](https://npmx.dev/package/zotero-plugin-scaffold)
+[![NPM Downloads](https://img.shields.io/npm/dm/zotero-plugin-scaffold)](https://npmx.dev/package/zotero-plugin-scaffold)
 ![NPM Unpacked Size](https://img.shields.io/npm/unpacked-size/zotero-plugin-scaffold)
 ![GitHub License](https://img.shields.io/github/license/zotero-plugin-dev/zotero-plugin-scaffold)
 [![code style](https://antfu.me/badge-code-style.svg)](https://github.com/antfu/eslint-config)

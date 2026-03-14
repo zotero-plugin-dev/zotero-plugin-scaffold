@@ -6,7 +6,7 @@
   "description": "A scaffold for Zotero plugin development.",
   "author": "northword",
   "license": "AGPL-3.0-or-later",
-  "homepage": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold#readme",
+  "homepage": "https://zotero-plugin-dev.github.io/zotero-plugin-scaffold",
   "repository": {
     "type": "git",
     "url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git"
