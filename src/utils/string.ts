@@ -34,7 +34,7 @@ export function toArray<T>(value: T | T[]): T[] {
  * @see https://github.com/sodiray/radash/blob/069b26cdd7d62e6ac16a0ad3baa1c9abcca420bc/src/string.ts#L111-L126
  */
 export function template(str: string, data: Record<string, any>, regex: RegExp = /\{\{(.+?)\}\}/g): string {
-  return Array.from(str.matchAll(regex)).reduce((acc, match) => {
+  return [...str.matchAll(regex)].reduce((acc, match) => {
     return acc.replace(match[0], data[match[1]]);
   }, str);
 }

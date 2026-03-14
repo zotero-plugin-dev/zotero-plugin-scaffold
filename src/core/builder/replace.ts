@@ -8,6 +8,7 @@ export function replace(contents: string, from: RegExp | RegExp[], to: string | 
   const froms = Array.isArray(from) ? from : [from];
   const tos = Array.isArray(to)
     ? to
+    // eslint-disable-next-line e18e/prefer-array-fill -- `Array.from({length: froms.length}).fill(to)` breaks type infer
     : Array.from({ length: froms.length }, () => to);
 
   if (froms.length !== tos.length) {
@@ -51,8 +52,8 @@ export default async function replaceDefine(dist: string, define: BuildConfig["d
     //   `${dist}/addon/**/*.css`,
     //   `${dist}/addon/**/*.json`,
     // ],
-    from: Array.from(replaceMap.keys()),
-    to: Array.from(replaceMap.values()),
+    from: [...replaceMap.keys()],
+    to: [...replaceMap.values()],
     // isGlob: false,
   });
 }

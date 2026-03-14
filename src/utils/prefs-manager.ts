@@ -120,7 +120,8 @@ export class PrefsManager {
       return false;
     else if (!Number.isNaN(Number(value)))
       return Number(value);
-    else if (value.match(/^["'](.*)["']$/))
+    // eslint-disable-next-line regexp/no-unused-capturing-group
+    else if (/^["'](.*)["']$/.test(value))
       return value.replace(/^["'](.*)["']$/, "$1");
     else
       return value;

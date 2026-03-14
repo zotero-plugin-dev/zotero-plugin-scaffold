@@ -172,5 +172,5 @@ export function findImpactedTests(changedFilePath: string, buildMetadata: BuildR
       impactedTestFiles.add(testFilePath);
     }
   }
-  return Array.from(impactedTestFiles);
+  return [...impactedTestFiles];
 }

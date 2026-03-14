@@ -64,7 +64,7 @@ export default class Release extends Base {
 
     await this.ctx.hooks.callHook("release:done", this.ctx);
     this.logger.success(
-      `Done in ${(new Date().getTime() - t.getTime()) / 1000} s.`,
+      `Done in ${(Date.now() - t.getTime()) / 1000} s.`,
     );
   }
 

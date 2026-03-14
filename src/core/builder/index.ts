@@ -46,7 +46,7 @@ export default class Build extends Base {
     }
 
     await this.ctx.hooks.callHook("build:done", this.ctx);
-    this.logger.success(`Build finished in ${(new Date().getTime() - t.getTime()) / 1000} s.`);
+    this.logger.success(`Build finished in ${(Date.now() - t.getTime()) / 1000} s.`);
   }
 
   private async prepareAssets() {

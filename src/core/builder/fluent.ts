@@ -255,6 +255,6 @@ export function generateFluentDts(messages: string[]) {
 /* eslint-disable */
 // @ts-nocheck
 export type FluentMessageId =
-${Array.from(messages).sort().map(id => `  | '${id}'`).join("\n")};
+${messages.toSorted().map(id => `  | '${id}'`).join("\n")};
 `;
 }
