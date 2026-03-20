@@ -9,7 +9,7 @@ interface ResultDataBase {
 }
 
 interface ResultS {
-  type: "start" | "pending" | "debug";
+  type: "start" | "pending" | "debug" | "error";
   data?: ResultDataBase | any;
 }
 
@@ -173,6 +173,12 @@ export class TestHttpReporter {
         else
           logger.fail(`Test run completed - ${this.passed} passed, ${this.failed} failed`);
         break;
+
+      case "error":
+        logger.error(body.data?.title);
+        this.failed++;
+        break;
+
       default:
         logger.log(data);
         break;

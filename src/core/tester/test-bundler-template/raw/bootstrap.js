@@ -22,15 +22,16 @@ async function startup({ id, version, resourceURI, rootURI }, reason) {
       "http://localhost:__PORT__/update",
       {
         body: JSON.stringify({
-          type: "fail",
+          type: "error",
           data: {
-            title: "Internal: Plugin awaiting timeout",
-            stack: "",
-            str: "Plugin awaiting timeout",
+            title: error.message,
           },
         }),
       }
     );
+    // Although this is an exception, we still need to use the status code 0, 
+    // because status code 1 will cause Zotero to auto-restart.
+    Zotero.Utilities.Internal.quit(0);
   });
 }
 
@@ -53,10 +54,11 @@ function uninstall(data, reason) {}
 
 async function launchTests() {
   // Delay to allow plugin to fully load before opening the test page
-  await Zotero.Promise.delay(__STARTUP_DELAY__);
+  if (__STARTUP_DELAY__) {
+    await Zotero.Promise.delay(__STARTUP_DELAY__);
+  }
 
   const waitForPlugin = "__WAIT_FOR_PLUGIN__";
-
   if (waitForPlugin) {
     // Wait for a plugin to be installed
     await waitUtilAsync(() => {
@@ -66,7 +68,7 @@ async function launchTests() {
         return false;
       }
     }).catch(() => {
-      throw new Error("Plugin awaiting timeout");
+      throw new Error("Internal: Plugin awaiting timeout");
     });
   }
 
