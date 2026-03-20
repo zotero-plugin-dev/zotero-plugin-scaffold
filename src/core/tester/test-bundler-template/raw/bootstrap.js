@@ -55,7 +55,7 @@ async function launchTests() {
   // Delay to allow plugin to fully load before opening the test page
   await Zotero.Promise.delay(__STARTUP_DELAY__);
 
-  const waitForPlugin = "${WAIT_FOR_PLUGIN}";
+  const waitForPlugin = "__WAIT_FOR_PLUGIN__";
 
   if (waitForPlugin) {
     // Wait for a plugin to be installed
@@ -72,7 +72,7 @@ async function launchTests() {
 
   Services.ww.openWindow(
     null,
-    "chrome://${TESTER_PLUGIN_REF}/content/index.xhtml",
+    "chrome://__TESTER_PLUGIN_REF__/content/index.xhtml",
     "Zotero Plugin Scaffold Test Runnner",
     "chrome,centerscreen,resizable=yes",
     {}

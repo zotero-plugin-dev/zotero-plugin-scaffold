@@ -6,7 +6,7 @@ import mochaSetupRaw from "./raw/mocha-setup.js?raw";
 
 export function generateManifest(): Record<string, unknown> {
   const manifestStr = manifestRaw
-    .replace("__TESTER_PLUGIN_ID__", TESTER_PLUGIN_ID);
+    .replaceAll("__TESTER_PLUGIN_ID__", TESTER_PLUGIN_ID);
 
   return JSON.parse(manifestStr);
 }
@@ -17,10 +17,10 @@ export function generateBootstrap(options: {
   waitForPlugin: string;
 }): string {
   return bootstrapRaw
-    .replace("__PORT__", String(options.port))
-    .replace("__STARTUP_DELAY__", String(options.startupDelay || 1000))
-    .replace("__WAIT_FOR_PLUGIN__", options.waitForPlugin)
-    .replace("__TESTER_PLUGIN_REF__", TESTER_PLUGIN_REF);
+    .replaceAll("__PORT__", String(options.port))
+    .replaceAll("__STARTUP_DELAY__", String(options.startupDelay || 1000))
+    .replaceAll("__WAIT_FOR_PLUGIN__", options.waitForPlugin)
+    .replaceAll("__TESTER_PLUGIN_REF__", TESTER_PLUGIN_REF);
 }
 
 export function generateHtml(
@@ -29,7 +29,9 @@ export function generateHtml(
 ): string {
   const tests = testFiles.map(f => `<script src="${f}"></script>`).join("\n    ");
 
-  return htmlRaw.replace("__TEST_FILES__", tests).replace("___SETUP_CODE___", setupCode);
+  return htmlRaw
+    .replaceAll("__TEST_FILES__", tests)
+    .replaceAll("__SETUP_CODE__", setupCode);
 }
 
 export function generateMochaSetup(options: {
@@ -39,8 +41,8 @@ export function generateMochaSetup(options: {
   exitOnFinish: boolean;
 }): string {
   return mochaSetupRaw
-    .replace("__TIMEOUT__", String(options.timeout || 10000))
-    .replace("__PORT__", String(options.port))
-    .replace("__ABORT_ON_FAIL__", String(options.abortOnFail))
-    .replace("__EXIT_ON_FINISH__", String(options.exitOnFinish ? "true" : "false"));
+    .replaceAll("__TIMEOUT__", String(options.timeout || 10000))
+    .replaceAll("__PORT__", String(options.port))
+    .replaceAll("__ABORT_ON_FAIL__", String(options.abortOnFail))
+    .replaceAll("__EXIT_ON_FINISH__", String(options.exitOnFinish ? "true" : "false"));
 }
