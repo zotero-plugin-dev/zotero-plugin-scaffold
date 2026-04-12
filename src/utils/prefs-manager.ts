@@ -1,10 +1,10 @@
 import type { BooleanLiteral, NumericLiteral, StringLiteral, UnaryExpression } from "@oxc-project/types";
-import type { ParseResult } from "rolldown/experimental";
+import type { ParseResult } from "vite";
 import { readFile } from "node:fs/promises";
 import { print } from "esrap";
 import ts from "esrap/languages/ts";
 import { outputFile } from "fs-extra/esm";
-import { parseSync } from "rolldown/experimental";
+import { parseSync } from "vite";
 import { logger } from "./logger.js";
 
 class PrefFileError extends Error {
