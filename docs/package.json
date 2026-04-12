@@ -11,6 +11,7 @@
   },
   "devDependencies": {
     "@shikijs/vitepress-twoslash": "^4.0.2",
+    "oxc-minify": "^0.124.0",
     "vitepress": "2.0.0-alpha.17",
     "zotero-plugin-scaffold": "workspace:^"
   }
