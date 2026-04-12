@@ -88,10 +88,11 @@
     "esrap": "^2.2.3",
     "fs-extra": "^11.4.0",
     "hookable": "^6.1.1",
-    "rolldown": "1.0.0-rc.3",
+    "rolldown": "1.0.0-rc.15",
     "std-env": "^4.2.0",
     "tiny-update-notifier": "^2.0.2",
     "tinyglobby": "^0.2.17",
+    "vite": "^8.0.8",
     "xvfb-ts": "^1.1.1"
   },
   "devDependencies": {
