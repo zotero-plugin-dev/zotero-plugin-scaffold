@@ -8,6 +8,9 @@ packages:
   - docs
   - test/e2e
 
+overrides:
+  vite: ^8.0.0
+
 ignoredBuiltDependencies:
   - "@swc/core"
   - esbuild
