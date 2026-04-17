@@ -3,7 +3,7 @@ import type { Context, OverrideConfig } from "./types/index.js";
 import process from "node:process";
 import { Command } from "commander";
 import { name, version } from "../package.json" with { type: "json" };
-import { Build, Config, Release, Serve, Test } from "./index.js";
+import { Build, Config, ManifestCommand, Release, Serve, Test } from "./index.js";
 import { checkGitIgnore } from "./utils/gitignore.js";
 import { logger } from "./utils/logger.js";
 import { updateNotifier } from "./utils/updater.js";
@@ -90,6 +90,16 @@ async function main() {
           },
         },
       });
+    });
+
+  cli
+    .command("manifest:update-max-version")
+    .description("Update strict_max_version in manifest.json")
+    .argument("[path]", "Path to manifest.json file")
+    .action(async (path) => {
+      const ctx = await Config.loadConfig({});
+      const instance = new ManifestCommand(ctx);
+      await instance.updateMaxVersion(path);
     });
 
   cli.arguments("<command>").action((cmd) => {
