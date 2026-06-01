@@ -88,7 +88,7 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.2.0",
-    "@commander-js/extra-typings": "^14.0.0",
+    "@commander-js/extra-typings": "^15.0.0",
     "@types/adm-zip": "^0.5.8",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^25.6.0",
