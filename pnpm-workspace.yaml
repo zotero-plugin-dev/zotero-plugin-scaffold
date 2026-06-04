@@ -9,7 +9,7 @@ packages:
   - test/e2e
 
 overrides:
-  vite: ^8.0.10
+  vite: ^8.0.16
 
 ignoredBuiltDependencies:
   - "@swc/core"
