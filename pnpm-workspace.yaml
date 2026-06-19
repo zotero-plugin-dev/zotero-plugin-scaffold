@@ -11,6 +11,6 @@ packages:
 overrides:
   vite: ^8.0.16
 
-ignoredBuiltDependencies:
-  - "@swc/core"
-  - esbuild
+allowBuilds:
+  "@swc/core": false
+  esbuild: false
