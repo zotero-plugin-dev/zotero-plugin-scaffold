@@ -105,7 +105,7 @@ export default class Test extends Base {
   }
 
   async startZotero(): Promise<void> {
-    if (this.ctx.test.headless) {
+    if (this.ctx.test.headless && !process.env.ZOTERO_SETUP_COMPLETE) {
       await prepareHeadless();
     }
 
