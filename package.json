@@ -100,7 +100,7 @@
     "lint-staged": "^17.0.8",
     "tsdown": "^0.22.3",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "unplugin-raw": "^0.7.0",
     "vitest": "^4.1.9"
   },
