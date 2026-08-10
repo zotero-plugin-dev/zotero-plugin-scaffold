@@ -2,7 +2,7 @@ import { TESTER_PLUGIN_ID, TESTER_PLUGIN_REF } from "../../../constant.js";
 import bootstrapRaw from "./raw/bootstrap.js?raw";
 import htmlRaw from "./raw/index.html?raw";
 import manifestRaw from "./raw/manifest.json?raw";
-import mochaSetupRaw from "./raw/mocha-setup.js?raw";
+import vitestSetupRaw from "./raw/vitest-setup.js?raw";
 
 export function generateManifest(): Record<string, unknown> {
   const manifestStr = manifestRaw
@@ -23,26 +23,31 @@ export function generateBootstrap(options: {
     .replaceAll("__TESTER_PLUGIN_REF__", TESTER_PLUGIN_REF);
 }
 
-export function generateHtml(
-  setupCode: string,
-  testFiles: string[],
-): string {
-  const tests = testFiles.map(f => `<script src="units/${f}"></script>`).join("\n    ");
-
-  return htmlRaw
-    .replaceAll("__TEST_FILES__", tests)
-    .replaceAll("__SETUP_CODE__", setupCode);
+/**
+ * The test page is a static file, no runtime placeholders.
+ */
+export function generateHtml(): string {
+  return htmlRaw;
 }
 
-export function generateMochaSetup(options: {
+/**
+ * Generates `setup.js`, the in-page script that wires the Vitest runtime to
+ * the HTTP reporter and starts the tests.
+ *
+ * `testFiles` are paths relative to the test page (`content/`), e.g.
+ * `units/foo.test.js`. The runner imports each of them via dynamic import.
+ */
+export function generateVitestSetup(options: {
   port: number;
   timeout: number;
   abortOnFail: boolean;
   exitOnFinish: boolean;
+  testFiles: string[];
 }): string {
-  return mochaSetupRaw
+  return vitestSetupRaw
     .replaceAll("__TIMEOUT__", String(options.timeout || 10000))
     .replaceAll("__PORT__", String(options.port))
     .replaceAll("__ABORT_ON_FAIL__", String(options.abortOnFail))
-    .replaceAll("__EXIT_ON_FINISH__", String(options.exitOnFinish ? "true" : "false"));
+    .replaceAll("__EXIT_ON_FINISH__", String(options.exitOnFinish ? "true" : "false"))
+    .replaceAll("__TEST_FILES__", JSON.stringify(options.testFiles));
 }

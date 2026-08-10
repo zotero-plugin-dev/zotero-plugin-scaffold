@@ -1,9 +1,9 @@
-import type { InputOptions, OutputChunk, OutputOptions, RolldownOutput } from "rolldown";
+import type { InputOptions, OutputChunk, OutputOptions, RolldownOutput, RolldownPluginOption } from "rolldown";
 import type { Context } from "../../types/index.js";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { cwd, process } from "node:process";
+import { cwd } from "node:process";
 import { outputFile, outputJSON } from "fs-extra/esm";
 import { rolldown } from "rolldown";
 import { glob } from "tinyglobby";
@@ -63,7 +63,7 @@ function resolveVitestRuntimeEntries(): { vitest: string; runner: string } {
   // The CLI runs from the plugin project root, which is where the user's
   // `vitest` installation lives (mirroring how the mocha setup preferred a
   // local mocha over the CDN copy).
-  const projectRoot = join(process.cwd(), "package.json");
+  const projectRoot = join(cwd(), "package.json");
   const vitest = resolvePackageEntry("vitest", projectRoot)
     ?? resolvePackageEntry("vitest", import.meta.url);
 
@@ -98,7 +98,7 @@ export async function bundleVitestRuntime(outfile: string): Promise<void> {
 
   // Rolldown `input` requires a real file path, so write the entry to the
   // scaffold cache directory first.
-  const entryFile = `${CACHE_DIR}/vitest-runtime-entry.js`;
+  const entryFile = resolve(CACHE_DIR, "vitest-runtime-entry.js");
   await outputFile(entryFile, VITEST_RUNTIME_ENTRY);
 
   const build = await rolldown({
@@ -121,7 +121,18 @@ export async function bundleVitestRuntime(outfile: string): Promise<void> {
  * Resolves `vitest`/`@vitest/runner` to absolute paths when bundling the
  * runtime chunk, and stubs out `vite/module-runner` (see `bundleVitestRuntime`).
  */
-function createVitestRuntimeResolvePlugin(entries: { vitest: string; runner: string }): NonNullable<InputOptions["plugins"]>[number] {
+function createVitestRuntimeResolvePlugin(entries: { vitest: string; runner: string }): RolldownPluginOption {
+  // vi.mock() requires Vite's module transform pipeline and is not supported inside Zotero.
+  const STUB_ID = "\0vitest-stub:vite-module-runner";
+  const stub = `
+export class ModuleRunner {
+  constructor() {
+    throw new Error("vi.mock() is not supported in Zotero: it requires Vite's module transform pipeline.");
+  }
+}
+export const EvaluatedModules = undefined;
+`;
+
   return {
     name: "vitest-runtime-resolve",
     resolveId(source) {
@@ -130,7 +141,12 @@ function createVitestRuntimeResolvePlugin(entries: { vitest: string; runner: str
       if (source === "@vitest/runner")
         return entries.runner;
       if (source === "vite/module-runner")
-        return { id: "vite-module-runner-stub", external: true };
+        return STUB_ID;
+      return null;
+    },
+    load(id) {
+      if (id === STUB_ID)
+        return stub;
       return null;
     },
   };
@@ -143,11 +159,11 @@ function createVitestRuntimeResolvePlugin(entries: { vitest: string; runner: str
  *
  * Test chunks are emitted to `content/units/`, the runtime to `content/`.
  */
-export function createVitestAliasPlugin(): NonNullable<InputOptions["plugins"]>[number] {
+export function createVitestAliasPlugin(): RolldownPluginOption {
   return {
     name: "vitest-alias",
     resolveId(source) {
-      if (source === "vitest" || source === "chai" || /^@vitest\/(expect|runner|spy|snapshot|utils|pretty-format|mocker)$/.test(source)) {
+      if (source === "vitest" || source === "chai" || /^@vitest\/(?:expect|runner|spy|snapshot|utils|pretty-format|mocker)$/.test(source)) {
         return { id: "../vitest-runtime.js", external: true };
       }
       return null;

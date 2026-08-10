@@ -109,12 +109,11 @@ v5 的官方 `TestRunner`（`vitest/src/runtime/runners/test.ts`）与 worker st
 - 假 `ctx`：`config`（root/hideSkippedTests/mode/silent/slowTestThreshold/...）+ `logger`（`printBanner/printError/onTerminalCleanup/...`）+ `projects`/`snapshot.summary`/`state.leakSet`/`onClose`
 - TTY 全屏 summary（`SummaryReporter`/`WindowRenderer`）依赖较重，宿主端固定走非 TTY 路径
 
-### D4. 打包器：阶段一保持 esbuild，阶段四评估 rolldown-vite
+### D4. 打包器：已迁移 rolldown（随 vite-bundler 分支合并）
 
-- **为什么保持 esbuild**：已真机验证；vitest runtime 本身可被 esbuild 打包（v5 需重新验证依赖图，重点 `vite/module-runner` stub）
-- **为什么换 rolldown-vite（vite 8）**：唯一实质收益是 `vi.mock`/`vi.hoisted`——它们需要 Vite 的 transform 管线（mock 提升 + 模块图），esbuild 无法提供。vitest v5 官方已适配 rolldown（`plugins/config.ts` 有 `rolldownVersion` 检测）
-- 落地形态：宿主进程在构建期用 rolldown-vite 的 `build`（或 vitest 的 transform 管线）把测试文件打成 ESM chunk 到 tester 插件内，页面运行时仍走静态 `import()`
-- 风险：chrome:// 下模块加载语义、mock 提升后的运行时依赖（`__vi_import__` 等注入）需真机验证
+- **现状**：tester 已基于 `vite-bundler` 分支合并 rolldown——`bundleVitestRuntime` 与测试文件打包均用 `rolldown@1.0.0-rc.15`（`treeshake: false`、`preserveEntrySignatures: "allow-extension"`、`sourcemap: true`），vitest runtime 的 `vite/module-runner` 用虚拟模块 stub（` ` 前缀 + `load` hook 内联），测试文件的 `vitest`/`chai`/`@vitest/*` 由 `resolveId` 重写为 `../vitest-runtime.js`（external）
+- **仍未解决**：`vi.mock`/`vi.hoisted`——需要 Vite transform 管线（mock 提升），rolldown 的 `build` 管线暂未接入 vitest 的 transform；作为后续阶段
+- **风险**：chrome:// 下模块加载语义、mock 提升后的运行时依赖（`__vi_import__` 等注入）需真机验证
 
 ### D5. 序列化统一用 flatted
 
@@ -179,7 +178,7 @@ onUnhandledError(error); // 页面级错误
 
 ### 阶段四：打包器与 mock 支持（评估）
 
-**目标**：`vi.mock`/`vi.hoisted` 在 Zotero 内可用；打包器迁移 rolldown-vite。
+**目标**：`vi.mock`/`vi.hoisted` 在 Zotero 内可用（打包器已完成 rolldown 迁移，本阶段聚焦 mock 运行时）。
 
 **改动清单**：
 
@@ -231,7 +230,8 @@ onUnhandledError(error); // 页面级错误
 
 ### C. 已验证事实清单（截至 2026-08）
 
-- ✅ esbuild 打包 vitest runtime（v4）在真实 Zotero 运行（module 脚本 + 动态 import）
+- ✅ rolldown 打包 vitest runtime + 测试文件（`rolldown@1.0.0-rc.15`，集成测试验证，2026-08）
+- ✅ esbuild 打包 vitest runtime（v4）在真实 Zotero 运行（module 脚本 + 动态 import，已被 rolldown 替代）
 - ✅ `vi.fn`/chai 风格断言/失败 diff/pending/退出码（真实 Zotero）
 - ✅ 鸭子类型驱动 `DefaultReporter`/`VerboseReporter`/`DotReporter`/`JsonReporter`/`JUnitReporter`（node POC）
 - ✅ `@vitest/runner`（v4）脱离 Vite 独立运行

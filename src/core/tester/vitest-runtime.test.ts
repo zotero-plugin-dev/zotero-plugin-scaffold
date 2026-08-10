@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { build } from "esbuild";
+import { rolldown } from "rolldown";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateVitestSetup } from "./test-bundler-template/index.js";
 import { bundleVitestRuntime, createVitestAliasPlugin } from "./test-bundler.js";
@@ -61,15 +61,17 @@ describe("demo suite", () => {
     await writeFile(join(dir, "test-src", "sample.test.js"), testSource);
 
     // 3. Bundle the test file with the vitest alias plugin, like TestBundler
-    await build({
-      entryPoints: [join(dir, "test-src", "sample.test.js")],
-      outdir: join(dir, "units"),
-      bundle: true,
-      format: "esm",
-      platform: "browser",
-      target: "firefox115",
+    const testBuild = await rolldown({
+      input: { "sample.test": join(dir, "test-src", "sample.test.js") },
+      treeshake: false,
       plugins: [createVitestAliasPlugin()],
     });
+    await testBuild.write({
+      dir: join(dir, "units"),
+      format: "esm",
+      sourcemap: false,
+    });
+    await testBuild.close();
 
     // 4. Generate setup.js from the real template
     const setup = generateVitestSetup({
