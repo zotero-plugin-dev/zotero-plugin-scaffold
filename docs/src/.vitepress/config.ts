@@ -31,6 +31,12 @@ export default defineConfig({
         ],
       },
       {
+        text: "Design",
+        items: [
+          { text: "Vitest v5 Refactor", link: "/design/vitest-v5-refactor" },
+        ],
+      },
+      {
         text: "Presets",
         items: [
           { text: "ESLint", link: "/eslint" },

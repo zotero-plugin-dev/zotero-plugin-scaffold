@@ -778,7 +778,7 @@ export interface TestConfig {
    */
   prefs: Record<string, string | boolean | number>;
 
-  mocha: {
+  vitest: {
     /**
      * The timeout of the test.
      *

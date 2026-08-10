@@ -1,6 +1,6 @@
 # Testing
 
-This module facilitates testing Zotero plugins in a live Zotero environment using [Mocha](https://mochajs.org/) and [Chai](https://www.chaijs.com/).
+This module facilitates testing Zotero plugins in a live Zotero environment using the [Vitest](https://vitest.dev/) runtime (the `expect`/`vi` API, powered by `@vitest/runner` and `@vitest/expect`, bundled into the test page with esbuild).
 
 ## Why Use This Approach?
 
@@ -22,19 +22,19 @@ Ensure `zotero-plugin-scaffold` is installed first. Then add a `test` script to 
 }
 ```
 
-### Install Mocha and Chai
+### Install Vitest
 
-Install `mocha` and `chai` as development dependencies to avoid potential conflicts:
+Install `vitest` (v4) as a development dependency:
 
 ```bash
-npm install -D mocha chai @types/mocha @types/chai
+npm install -D vitest@^4
 ```
 
-If Scaffold detects a local Mocha installation, it uses it; otherwise, it fetches the latest version from NPM. Cached versions are stored in `.scaffold/cache`, which can be deleted to force updates.
+Scaffold bundles the Vitest runtime from your local installation with esbuild, so no CDN downloads are involved. It prefers the `vitest` in your project; if it cannot be found there, it falls back to the one bundled with the scaffold itself.
 
 ### Writing Test Cases
 
-Write test cases using [Mocha](https://mochajs.org/) and [Chai](https://www.chaijs.com/) syntax in `test/*.{spec,test}.{js,ts}`:
+Write test cases using Vitest syntax in `test/*.{spec,test}.{js,ts}`. Both Vitest-style (`expect(x).toBe(y)`) and Chai-style (`expect(x).to.equal(y)`, `assert.isNotEmpty(...)`) assertions are supported:
 
 ```js
 describe("Example Test", () => {
@@ -69,7 +69,7 @@ export default defineConfig({
   test: {
     entries: ["test"],
     prefs: {},
-    mocha: {
+    vitest: {
       timeout: 10000
     },
     watch: true,
