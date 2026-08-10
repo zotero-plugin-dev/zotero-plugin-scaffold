@@ -12,6 +12,22 @@ import { buildTesterPlugin } from "../bundler.js";
 import { HttpBridge } from "./http-bridge.js";
 import { resolveOptions } from "./options.js";
 
+// Workers that are currently running (between start() and stop()). Used to
+// reject two zotero projects booting a Zotero against the same resources.
+const activeWorkers = new Set<ZoteroPoolWorker>();
+
+export interface WorkerResources {
+  profileDir: string;
+  dataDir: string;
+}
+
+export function findResourceConflict(
+  active: ReadonlySet<{ resources: WorkerResources }>,
+  resources: WorkerResources,
+): WorkerResources | undefined {
+  return [...active].find(w => w.resources.profileDir === resources.profileDir && w.resources.dataDir === resources.dataDir)?.resources;
+}
+
 export class ZoteroPoolWorker implements PoolWorker {
   readonly name = "zotero";
   private readonly poolOptions: PoolOptions;
@@ -20,9 +36,21 @@ export class ZoteroPoolWorker implements PoolWorker {
   private bridge?: HttpBridge;
   private zotero?: ZoteroRunner;
 
+  /** Resolved resource dirs — two workers sharing them must not run in parallel. */
+  get resources(): WorkerResources {
+    return {
+      profileDir: resolve(this.options.profileDir),
+      dataDir: resolve(this.options.dataDir),
+    };
+  }
+
+  /** Derived from the project name; keeps per-project resources apart. */
+  private readonly projectSuffix: string;
+
   constructor(options: PoolOptions, poolOptions: ZoteroPoolOptions = {}) {
     this.poolOptions = options;
-    this.options = resolveOptions(poolOptions);
+    this.options = resolveOptions(poolOptions, options.project.config.name);
+    this.projectSuffix = options.project.config.name ? `-${options.project.config.name}` : "";
     const { isolate, fileParallelism } = options.project.config as any;
     if (isolate) {
       throw new Error(
@@ -80,14 +108,26 @@ export class ZoteroPoolWorker implements PoolWorker {
   }
 
   async start(): Promise<void> {
+    const conflict = findResourceConflict(activeWorkers, this.resources);
+    if (conflict) {
+      throw new Error(
+        "[zotero-pool] Another zotero project is already running against the "
+        + `same profile/data dir (${conflict.profileDir}). Run projects one at a `
+        + "time with `vitest --project=<name>`, or give each zotero project its "
+        + "own profileDir/dataDir in zoteroPool().",
+      );
+    }
+    activeWorkers.add(this);
+
     // 1. HTTP bridge
     const bridge = new HttpBridge(message => this.emit("message", message));
     await bridge.start();
     this.bridge = bridge;
     process.stdout.write(`[zotero-pool] HTTP bridge on http://127.0.0.1:${bridge.port}\n`);
 
-    // 2. bundle the tester plugin (page runtime + test files)
-    const testerDir = join(process.cwd(), ".scaffold", "tester");
+    // 2. bundle the tester plugin (page runtime + test files); per-project
+    //    dir so parallel projects never overwrite each other's bridge port
+    const testerDir = join(process.cwd(), ".scaffold", "tester", this.projectSuffix);
     await buildTesterPlugin({
       outDir: testerDir,
       port: bridge.port,
@@ -138,6 +178,7 @@ export class ZoteroPoolWorker implements PoolWorker {
   }
 
   async stop(): Promise<void> {
+    activeWorkers.delete(this);
     this.zotero?.exit();
     this.zotero = undefined;
     this.bridge?.stop();

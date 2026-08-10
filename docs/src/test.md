@@ -44,6 +44,12 @@ export default defineConfig({
           name: "unit",
           include: ["test/unit/**"],
           pool: "forks",
+          // Vitest groups projects by `sequence.groupOrder` and requires the
+          // same `maxWorkers` inside a group. The zotero pool forces
+          // `fileParallelism: false` (maxWorkers: 1), so give parallel
+          // projects a distinct groupOrder — otherwise `vitest run` (all
+          // projects) fails with a "different 'maxWorkers'" error.
+          sequence: { groupOrder: 1 },
         },
       },
       // tests that run inside a real Zotero instance
@@ -51,6 +57,8 @@ export default defineConfig({
         test: {
           name: "zotero",
           include: ["test/zotero/**"],
+          isolate: false,
+          fileParallelism: false,
           pool: zoteroPool(),
         },
       },
@@ -82,6 +90,12 @@ The Zotero project must set `isolate: false` and `fileParallelism: false`
 (vitest's defaults are the opposite). Files run serially in one Zotero
 instance — the pool reuses the same worker (`canReuse`) instead of booting
 Zotero per file. The pool validates these and throws a descriptive error.
+
+When several Zotero projects run together (`vitest --project=a --project=b`),
+vitest's pool scheduler still boots one Zotero at a time: `fileParallelism:
+false` pins the group's `maxWorkers` to 1. Each project gets its own
+profile/data dir (derived from the project name) and tester plugin output, so
+parallel runs never collide.
 :::
 
 ### Writing Test Cases
@@ -105,8 +119,9 @@ describe("Startup", () => {
 ### Running Tests via CLI
 
 ::: info
-The CLI currently drives the legacy runner; it will be rewired to the same
-`zoteroPool` implementation (thin wrapper) in an upcoming release.
+The CLI is a thin wrapper around the same `zoteroPool` implementation: it
+generates a temporary `vitest.config.ts` and spawns `vitest`, forwarding the
+exit code.
 :::
 
 Run the tests using:

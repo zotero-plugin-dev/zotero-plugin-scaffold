@@ -31,7 +31,12 @@ export class ZoteroVitestRunner {
     this.config = {
       root: config.root || "/",
       setupFiles: [],
-      name: undefined,
+      // Must match the server's project name: file task ids are hashed from
+      // `relative(root, filepath) + projectName`, and the server links the
+      // collected task to the specification via that id. A mismatch (e.g.
+      // `undefined` here while the project has a name) silently drops every
+      // collected test module in projects mode ("No test files found").
+      name: config.name,
       passWithNoTests: false,
       testNamePattern: undefined,
       allowOnly: true,

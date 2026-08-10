@@ -58,7 +58,15 @@ export class WorkerProtocol {
 
   private async post(message: unknown): Promise<void> {
     try {
-      await this.transport.post(flattedStringify(message, errorReplacer));
+      // birpc messages arrive already flatted-serialized (rpc.ts's serialize
+      // option); re-serializing a string would wrap it in an array
+      // (flatted.stringify("…") → ["…"]). Pass strings through verbatim;
+      // protocol messages (started/testfileFinished/…) are objects and need
+      // serializing here.
+      const body = typeof message === "string"
+        ? message
+        : flattedStringify(message, errorReplacer);
+      await this.transport.post(body);
     }
     catch (e) {
       this.dump(`post error: ${e}\n`);

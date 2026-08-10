@@ -11,12 +11,29 @@ import type { ZoteroPoolOptions } from "./options.js";
  * export default defineConfig({
  *   test: {
  *     projects: [
- *       { test: { name: "unit", include: ["test/unit/**"], pool: "forks" } },
- *       { test: { name: "zotero", include: ["test/zotero/**"], pool: zoteroPool() } },
+ *       { test: { name: "unit", include: ["test/unit/**"], pool: "forks",
+ *                 sequence: { groupOrder: 1 } } },
+ *       { test: { name: "zotero", include: ["test/zotero/**"],
+ *                 isolate: false, fileParallelism: false, pool: zoteroPool() } },
  *     ],
  *   },
  * });
  * ```
+ *
+ * Multiple projects may configure zoteroPool() — e.g. one project per module,
+ * run individually with `vitest --project=<name>`. What must not happen is
+ * two of them booting a Zotero against the *same* profile/data dir at the
+ * same time; that race is guarded at runtime in the pool worker.
+ *
+ * Notes on running all projects together (`vitest run`):
+ * - Vitest groups projects by `sequence.groupOrder` and requires the same
+ *   `maxWorkers` within a group. zoteroPool() pins maxWorkers to 1 via
+ *   `fileParallelism: false`, so plain parallel projects must get a distinct
+ *   `sequence.groupOrder` (as above) or vitest aborts with a
+ *   "different 'maxWorkers'" error.
+ * - Several zotero projects in one run boot their Zoteros one at a time
+ *   (maxWorkers is 1 for the whole group); each uses its own derived
+ *   profile/data dir, so they never contend for resources.
  */
 import { ZoteroPoolWorker } from "./pool-worker.js";
 
@@ -34,22 +51,7 @@ export interface ZoteroPool {
   createPoolWorker: (options: any) => any;
 }
 
-// Only one project may use the pool: every project would otherwise boot its
-// own Zotero against the same profile/data dir and tester plugin output,
-// racing on shared resources. Multiple groups of tests belong in one project
-// (a single include list) instead.
-let poolCount = 0;
-
 export function zoteroPool(options: ZoteroPoolOptions = {}): ZoteroPool {
-  poolCount++;
-  if (poolCount > 1) {
-    throw new Error(
-      "[zotero-pool] Only one project may use zoteroPool(). Multiple zotero "
-      + "projects would each boot a Zotero against the same profile, data dir "
-      + "and tester plugin output. Put all Zotero tests in one project and "
-      + "extend its include list instead.",
-    );
-  }
   return {
     name: "zotero",
     createPoolWorker: poolOptions => new ZoteroPoolWorker(poolOptions, options),

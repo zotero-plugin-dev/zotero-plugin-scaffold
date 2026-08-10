@@ -124,6 +124,30 @@ custom pool 路线——不再"封装 vitest"，而是让 **vitest 原生驱动 
 - 任务树含 `file.file` 自引用，`JSON.stringify` 抛 cyclic（实测）；flatted 输出是 JSON 数组
   （不是对象）——解析侧必须 `flattedParse` 还原，不能 `JSON.parse`
 - flatted 在 pnpm 虚拟店（非提升）：定位用 glob `.pnpm/flatted@*`（`bundler.ts` 已有实现）
+- **flatted 对字符串是幂等往返**：`flattedParse(flattedStringify(str)) === str`——birpc 消息
+  已被页面侧 `serialize` 序列化为 flatted 字符串，`protocol.post` 对字符串直接透传
+  （再包一层会被 flatted 解包回原字符串，功能等价，但层次不干净，故不双重序列化）
+
+### D6. File 任务 id 依赖 project name（多 project 的关键坑）
+
+- 服务端 spec 的 `taskId` = `hash(relative(root, moduleId) + projectName)`
+  （`@vitest/runner` 的 `createFileTask` 与服务端 `TestSpecification` 同算法），
+  `TestRun.end` 靠它把收集到的 File 任务回链到 spec（`spec.testModule` getter）
+- 页面 runner 的 config 必须透传 `name`（`serializedConfig.name`）；阶段 2 曾硬编码
+  `name: undefined`，非 projects 模式（两边都无 project name）恰好对得上，
+  projects 模式（project name 如 `z-a`）两边 hash 不同 → `onCollected` 注册的
+  任务找不到对应 spec → 报 "No test files found"（rpc 消息本身没有丢！）
+- **教训**：`[bridge] /post type=?` 只是字符串消息的正常表现（flatted 解包），
+  不是协议错误；排查"消息丢失"先验证服务端 `emitWorkerMessage → deserialize → rpc` 链路
+
+### D7. 多 project 与 vitest 分组约束（groupOrder）
+
+- vitest 按 `sequence.groupOrder` 分组跑 spec，组内要求 `maxWorkers` 一致，
+  否则报 `different 'maxWorkers' but same 'sequence.groupOrder'`
+- `fileParallelism: false` ⇒ `maxWorkers = 1`；zotero 项目与默认并行项目混跑时，
+  需给并行项目配 `sequence: { groupOrder: 1 }`（组间顺序执行：先 zotero 后 unit）
+- 多个 zotero 项目同跑时 vitest 池 `maxWorkers=1`，Zotero 逐个启动（串行），
+  各自用按 project name 派生的 profile/data 目录互不冲突
 
 ## 5. 分阶段计划（双轨）
 

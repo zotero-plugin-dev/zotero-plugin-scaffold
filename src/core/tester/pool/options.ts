@@ -44,17 +44,25 @@ export interface ResolvedZoteroPoolOptions {
 
 export const TESTER_PLUGIN_ID = "zotero-plugin-tester@scaffold.local";
 
-export function resolveOptions(options: ZoteroPoolOptions = {}): ResolvedZoteroPoolOptions {
+export function resolveOptions(
+  options: ZoteroPoolOptions = {},
+  projectName?: string,
+): ResolvedZoteroPoolOptions {
   const bin = options.zoteroBin ?? process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH;
   if (!bin) {
     throw new Error(
       "Zotero binary not found: pass `zoteroBin` or set ZOTERO_PLUGIN_ZOTERO_BIN_PATH",
     );
   }
+  // Multiple projects may each run their own Zotero in parallel; derive the
+  // resource dirs from the project name so they never collide by default.
+  // Zotero allows any number of instances — only a shared profile/database
+  // is mutually exclusive. Explicit options still override the derivation.
+  const suffix = projectName ? `-${projectName}` : "";
   return {
     zoteroBin: bin,
-    profileDir: options.profileDir ?? ".scaffold/tester-profile",
-    dataDir: options.dataDir ?? ".scaffold/tester-data",
+    profileDir: options.profileDir ?? `.scaffold/tester-profile${suffix}`,
+    dataDir: options.dataDir ?? `.scaffold/tester-data${suffix}`,
     pluginDir: options.pluginDir,
     pluginId: options.pluginId,
     testerPluginId: options.testerPluginId ?? TESTER_PLUGIN_ID,
