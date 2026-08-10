@@ -32,7 +32,8 @@ vitest CLI → zoteroPool() → pool-worker（HTTP bridge + ZoteroRunner 生命�
 | `a229ddc`           | `canReuse`：单 Zotero 跑多文件（需 `isolate:false` + `fileParallelism:false`，pool 校验报错）                                                                                          |
 | `00ec5b7`           | 阶段 2：CLI 薄封装（`cli-config.ts` 生成配置 + spawn vitest）；退役 `http-reporter.ts`/`test-bundler-template/`/`vitest-runtime.test.ts`；`test-bundler.ts` 瘦身为 `findImpactedTests` |
 | `a5e3bc7`           | 修复：恢复 `ZoteroPool` 公共签名（阶段 1 修改曾丢失）；`zoteroPool()` 单次调用限制                                                                                                     |
-| 未提交              | 多 project 支持改造（见 §3）                                                                                                                                                           |
+| `5e3738e`           | 多 project 支持 + 阻塞修复（File 任务 id 缺 project name，见 §4）；protocol 透传清理；调试日志清理                                                                                     |
+| `996dd2e`           | 阶段 3：reporter/outputFile 透传、watch 重跑（stamp + context manifest）、Zotero 启动重试、exit() 按 profile 定向杀进程、bundler NUL 修复（见 §8）                                     |
 
 ## 3. 多 project 支持（已完成，提交 `5e3738e`）
 
@@ -75,22 +76,22 @@ vitest CLI → zoteroPool() → pool-worker（HTTP bridge + ZoteroRunner 生命�
 src/core/tester/
 ├── index.ts            # Test 类（CLI 薄封装：build → 生成配置 → spawn vitest）
 ├── cli-config.ts       # 临时 vitest.config 生成器（+ cli-config.test.ts）
-├── bundler.ts          # buildTesterPlugin：runtime chunk + page 源码(?raw) + 测试文件 + manifest
+├── bundler.ts          # buildTesterPlugin：runtime chunk + page 源码(?raw) + 测试文件 + manifest（返回 manifest；产物名支持 stamp 前缀）
 ├── test-bundler.ts     # findImpactedTests（watch 资产，已瘦身）
 ├── template/           # 插件静态文件（manifest/bootstrap/index.html，__TESTER_PLUGIN_ID__ 占位）
 ├── page/               # 页面运行时（TS 源码 → rolldown → content/setup.js）
 │   ├── index.ts        # 入口：全局注入 + transport/protocol 组装
-│   ├── protocol.ts     # 协议状态机（start/run/collect/stop + rpc 分流）★ post() 待修
-│   ├── rpc.ts          # birpc 客户端 + flatted 序列化 ★ serialize 与 protocol.post 重复
-│   ├── runner.ts       # ZoteroVitestRunner + patchRunner（resolveTestRunner 复刻）★ name 必须透传 config.name（§4）
+│   ├── protocol.ts     # 协议状态机（start/run/collect/stop + rpc 分流）post() 字符串直通
+│   ├── rpc.ts          # birpc 客户端 + flatted 序列化
+│   ├── runner.ts       # ZoteroVitestRunner（★ name 透传 config.name；manifest 优先取 context.testerManifest）
 │   ├── transport.ts    # Zotero.HTTP.request 客户端（/post /poll /ready /debug）
 │   ├── state.ts        # WorkerGlobalState 模拟
 │   └── tests-manifest.ts  # tsc 占位（bundler 虚拟模块替换）
 ├── pool/
 │   ├── index.ts        # zoteroPool() 公共入口 + ZoteroPool 类型（多 project + groupOrder 文档）
-│   ├── pool-worker.ts  # PoolWorker：资源检测/派生 + bridge + ZoteroRunner（findResourceConflict 守卫）
-│   ├── http-bridge.ts  # /post /poll /ready /debug（调试日志已清理）
-│   ├── options.ts      # 选项解析 + project name 资源派生 ★ 改造未提交
+│   ├── pool-worker.ts  # PoolWorker：启动重试(3×25s)、watch 重建（stamp + context.testerManifest）、资源冲突守卫
+│   ├── http-bridge.ts  # /post /poll /ready /debug
+│   ├── options.ts      # 选项解析 + project name 资源派生
 │   └── index.test.ts / pool.test.ts / bundler.test.ts
 └── headless.ts         # Linux headless（保留）
 ```
@@ -100,18 +101,30 @@ src/core/tester/
 - Zotero beta：`D:/Code/zotero/tools/zotero-beta-build/zotero.exe`（env `ZOTERO_PLUGIN_ZOTERO_BIN_PATH`）
 - 验证项目：`d:/Code/zotero/northword/zotero-format-metadata`（node_modules/zotero-plugin-scaffold 为 symlink 指向 scaffold 根，dist 即时生效；vitest 4.1.10）
 - 命令：`cd zotero-format-metadata && ZOTERO_PLUGIN_ZOTERO_BIN_PATH=... npx vitest run --config zotero.vitest.config.ts`
-- **当前验证结果（提交 5e3738e 后全绿）**：
+- **当前验证结果（提交 996dd2e 后全绿，零残留 Zotero 进程）**：
   - 顶层 pool 版（`zotero.vitest.config.ts`）：2 files 5 tests ✓
   - projects 版（`vitest.config.ts`）：`--project=z-a` 4/4 ✓、`--project=z-b` 1/1 ✓、`--project=z-a --project=z-b` 5/5 ✓
-  - 全量 `vitest run`（unit + z-a + z-b）需在 unit project 加 `sequence: { groupOrder: 1 }`（vitest maxWorkers 分组约束，见 §4）
-- 注意：Zotero 偶发启动失败（无页面）需清理 `.scaffold` 重跑；`powershell "Get-Process zotero | Stop-Process -Force"` 清理残留；`close timed out after 10000ms`/`something prevents ... exiting` 为 vitest 自定义 pool 噪音（退出码正确，不阻塞）
+  - 全量 `vitest run`（unit + z-a + z-b）：16 files / 107 passed | 1 skipped ✓（unit project 已加 `sequence: { groupOrder: 1 }`）
+  - CLI：`zotero-plugin test --no-watch --reporter junit --output-file test-results/junit.xml` → junit.xml 6 tests ✓
+  - watch（`vitest --watch`）：改测试文件 → 重跑（新 Zotero），pass→fail→pass 实测 ✓
+- 注意：`close timed out after 10000ms`/`something prevents ... exiting` 为 vitest 自定义 pool 噪音（退出码正确，不阻塞）；Zotero 首启会自重启（`lastAppBuildId` 置空所致），spawn 的 PID 是瞬时的——排查进程问题看命令行而非 PID
 
 ## 7. 遗留事项
 
 1. ~~修复 projects + custom pool 的 rpc 消息丢失~~ → **已解决（提交 `5e3738e`，真根因是 File 任务 id 缺 project name，§4）**
-2. ~~清理调试日志~~ → **已清理**（`http-bridge.ts`、`protocol.ts`、`runner.ts`、`page/index.ts`）
-3. ~~提交多 project 改造~~ → **已提交并真机验证**（`5e3738e`；多 zotero 项目同跑为串行 Zotero——vitest 池 maxWorkers=1，非并行，文档已注明）
-4. `close timed out after 10000ms` 警告（退出码正确、进程干净，vitest custom pool 噪音，不阻塞；若想消掉可研究 worker `stop()` 里 Zotero 退出等待）
-5. 阶段 3：reporter/outputFile 透传、watch 语义（`findImpactedTests` 接入）、WS 评估；混合测试示例文档（`docs/src/test.md` 已更新示例）
+2. ~~清理调试日志~~ → **已清理**
+3. ~~提交多 project 改造~~ → **已提交并真机验证**（`5e3738e`）
+4. ~~阶段 3~~ → **已完成（提交 `996dd2e`）**：reporter/outputFile（`--reporter`/`--output-file`）、watch 重跑（stamp + context manifest；vitest 4 每次重跑重建 worker → 新 Zotero）、启动重试、exit() 定向杀进程、WS 探测（chrome:// 可用，未升级，见 §8）
+5. `close timed out after 10000ms` 警告（退出码正确、进程干净，vitest custom pool 噪音，不阻塞；若想消掉可研究 vitest Pool 对 custom pool 的 teardown 时序）
 6. 阶段 4：vitest v5 迁移 + vi.mock 评估
-7. 已知坑（勿重踩）：python 字符串替换在 eslint 格式化后静默失败（改文件用 write 或行级匹配）；`\\n` 经工具层转义（用 `chr(92)+"n"`）；eslint --fix 会重排 if/import（替换前先看实际格式）；Windows 下编辑器会写 CRLF（`core.autocrlf=input` 下 `git diff` 报假差异，提交前先转 LF）；**改页面/协议相关代码后 dist 需 `pnpm build:tsdown` 重建**（验证项目 symlink 直接吃 dist，且 `dist/core/tester/page/*.ts` 是源码拷贝）
+7. CI/headless：`prepareHeadless`（Linux）代码在，需 Linux CI 真机验证（本机 Windows 无法验证）
+8. 已知坑（勿重踩）：python 字符串替换在 eslint 格式化后静默失败（改文件用 write 或行级匹配）；`\\n` 经工具层转义（用 `chr(92)+"n"`）；eslint --fix 会重排 if/import（替换前先看实际格式）；Windows 下编辑器会写 CRLF（`core.autocrlf=input` 下 `git diff` 报假差异，提交前先转 LF）；**改页面/协议相关代码后 dist 需 `pnpm build:tsdown` 重建**（验证项目 symlink 直接吃 dist，且 `dist/core/tester/page/*.ts` 是源码拷贝）；execSync 传含嵌套引号的 powershell 命令会被 cmd 吞掉（用 `-EncodedCommand`）；git 会把含 NUL 字节的文件当二进制（虚拟模块 id 用 `\0` 转义常量而非字面 NUL）
+
+## 8. 阶段 3 实现备忘（提交 `996dd2e`）
+
+- **reporter/outputFile**：`TestConfig.reporter`/`outputFile`（可选）+ CLI `--reporter`/`--output-file` → 生成的 vitest 配置 `reporters`/`outputFile`；junit/json 免费获得
+- **watch 重跑机制**：vitest 4 在每次 run 结束后 stop pool worker（`queue` 空即 `runner.stop()`，custom pool 无跨 run 复用）→ 重跑=新 worker+新 Zotero+新页面。测试文件变更后：worker 的 `maybeRebuild`（run/collect 请求携带 `context.invalidates`，且 `hasRun` 已置位才重建——首个请求的 invalidates 是触发重启的过期值）→ `buildTesterPlugin` 全量重建，产物名带 stamp（`tests/<stamp>-<file>.js`，防页面模块缓存）→ run 请求 context 注入 `testerManifest`（覆盖 setup.js 内嵌清单）→ 页面 `importFile` 用新 URL。**页面免 reload**
+- **Zotero 自重启**：`setupProfile` 置空 `extensions.lastAppBuildId/lastAppVersion` 强制 Zotero 首启后自重启 → `ZoteroRunner.zotero.pid` 是瞬时进程，真正的实例是重启后的新 PID。`exit()` 按 profile 路径匹配命令行杀进程（Windows：PowerShell `-EncodedCommand` + `Get-CimInstance`；Linux/macOS：`pkill -9 -f <profile>`）+ 原 PID 兜底。不要用 `taskkill /im zotero.exe`（误杀并行 project 实例）
+- **启动重试**：worker `start()` 3 次 × `waitReady(25s)`（总预算 < vitest WORKER_START_TIMEOUT 90s），每次尝试新建 bridge+bundle+Zotero；强杀后 profile 锁未释放的场景实测触发过
+- **WS 探测结论**：chrome:// 页面 `new WebSocket("ws://127.0.0.1:port")` 可用、CSP 不拦（实测构造函数不抛、真实发起连接）。未升级：轮询 150ms 延迟可接受、验收不含此项、阶段 4 会再碰协议层
+- **`close timed out` 噪音**：每次 stop 都会出现，与 Zotero 退出无关（页面 `stopped` 响应正常），怀疑 vitest 对 custom pool teardown 的时序问题，不阻塞
