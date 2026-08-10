@@ -48,4 +48,19 @@ describe("generateVitestConfig", () => {
     expect(config).toContain("\"test/integration/**/*.{spec,test}.?(c|m)[jt]s?(x)\"");
     expect(config).toContain("\"extensions.zotero.debug.log\":5");
   });
+
+  it("passes reporter and outputFile through to vitest", () => {
+    const config = generateVitestConfig(makeContext({
+      reporter: ["default", "junit"],
+      outputFile: "test-results/junit.xml",
+    }));
+    expect(config).toContain("reporters: [\"default\",\"junit\"]");
+    expect(config).toContain("outputFile: \"test-results/junit.xml\"");
+  });
+
+  it("omits reporters/outputFile when not configured", () => {
+    const config = generateVitestConfig(makeContext());
+    expect(config).not.toContain("reporters");
+    expect(config).not.toContain("outputFile");
+  });
 });

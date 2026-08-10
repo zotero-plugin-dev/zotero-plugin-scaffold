@@ -6,6 +6,7 @@ import type { ZoteroPoolOptions } from "./options.js";
  */
 import { join, resolve } from "node:path";
 import process from "node:process";
+import { delay } from "es-toolkit";
 import * as flatted from "flatted";
 import { ZoteroRunner } from "../../../utils/zotero-runner.js";
 import { buildTesterPlugin } from "../bundler.js";
@@ -35,6 +36,14 @@ export class ZoteroPoolWorker implements PoolWorker {
   private readonly listeners = new Map<string, Set<(arg: any) => void>>();
   private bridge?: HttpBridge;
   private zotero?: ZoteroRunner;
+
+  /** Manifest of the latest bundle (source path → artifact), re-baked per build. */
+  private testerManifest: Record<string, string> = {};
+  private buildStamp = 0;
+  private hasRun = false;
+  /** Messages queued while a watch rebuild is in flight. */
+  private readonly sendQueue: WorkerRequest[] = [];
+  private draining = false;
 
   /** Resolved resource dirs — two workers sharing them must not run in parallel. */
   get resources(): WorkerResources {
@@ -100,7 +109,52 @@ export class ZoteroPoolWorker implements PoolWorker {
   }
 
   send(message: WorkerRequest): void {
-    this.bridge?.send(message);
+    this.sendQueue.push(message);
+    void this.drain();
+  }
+
+  /**
+   * Forwards queued messages in order. In watch mode, run/collect requests
+   * that carry changed files (`context.invalidates`) trigger a rebundle with
+   * a fresh stamp: the page then imports new artifact URLs instead of the
+   * cached modules, so a rerun executes the updated test code.
+   */
+  private async drain(): Promise<void> {
+    if (this.draining) {
+      return;
+    }
+    this.draining = true;
+    try {
+      while (this.sendQueue.length > 0) {
+        const message = this.sendQueue.shift()!;
+        await this.maybeRebuild(message);
+        this.bridge?.send(message);
+      }
+    }
+    finally {
+      this.draining = false;
+    }
+  }
+
+  private async maybeRebuild(message: WorkerRequest): Promise<void> {
+    if (message.type !== "run" && message.type !== "collect") {
+      return;
+    }
+    const context = message.context as any;
+    const invalidates = context?.invalidates;
+    const watch = (this.poolOptions.project.config as any).watch === true;
+    // The first run/collect of a freshly started worker carries the stale
+    // invalidates that caused the restart — start() already bundled the
+    // current contents, so only rebuild for later requests (a worker that
+    // survives across watch runs).
+    if (watch && this.hasRun && Array.isArray(invalidates) && invalidates.length > 0) {
+      this.buildStamp += 1;
+      await this.buildBundle(this.buildStamp.toString(36));
+    }
+    this.hasRun = true;
+    // Always hand the current manifest to the page: after a rebuild it
+    // differs from the one baked into setup.js.
+    context.testerManifest = this.testerManifest;
   }
 
   deserialize(data: unknown): unknown {
@@ -119,6 +173,35 @@ export class ZoteroPoolWorker implements PoolWorker {
     }
     activeWorkers.add(this);
 
+    // Boot Zotero with retries: after a force kill (e.g. a previous watch
+    // rerun) the profile lock may not be released yet and the test window
+    // never comes up. Each attempt gets a fresh bridge/bundle/Zotero; the
+    // total budget stays under vitest's WORKER_START_TIMEOUT (90s).
+    const testerDir = join(process.cwd(), ".scaffold", "tester", this.projectSuffix);
+    const maxAttempts = 3;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await this.bootZotero(testerDir);
+        return;
+      }
+      catch (error) {
+        this.zotero?.exit();
+        this.zotero = undefined;
+        this.bridge?.stop();
+        this.bridge = undefined;
+        if (attempt >= maxAttempts) {
+          throw error;
+        }
+        process.stdout.write(
+          `[zotero-pool] test window did not come up (attempt ${attempt}/${maxAttempts}), retrying\n`,
+        );
+        await delay(2000);
+      }
+    }
+  }
+
+  /** One launch attempt: HTTP bridge → bundle → Zotero → wait for the page. */
+  private async bootZotero(testerDir: string): Promise<void> {
     // 1. HTTP bridge
     const bridge = new HttpBridge(message => this.emit("message", message));
     await bridge.start();
@@ -127,13 +210,7 @@ export class ZoteroPoolWorker implements PoolWorker {
 
     // 2. bundle the tester plugin (page runtime + test files); per-project
     //    dir so parallel projects never overwrite each other's bridge port
-    const testerDir = join(process.cwd(), ".scaffold", "tester", this.projectSuffix);
-    await buildTesterPlugin({
-      outDir: testerDir,
-      port: bridge.port,
-      testDir: process.cwd(),
-      testFiles: this.poolOptions.project.config.include,
-    });
+    await this.buildBundle(undefined, testerDir);
 
     // 3. launch Zotero with the tester plugin as a proxy addon
     //    (RDP is not needed: proxy addons are installed via profile files)
@@ -174,7 +251,21 @@ export class ZoteroPoolWorker implements PoolWorker {
 
     // 4. wait for the test window (Zotero cold start takes 15-30s; vitest's
     //    START_TIMEOUT would fire first, hence the handshake)
-    await bridge.waitReady();
+    await bridge.waitReady(25_000);
+  }
+
+  /**
+   * Bundles the tester plugin (runtime chunk + page + test files + manifest).
+   * Pass a stamp on watch rebuilds to cache-bust the test artifact URLs.
+   */
+  private async buildBundle(stamp?: string, testerDir = join(process.cwd(), ".scaffold", "tester", this.projectSuffix)): Promise<void> {
+    this.testerManifest = await buildTesterPlugin({
+      outDir: testerDir,
+      port: this.bridge?.port ?? 0,
+      testDir: process.cwd(),
+      testFiles: this.poolOptions.project.config.include,
+      stamp,
+    });
   }
 
   async stop(): Promise<void> {

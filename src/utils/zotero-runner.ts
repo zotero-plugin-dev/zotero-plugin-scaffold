@@ -1,5 +1,6 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { RecursivePickOptional, RecursiveRequired } from "../types/utils.js";
+import { Buffer } from "node:buffer";
 import { execSync, spawn } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
 import { readdir, stat, unlink } from "node:fs/promises";
@@ -412,13 +413,84 @@ export class ZoteroRunner {
   }
 
   public exit(): void {
-    this.zotero?.kill();
-    // Sometimes `process.kill()` cannot kill the Zotero,
-    // so we force kill it.
-    killZotero();
+    const child = this.zotero;
+    const pid = child?.pid;
+    child?.kill();
+    // Zotero restarts itself on first launch (setupProfile nulls
+    // extensions.lastAppBuildId/lastAppVersion, forcing an "update" restart),
+    // so the spawned PID may already be gone. Kill every instance whose
+    // command line uses our profile — an image-wide kill (taskkill /im
+    // zotero.exe) would take down sibling instances of parallel projects.
+    killByProfile(resolve(this.options.profile.path));
+    // Belt & suspenders: force-kill the original PID if it survived.
+    if (pid && isPidAlive(pid)) {
+      try {
+        if (process.env.ZOTERO_PLUGIN_KILL_COMMAND) {
+          execSync(process.env.ZOTERO_PLUGIN_KILL_COMMAND);
+        }
+        else if (isWindows) {
+          execSync(`taskkill /f /pid ${pid}`);
+        }
+        else if (isMacOS || isLinux) {
+          execSync(`kill -9 ${pid}`);
+        }
+        else {
+          logger.error("No commands found for this operating system.");
+        }
+      }
+      catch {
+        logger.fail("Kill Zotero failed.");
+      }
+    }
   }
 }
 
+/** True while the OS still reports the given PID. */
+function isPidAlive(pid: number): boolean {
+  try {
+    if (process.platform === "win32") {
+      const out = execSync(`tasklist /fi "PID eq ${pid}" /nh`, { encoding: "utf8" });
+      return out.includes(String(pid));
+    }
+    execSync(`kill -0 ${pid}`);
+    return true;
+  }
+  catch {
+    return false;
+  }
+}
+
+/**
+ * Kills every zotero process whose command line references the profile path.
+ */
+function killByProfile(profilePath: string): void {
+  try {
+    if (process.env.ZOTERO_PLUGIN_KILL_COMMAND) {
+      execSync(process.env.ZOTERO_PLUGIN_KILL_COMMAND);
+    }
+    else if (isWindows) {
+      // -EncodedCommand (UTF-16LE base64) avoids the nested-quote mangling
+      // that execSync → cmd.exe would inflict on a plain -Command string.
+      const escaped = profilePath.replaceAll("'", "''");
+      const script = `Get-CimInstance Win32_Process -Filter "Name='zotero.exe'" `
+        + `| Where-Object { $_.CommandLine -like '*${escaped}*' } `
+        + `| ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
+      const encoded = Buffer.from(script, "utf16le").toString("base64");
+      execSync(`powershell -NoProfile -EncodedCommand ${encoded}`);
+    }
+    else if (isMacOS || isLinux) {
+      execSync(`pkill -9 -f "${profilePath}"`);
+    }
+  }
+  catch {
+    // no matching process (already dead) — not an error
+  }
+}
+
+/**
+ * Kills every running Zotero instance. Only used as a manual cleanup helper
+ * (e.g. before a run starts); `ZoteroRunner.exit()` targets its own profile.
+ */
 export function killZotero(): void {
   function kill() {
     try {

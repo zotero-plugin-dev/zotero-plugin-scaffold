@@ -20,6 +20,13 @@ export function generateVitestConfig(ctx: Context): string {
     .split(sep)
     .join("/") || ".";
 
+  const reporter = ctx.test.reporter
+    ? `,\n    reporters: ${JSON.stringify(ctx.test.reporter)}`
+    : "";
+  const outputFile = ctx.test.outputFile
+    ? `,\n    outputFile: ${JSON.stringify(ctx.test.outputFile)}`
+    : "";
+
   return `import { defineConfig } from "vitest/config";
 import { zoteroPool } from "zotero-plugin-scaffold/vitest";
 
@@ -32,7 +39,7 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: ${ctx.test.vitest.timeout},
     hookTimeout: ${ctx.test.vitest.timeout},
-    bail: ${ctx.test.abortOnFail ? 1 : 0},
+    bail: ${ctx.test.abortOnFail ? 1 : 0}${reporter}${outputFile},
     pool: zoteroPool({
       pluginDir: ${JSON.stringify(pluginDir)},
       pluginId: ${JSON.stringify(ctx.id)},

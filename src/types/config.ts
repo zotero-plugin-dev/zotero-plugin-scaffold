@@ -790,6 +790,24 @@ export interface TestConfig {
   };
 
   /**
+   * Vitest reporters to use for the test run.
+   * Passed through to vitest's `reporters` option, e.g. "default", "verbose",
+   * "junit" or "json".
+   *
+   * 测试报告器，原样传递给 vitest 的 `reporters` 选项
+   * （如 "default"、"verbose"、"junit"、"json"）。
+   */
+  reporter?: string | string[];
+
+  /**
+   * Write the test report to a file. Passed through to vitest's `outputFile`
+   * option (e.g. `test-results/junit.xml`, `test-results/report.json`).
+   *
+   * 测试报告输出文件路径，原样传递给 vitest 的 `outputFile` 选项。
+   */
+  outputFile?: string;
+
+  /**
    * Abort the test when the first test fails.
    *
    * 当第一个测试失败时中止测试。

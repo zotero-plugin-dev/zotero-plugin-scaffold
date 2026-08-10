@@ -195,17 +195,36 @@ custom pool 路线——不再"封装 vitest"，而是让 **vitest 原生驱动 
 
 **验收**：CLI 与直配 zoteroPool 行为一致（同一实现，双轨确认）。
 
-### 阶段 3：能力补齐
+### 阶段 3：能力补齐（已完成）
 
-| 项                  | 内容                                                                        | 优先级 |
-| ------------------- | --------------------------------------------------------------------------- | ------ |
-| reporter/outputFile | `test.reporter`/`test.outputFile` 透传 vitest reporters（免费 junit/json）  | 高     |
-| 混合测试示例        | 文档 + 模板生成可选 vitest.config（projects 骨架）                          | 高     |
-| WS 升级             | `http-bridge` → WS（先验证 chrome:// 下 `new WebSocket()`；不行则保留轮询） | 中     |
-| watch 语义          | 页面侧 `?t=` 缓存失效（阶段 2 的 watch 需要）+ Zotero 热重载（RDP 复用）    | 中     |
-| CI                  | headless 模式 + 无窗口运行验证                                              | 低     |
+| 项                  | 内容                                                                        | 优先级 | 状态                                         |
+| ------------------- | --------------------------------------------------------------------------- | ------ | -------------------------------------------- |
+| reporter/outputFile | `test.reporter`/`test.outputFile` 透传 vitest reporters（免费 junit/json）  | 高     | ✅                                           |
+| 混合测试示例        | 文档 + 模板生成可选 vitest.config（projects 骨架）                          | 高     | ✅ 文档（create 命令未实现，模板生成不适用） |
+| WS 升级             | `http-bridge` → WS（先验证 chrome:// 下 `new WebSocket()`；不行则保留轮询） | 中     | ✅ 评估：可用但未实施（见下）                |
+| watch 语义          | 页面侧 `?t=` 缓存失效（阶段 2 的 watch 需要）+ Zotero 热重载（RDP 复用）    | 中     | ✅ 测试文件重跑（见下）                      |
+| CI                  | headless 模式 + 无窗口运行验证                                              | 低     | ⏳ 需 Linux CI 验证                          |
 
-**验收**：混合项目单命令全绿；junit 输出可用；watch 改测试文件 → 重跑。
+**验收**：混合项目单命令全绿（16 files / 107 passed 实测）；junit 输出可用（CLI
+`--reporter junit --output-file` 实测生成 XML）；watch 改测试文件 → 重跑（实测）。
+
+**实现要点**：
+
+- reporter/outputFile：`TestConfig.reporter`/`outputFile` + CLI 参数
+  `--reporter`/`--output-file`，透传进生成的 vitest 配置
+- watch：vitest 4 每次 watch 重跑都会 stop 并重建 pool worker（`queue` 空即
+  stop，custom pool 无跨 run 复用）→ 每次重跑新起 Zotero（~30s）。测试文件变更
+  由 worker 的 `buildTesterPlugin` 全量重建 + 产物名带 stamp
+  （`tests/<stamp>-<file>.js`）+ run 请求 context 携带最新 manifest
+  （`testerManifest`）覆盖 setup.js 内嵌清单——页面免 reload 就能 import 新 URL
+- WS 探测结论：chrome:// 页面 `new WebSocket("ws://127.0.0.1:…")` 可用、CSP 不拦
+  （实测：构造函数不抛、真实发起连接）。未实施升级——轮询（150ms）延迟可接受、
+  验收不含此项、v5 迁移将再次触碰协议层，届时一并评估
+- 稳定性：worker start 增加 Zotero 启动重试（3 次 × 25s，防强杀后 profile 锁
+  未释放）；`ZoteroRunner.exit()` 改为按 profile 路径定向杀进程（PowerShell
+  `-EncodedCommand` 防引号转义破坏；旧实现 `taskkill /im zotero.exe` 会误杀
+  并行 project 的实例；Zotero 因 `lastAppBuildId` 置空会自重启，spawn 的 PID
+  是瞬时的，必须按命令行匹配真实实例）
 
 ### 阶段 4：vitest v5 + vi.mock 评估
 

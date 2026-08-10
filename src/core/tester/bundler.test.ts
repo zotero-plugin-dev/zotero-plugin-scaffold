@@ -71,4 +71,18 @@ describe("buildTesterPlugin", () => {
     const testBundle = await readFile(join(outDir, "content", "tests", "sample.spec.js"), "utf8");
     expect(testBundle).toContain("from \"../runtime.js\"");
   });
+
+  it("stamps test artifact names and returns the manifest", async () => {
+    await writeFile(join(testDir, "sample.spec.mjs"), "export {};\n");
+    const manifest = await buildTesterPlugin({
+      outDir,
+      port: 12345,
+      testDir,
+      testFiles: ["**/*.spec.mjs"],
+      stamp: "abc",
+    });
+    const tests = await readdir(join(outDir, "content", "tests"));
+    expect(tests).toContain("abc-sample.spec.js");
+    expect(Object.values(manifest)).toContain("tests/abc-sample.spec.js");
+  });
 });

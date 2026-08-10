@@ -17,6 +17,9 @@ import { createWorkerState } from "./state.js";
  */
 import manifest from "./tests-manifest.js";
 
+/** Fallback manifest baked into setup.js by the bundler (initial run). */
+const bakedManifest = manifest;
+
 export class ZoteroVitestRunner {
   config: Record<string, any>;
   pool = "zotero";
@@ -26,8 +29,16 @@ export class ZoteroVitestRunner {
   onCollectStart?: (file: unknown) => unknown;
   onCollected?: (files: any[]) => unknown;
   private readonly importDurations = new Map<string, { start: number; end: number }>();
+  /**
+   * Source path → bundled artifact. The run request carries the current
+   * manifest (`context.testerManifest`) so watch-mode rebuilds (fresh stamp
+   * artifact URLs) take effect without reloading the page; the manifest
+   * baked into setup.js is the fallback for the initial run.
+   */
+  private readonly manifest: Record<string, string>;
 
-  constructor(config: any) {
+  constructor(config: any, manifest?: Record<string, string>) {
+    this.manifest = manifest ?? bakedManifest;
     this.config = {
       root: config.root || "/",
       setupFiles: [],
@@ -63,7 +74,7 @@ export class ZoteroVitestRunner {
   /** Test files are pre-bundled by rolldown; map source path → artifact. */
   async importFile(filepath: string): Promise<void> {
     const start = performance.now();
-    const rel = manifest[filepath];
+    const rel = this.manifest[filepath];
     if (!rel) {
       throw new Error(`No bundled artifact for ${filepath}`);
     }
@@ -125,7 +136,7 @@ export async function runMethod(
   isCollect: boolean,
   state: WorkerStateLike,
 ): Promise<void> {
-  const runner = new ZoteroVitestRunner(state.config);
+  const runner = new ZoteroVitestRunner(state.config, context?.testerManifest);
   patchRunner(runner, state);
   if (isCollect) {
     const files = await collectTests(context.files, runner as any);

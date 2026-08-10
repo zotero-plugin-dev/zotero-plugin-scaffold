@@ -141,10 +141,20 @@ Usage: cli test [options]
 Run tests
 
 Options:
-  --abort-on-fail   Abort the test suite on first failure
-  --exit-on-finish  Exit the test suite after all tests have run
-  --no-watch        Same with `exit-on-finish`
-  -h, --help        display help for command
+  --abort-on-fail      Abort the test suite on first failure
+  --exit-on-finish     Exit the test suite after all tests have run
+  --no-watch           Exit the test suite after all tests have run
+  --reporter <name>    Vitest reporter(s), e.g. default|verbose|junit|json (comma-separated)
+  --output-file <path> Write the test report to a file, e.g. test-results/junit.xml
+  -h, --help           display help for command
+```
+
+These map to the `test.reporter` / `test.outputFile` config options — both are
+passed through to vitest's `reporters` / `outputFile`, so `junit`/`json`
+reports come for free:
+
+```bash
+zotero-plugin test --no-watch --reporter junit --output-file test-results/junit.xml
 ```
 
 ## Advanced Configuration
@@ -189,25 +199,10 @@ To handle such cases, use the `test.waitForPlugin` configuration option. This op
 
 In watch mode, Scaffold automatically:
 
-- Recompiles source code, reloads plugins, and reruns tests when the source changes.
-- Reruns tests when test files are modified.
-
-## Running Tests with CLI Options
-
-You can override configuration settings with CLI parameters. Use `zotero-plugin test --help` to view available options:
-
-```bash
-$ pnpm zotero-plugin test --help
-Usage: cli test [options]
-
-Run tests
-
-Options:
-  --abort-on-fail   Abort the test suite on first failure
-  --exit-on-finish  Exit the test suite after all tests have run
-  --no-watch        Same with `exit-on-finish`
-  -h, --help        display help for command
-```
+- Reruns affected tests when test files change (a fresh Zotero instance is
+  booted per rerun; the pool rebuilds the test bundle with a new stamp so the
+  updated code is what actually runs).
+- Recompiles source code and reloads plugins when the source changes.
 
 ## Running Tests on CI
 
