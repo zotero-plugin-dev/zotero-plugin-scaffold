@@ -77,6 +77,13 @@ vitest zotero     # only the Zotero project
 | `abortOnFail`            | `false`                         | Abort the run on the first failing test                      |
 | `extraPrefs`             | —                               | Extra `prefs.js` entries                                     |
 
+::: warning Required project settings
+The Zotero project must set `isolate: false` and `fileParallelism: false`
+(vitest's defaults are the opposite). Files run serially in one Zotero
+instance — the pool reuses the same worker (`canReuse`) instead of booting
+Zotero per file. The pool validates these and throws a descriptive error.
+:::
+
 ### Writing Test Cases
 
 Write test cases using Vitest syntax in `test/*.{spec,test}.{js,ts}`. Both Vitest-style (`expect(x).toBe(y)`) and Chai-style (`expect(x).to.equal(y)`, `assert.isNotEmpty(...)`) assertions are supported:
