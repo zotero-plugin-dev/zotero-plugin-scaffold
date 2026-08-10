@@ -51,157 +51,157 @@ Zotero 页面（chrome:// 窗口）                        宿主进程（node�
 | reporter        | 鸭子类型驱动（已验证）      | 同（v5 接口一致）                    | 小迁移             |
 | 打包器          | esbuild                     | rolldown-vite（评估）                | 阶段四             |
 
-## 3. 目标架构总览
+## 3. 目标架构总览（custom pool 双轨）
+
+**2026-08 更新**：`prototype/pool`（协议验证）与 `prototype/e2e`（真实 Zotero 全链路）已验证
+custom pool 路线——不再"封装 vitest"，而是让 **vitest 原生驱动 Zotero 测试**。宿主侧 reporter/过滤/
+退出码全部由 vitest 原生提供（reporter 鸭子类型方案作废）。
 
 ```
-Zotero 页面（chrome:// 窗口）                          宿主进程（node）
-┌─────────────────────────────────┐   WebSocket 长连接  ┌──────────────────────────────────┐
-│ include.js（Zotero 全局）        │   (birpc + flatted) │ WS Server（复刻 vitest 协议）     │
-│ vitest-runtime.js（v5，打包）     │ ◄────────────────► │  onQueued / onCollected          │
-│ 测试文件 chunk（打包，共享 runtime）│   页面→宿主：       │  onTaskUpdate(packs, events)     │
-│ 自实现 VitestRunner               │   onTaskUpdate 等  │  sendLog / onUnhandledError      │
-│  ├─ importFile: import()          │   宿主→页面：       │  snapshot 读写 / onCancel        │
-│  ├─ onTaskUpdate → rpc           │   onCancel 等      ├──────────────────────────────────┤
-│  └─ onAfterRunTask → 增量包       │                    │ VitestState（task 树镜像）        │
-│                                  │                    │  ├─ updateTasks(packs)           │
-│                                  │                    │  └─ getReportedEntity(task)      │
-│                                  │                    │ Vitest v5 Reporter（官方）        │
-│                                  │                    │  ├─ default/verbose/dot          │
-│                                  │                    │  └─ json/junit（CI 输出）         │
-└─────────────────────────────────┘                    └──────────────────────────────────┘
+用户项目（vitest CLI / zotero-plugin test）
+└─ vitest server：原生 reporter / watch / -t 过滤 / shard / coverage / 退出码
+   └─ zoteroPool()（PoolRunnerInitializer 官方扩展点，scaffold 导出）
+      ├─ start(): rolldown 打包 page 运行时 + 测试文件 → tester 插件（proxy 安装）
+      │            → HTTP bridge（/post /poll /ready /debug）→ 启动真实 Zotero
+      │            → 等页面 /ready 握手（Zotero 冷启动 15-30s，防 START_TIMEOUT）
+      ├─ 传输：POST /post（页面→宿主）+ GET /poll 150ms（宿主→页面），flatted 序列化
+      └─ stop(): taskkill 强杀 Zotero（SIGTERM 残留子进程，会卡住 Vite 关闭）
+         └─ Zotero 测试窗口（chrome:// 特权页面）
+            ├─ runtime.js（rolldown 打包 vitest + @vitest/runner + birpc + flatted）
+            ├─ page 运行时（TS 源码 → setup.js）：
+            │   ├─ 协议：镜像 vitest 官方 worker（start→started / run|collect→testfileFinished / stop→stopped
+            │   │         + birpc 消息，按 __vitest_worker_request__ 分流）
+            │   ├─ rpc：createBirpc + flatted（任务树含 file.file 自引用，JSON 会抛 cyclic）
+            │   └─ runner：startTests/collectTests + 轻量 VitestRunner
+            │       （importFile 动态 import 打包产物；回调包装复刻 resolveTestRunner）
+            └─ tests/*.js（rolldown 多入口，import "../runtime.js"）
 ```
 
 设计要点：
 
-- **页面只跑 runner**（vitest runtime 打包产物），**宿主只跑 reporter**（vitest/node 导出），中间是**与 vitest 浏览器模式同构的 RPC 协议**
-- 不引入 `@vitest/browser` 的 orchestrator/iframe（Playwright 驱动，与 Zotero 无关），只复刻其**协议层**（`packages/browser/src/types.ts` 的 `WebSocketBrowserHandlers/Events` 子集）
-- 测试文件仍是构建期打包（chrome:// CSP 禁止运行时从 http 加载模块），打包器见阶段四
+- **宿主侧零复刻**：vitest server 的 state 层自己构造 TestModule/TestCase，页面只回传
+  `File[]`/`TaskResultPack`——reporter 鸭子类型、假 ctx、reportEvent 复刻全部不需要
+- **页面侧零伪造**：不再手写 `__vitest_worker__` shim 与 RPC 上报——消息协议镜像官方
+  `init()`（`vitest/worker`），`onQueued/onCollected/onTaskUpdate` 由包装后的 runner 回调直发 rpc
+- **测试文件仍构建期打包**（chrome:// CSP 禁止运行时加载 http 模块）
+- **双轨**：`zoteroPool` 导出（用户自配 vitest.config，支持 projects 混合测试）
+  - `zotero-plugin test` CLI（薄封装：生成配置 + spawn vitest + 构建编排）
 
 ## 4. 关键设计决策
 
-### D1. 自实现 `VitestRunner`，不用官方 `TestRunner`
+### D1. 页面侧 runner：官方入口 + 轻量 VitestRunner（自实现仍必要）
 
-v5 的官方 `TestRunner`（`vitest/src/runtime/runners/test.ts`）与 worker state 深度耦合（构造时 `getWorkerState()`、持有 `moduleRunner`、`rpc()` 直连 vitest server）。Zotero 页面没有 vitest worker，也没有 Vite 模块图。
+- 官方 `TestRunner` 耦合 vite `moduleRunner`/worker state（`getWorkerState()`），chrome:// 不可用
+- `runBaseTests` 的 native 路径（`experimental.viteModuleRunner: false`）依赖 node 原生
+  `import()`（`pathToFileURL`），浏览器不可用；`config.runner` 的自定义 runner 也经 moduleRunner 加载
+- 结论：页面用 `startTests`/`collectTests`（官方入口）+ 自实现轻量 `VitestRunner`
+  （`importFile` 动态 import 打包产物），回调包装逐行复刻 `resolveTestRunner` 的
+  `onQueued/onCollected/onTaskUpdate` 上报（`prototype/e2e` 已验证）
 
-**结论**：自实现 `VitestRunner`（v5 接口不变：`importFile`/`onCollected`/`onBeforeRunTask`/`onAfterRunTask`/`onTaskUpdate`/`onAfterRunFiles`），只依赖 `startTests` 与 runner 事件——v4 原型已验证该路径可行，v5 的 `VitestRunner` 接口（`packages/vitest/src/runtime/runner/types.ts`）与 v4 一致。
+### D2. 通信协议：镜像官方 worker 协议，不复刻浏览器模式
 
-### D2. 通信协议复刻 vitest 浏览器模式
+- 页面侧实现简化版 `init()`（`prototype/e2e/plugin/content/setup.js`）：
+  `{__vitest_worker_request__: true, type: start|run|collect|stop}` + birpc 消息同通道分流
+- 传输层 HTTP 轮询（已验证）；WS 升级见阶段三（chrome:// 下 `new WebSocket()` 未验证）
+- 协议面 = vitest 官方 worker 协议子集（附录 B），不是浏览器模式的
+  `WebSocketBrowserHandlers`（Playwright orchestrator 无关）
 
-- 传输：WebSocket（宿主 `ws` 库，页面原生 `WebSocket`）
-- 帧协议：`birpc`（JSON-RPC 风格）+ `flatted` 序列化（task 树存在 `file` 自引用，`JSON.stringify` 不可用；Error 特殊序列化）
-- 页面→宿主 handlers（复刻 `WebSocketBrowserHandlers` 子集）：
-  - `onQueued(file)` / `onCollected(files)`（收集）
-  - `onTaskUpdate(packs, events)`（**增量**：`TaskResultPack = [taskId, result, meta]`；`TaskEventPack = [taskId, event, data]`）
-  - `sendLog(log)`（测试内 console 转发）
-  - `onUnhandledError(error, type)`
-  - snapshot 三件套（`readSnapshotFile`/`saveSnapshotFile`/`removeSnapshotFile`）——阶段二可先留空实现
-- 宿主→页面 events：`onCancel(reason)`（bail/用户中断）
-- 进度语义：**每个测试完成立即发一个增量包**（`onAfterRunTask` → `onTaskUpdate`），宿主实时打印；与 vitest 浏览器模式完全一致
+### D3. Reporter：vitest 原生，无适配层
 
-### D3. Reporter 复用 vitest v5 官方实现
+- 原"鸭子类型 TestModule + 假 ctx"方案（v4 POC）**作废**——pool 模式下 vitest server
+  自建任务树，`TestModule/TestCase` 由官方 state 层构造
+- reporter 选项（default/verbose/dot/json/junit）与 `outputFile` 直接透传 vitest 配置
 
-- 从 `vitest/node` 导入 `DefaultReporter`/`VerboseReporter`/`DotReporter`/`JsonReporter`/`JUnitReporter`（v4.1 起 `vitest/reporters` 已废弃）
-- 数据通路复刻 `TestRun.updated()` 三步：
-  1. `state.updateTasks(packs)`（task 树镜像：`idMap` → `task.result/meta`）
-  2. `reportEvent(id, event, data)`（生命周期事件 → `onTestModuleStart/End`、`onTestSuiteResult`、`onTestCaseResult`）
-  3. `report('onTaskUpdate', packs, events)`
-- `TestModule/TestCase/TestSuite` 无法外部构造（`#private` 字段）→ 鸭子类型包装（`state()/result()/ok()/meta()/task/project/module/children.allTests()`）——v4 POC 已验证全部字段与方法清单
-- 假 `ctx`：`config`（root/hideSkippedTests/mode/silent/slowTestThreshold/...）+ `logger`（`printBanner/printError/onTerminalCleanup/...`）+ `projects`/`snapshot.summary`/`state.leakSet`/`onClose`
-- TTY 全屏 summary（`SummaryReporter`/`WindowRenderer`）依赖较重，宿主端固定走非 TTY 路径
+### D4. 打包器：rolldown（已随 vite-bundler 分支合并），page 运行时源码化
 
-### D4. 打包器：已迁移 rolldown（随 vite-bundler 分支合并）
-
-- **现状**：tester 已基于 `vite-bundler` 分支合并 rolldown——`bundleVitestRuntime` 与测试文件打包均用 `rolldown@1.0.0-rc.15`（`treeshake: false`、`preserveEntrySignatures: "allow-extension"`、`sourcemap: true`），vitest runtime 的 `vite/module-runner` 用虚拟模块 stub（` ` 前缀 + `load` hook 内联），测试文件的 `vitest`/`chai`/`@vitest/*` 由 `resolveId` 重写为 `../vitest-runtime.js`（external）
-- **仍未解决**：`vi.mock`/`vi.hoisted`——需要 Vite transform 管线（mock 提升），rolldown 的 `build` 管线暂未接入 vitest 的 transform；作为后续阶段
-- **风险**：chrome:// 下模块加载语义、mock 提升后的运行时依赖（`__vi_import__` 等注入）需真机验证
+- `bundleVitestRuntime` 与测试文件打包已迁移 rolldown（`rolldown@1.0.0-rc.15`）
+- 页面运行时从 raw 模板提升为 `src/core/tester/page/` TS 源码（可单测、同 lint/tsc 流程）
+- `vi.mock` 仍不可用：vitest 4.1.4 native mocker 的 `rpc`/`interceptor` 未注入（注册链断裂，
+  已实测）；打包产物的模块 id 与源码路径不一致加剧该问题——阶段四评估
 
 ### D5. 序列化统一用 flatted
 
-task 树（`File`/`Suite`/`Test`）含 `file.file` 自引用与 `file` 指针，`JSON.stringify` 会抛循环引用错误。v4 原型用展平事件规避，v5 方案回传完整树/增量包，必须用 `flatted`（与 vitest 一致）。宿主端反序列化后直接还原 runner 原生结构，reporter 所需的 `task`/`result`/`meta` 字段零丢失。
+- 任务树含 `file.file` 自引用，`JSON.stringify` 抛 cyclic（实测）；flatted 输出是 JSON 数组
+  （不是对象）——解析侧必须 `flattedParse` 还原，不能 `JSON.parse`
+- flatted 在 pnpm 虚拟店（非提升）：定位用 glob `.pnpm/flatted@*`（`bundler.ts` 已有实现）
 
-## 5. 分阶段计划
+## 5. 分阶段计划（双轨）
 
-### 阶段一：Runner 替换（v5 runtime 嵌入 Zotero）
+### 阶段 0：代码骨架落地（从原型到源码）
 
-**目标**：v4 原型迁移到 v5 API，真实 Zotero 跑通，通信暂保持 HTTP 事件流。
+**目标**：`prototype/e2e` 的一次性代码 → `src/core/tester/` 正式结构，node 侧可测。
 
-**改动清单**：
+| 文件                                                                        | 改动                                                                                                |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `src/core/tester/page/{index,transport,protocol,rpc,state,runner}.ts`（新） | 页面侧运行时源码化（原型 setup.js 拆分）；协议状态机/rpc 构造/patchRunner 独立成模块                |
+| `src/core/tester/pool/{index,pool-worker,http-bridge,options}.ts`（新）     | `zoteroPool()` 工厂 + PoolWorker + HTTP bridge + 选项类型                                           |
+| `src/core/tester/bundler.ts`（新）                                          | 正式版 bundler：page/ 多入口 + 测试文件 + manifest + 插件生成（复用 test-bundler 的 rolldown 插件） |
+| `src/utils/zotero-runner.ts`                                                | 复用（proxy 安装已支持）；ready 握手在 pool 侧（HTTP bridge）                                       |
+| `src/core/tester/vitest-runtime.test.ts`                                    | 集成测试：bundler 产物 + 模拟 dispatch/rpc 跑协议层（子进程模式沿用）                               |
+| `src/core/tester/pool.test.ts`（新）                                        | HTTP bridge 协议测试（mock 页面端消息流）                                                           |
+| `template/`                                                                 | 静态文件（manifest/bootstrap/index.html）从原型迁移，不源码化                                       |
 
-| 文件                                        | 改动                                                                                              |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `src/core/tester/test-bundler.ts`           | `VITEST_RUNTIME_ENTRY` 改为 v5 导入路径（见附录 A）；`@vitest/runner` 解析逻辑删除（v5 无独立包） |
-| `test-bundler-template/raw/vitest-setup.js` | import 源改为 `vitest/internal/browser`；`__vitest_worker__` shim 按 v5 字段更新；其余不变        |
-| `vitest-runtime.test.ts`                    | 集成测试迁移到 v5（子进程方案不变）                                                               |
-| 文档                                        | `docs/src/test.md` 更新                                                                           |
+**验收**：tsc/lint 绿；测试全绿；bundler 产物结构 == 原型 out/。
 
-**验收**：`zotero-format-metadata` 项目 `zotero-plugin test --no-watch` 全绿；`vi.fn`/失败 diff/pending/退出码行为不变。
+### 阶段 1：`zoteroPool` 可用（方案 B 落地）
 
-### 阶段二：通信升级（WS + RPC 协议）
+**目标**：用户项目 `vitest.config.ts` 配 `pool: zoteroPool(...)` 跑通真实 Zotero。
 
-**目标**：与 vitest 浏览器模式同构的通信层，实时增量进度，双向能力（cancel）。
+| 文件                                                 | 改动                                                                                                                |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `tsdown.config.ts` + `src/core/tester/pool/index.ts` | 新入口 `zotero-plugin-scaffold/vitest`（导出 `zoteroPool` + 类型）                                                  |
+| `pool/options.ts`                                    | `zoteroBin`/`profileDir`/`pluginDir`/`headless`/`abortOnFail`/`args`；env 作默认（`ZOTERO_PLUGIN_ZOTERO_BIN_PATH`） |
+| `bundler.ts`                                         | 测试文件 entry 来自配置项（不再硬编码）                                                                             |
+| `docs/src/test.md`                                   | 混合测试示例（projects：unit + zotero）                                                                             |
+| 验证                                                 | `zotero-format-metadata`：`vitest run` 真机全绿 + 失败传播                                                          |
 
-**改动清单**：
+**验收**：真实 Zotero 端到端 + 退出码正确；`prototype/e2e` 标记 superseded。
 
-| 文件                                        | 改动                                                                                                         |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `src/core/tester/ws-reporter.ts`（新）      | WS 服务端：birpc + flatted；handlers 复刻 `WebSocketBrowserHandlers` 子集                                    |
-| `test-bundler-template/raw/vitest-setup.js` | `send()` 改为 `WebSocket` + birpc client；`onTaskUpdate`/`onCollected` 增量发送；`__PORT__` 语义变为 WS 端口 |
-| `src/core/tester/index.ts`                  | `TestHttpReporter` 退役；启动/退出流程改为 WS 生命周期；`onZoteroExit` 判定改为从 task 树镜像读失败数        |
-| `vitest-runtime.test.ts`                    | 子进程模拟 WS 服务端，断言增量包序列                                                                         |
+### 阶段 2：CLI 薄封装（方案 A 落地）
 
-**协议草案**（页面→宿主）：
+**目标**：`zotero-plugin test` 行为与原型等价，内部即阶段 1 的池。
 
-```ts
-// 连接即注册，无鉴权（localhost 专用，绑定 127.0.0.1）
-onCollected(files); // 收集完成（完整 File[]，flatted）
-onTaskUpdate(packs, events); // 每测试完成增量；end 时最后一批带 finish 事件
-sendLog(log); // console 转发
-onUnhandledError(error); // 页面级错误
-```
+| 文件                                    | 改动                                                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/core/tester/index.ts`              | `Test` 类重写：`builder.run()` → 生成临时 vitest.config → spawn vitest（同仓库依赖）→ 退出码透传；watch 模式 spawn `vitest`（无 run） |
+| `src/types/config.ts` + `src/config.ts` | `test.entries`→`include`、`test.vitest.timeout`→`testTimeout/hookTimeout`、`test.abortOnFail`→pool 选项、`test.headless`→launcher     |
+| `src/core/tester/cli-config.ts`（新）   | 临时配置生成器（可单测）                                                                                                              |
+| 退役                                    | `http-reporter.ts`、mocha 事件协议、`test-bundler-template/raw/vitest-setup.js` 删除；模板精简为 `template/`                          |
+| 验证                                    | `zotero-format-metadata`：`zotero-plugin test --no-watch` 全绿 + 失败退出码 1                                                         |
 
-**验收**：实时打印（每个测试完成终端即出 ✓/×）；`onCancel` 可中止运行（bail 场景）；断线重连页面侧有明确错误输出。
+**验收**：CLI 与直配 zoteroPool 行为一致（同一实现，双轨确认）。
 
-### 阶段三：Reporter 复用（vitest v5 官方 reporter）
+### 阶段 3：能力补齐
 
-**目标**：宿主端输出与 `vitest` CLI 一致；`json`/`junit` 白拿；`TestHttpReporter` 打印逻辑删除。
+| 项                  | 内容                                                                        | 优先级 |
+| ------------------- | --------------------------------------------------------------------------- | ------ |
+| reporter/outputFile | `test.reporter`/`test.outputFile` 透传 vitest reporters（免费 junit/json）  | 高     |
+| 混合测试示例        | 文档 + 模板生成可选 vitest.config（projects 骨架）                          | 高     |
+| WS 升级             | `http-bridge` → WS（先验证 chrome:// 下 `new WebSocket()`；不行则保留轮询） | 中     |
+| watch 语义          | 页面侧 `?t=` 缓存失效（阶段 2 的 watch 需要）+ Zotero 热重载（RDP 复用）    | 中     |
+| CI                  | headless 模式 + 无窗口运行验证                                              | 低     |
 
-**改动清单**：
+**验收**：混合项目单命令全绿；junit 输出可用；watch 改测试文件 → 重跑。
 
-| 文件                                        | 改动                                                                                                                                   |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/core/tester/reporter-adapter.ts`（新） | task 树镜像（`updateTasks` 复刻）+ `TestModule/TestCase/TestSuite` 鸭子类型 + 假 `ctx`（v4 POC 字段清单，v5 对齐 `reported-tasks.ts`） |
-| `src/core/tester/ws-reporter.ts`            | 事件 → `reportEvent` 三步驱动 reporter                                                                                                 |
-| `src/types/config.ts`                       | 新增 `test.reporter`（`default`/`verbose`/`dot`/`json`/`junit`）+ `test.outputFile`（json/junit 落盘）                                 |
-| `vitest-runtime.test.ts`                    | 断言 reporter 输出（快照测试）                                                                                                         |
+### 阶段 4：vitest v5 + vi.mock 评估
 
-**验收**：`default` 输出与 vitest CLI 逐字符一致（除文件路径）；`junit` 产出可被 CI 解析；失败退出码不变。
-
-### 阶段四：打包器与 mock 支持（评估）
-
-**目标**：`vi.mock`/`vi.hoisted` 在 Zotero 内可用（打包器已完成 rolldown 迁移，本阶段聚焦 mock 运行时）。
-
-**改动清单**：
-
-| 文件                                        | 改动                                                                                                                                    |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/core/tester/test-bundler.ts`           | esbuild → rolldown-vite `build` 管线（或 vitest 内部 transform 复用）；`vite/module-runner` stub 删除（rolldown 提供真实 ModuleRunner） |
-| `test-bundler-template/raw/vitest-setup.js` | mock 运行时（`__vitest_mocker__`）初始化；`vi.mock` 工厂经 RPC 解析                                                                     |
-| `vitest-runtime.test.ts`                    | `vi.mock` 用例（在子进程验证打包产物）                                                                                                  |
-
-**风险**：mock 提升后的代码依赖 Vite 运行时注入（`__vi_import__`/`import.meta` 处理）；chrome:// 下模块加载语义变化；**需真实 Zotero 冒烟**。
-
-**验收**：`vi.mock('./dep', () => ({...}))` 在真实 Zotero 生效；`vi.hoisted` 可用；打包体积/速度不劣于 esbuild 方案。
+| 项      | 内容                                                                                                        |
+| ------- | ----------------------------------------------------------------------------------------------------------- |
+| v5 迁移 | 入口路径变化集中在 `page/`（import 来源）+ `bundler.ts`（resolve 表）；`@vitest/runner` 解析删除（附录 A）  |
+| vi.mock | 评估 v5 native mocker 是否修复（rpc/interceptor 注入）；不行则接 vite transform 管线（rolldown-vite build） |
+| 验收    | v5 + 真机全绿；vi.mock 可行则补 mock 用例                                                                   |
 
 ## 6. 风险与未决问题
 
-| 风险                                                              | 等级 | 缓解                                                   |
-| ----------------------------------------------------------------- | ---- | ------------------------------------------------------ |
-| chrome:// 窗口的 `new WebSocket()` 未真机验证                     | 中   | 阶段二前先冒烟；HTTP 通道作为回退保留一个版本          |
-| v5 处于 beta，API 可能变动                                        | 中   | 锁定基准版本号；阶段一完成后跑通即冻结 runtime API 面  |
-| v5 runtime 的 esbuild 打包依赖图（`vite/module-runner` 等）未验证 | 中   | 阶段一集成测试先行（子进程可跑，不依赖 Zotero）        |
-| `vi.mock` 提升产物在 chrome:// 的加载                             | 高   | 阶段四专设冒烟项；失败则保留 esbuild + 文档化限制      |
-| snapshot 落盘方案（经 RPC 回写宿主文件）                          | 低   | 阶段二留空实现，阶段三按 vitest `snapshot.ts` 协议补全 |
-| watch 模式的 WS 重连与窗口重建语义                                | 低   | 沿用现有"插件重载 → 新窗口 → 新连接"模型，无需重连     |
+| 风险                                  | 等级 | 缓解                                                                                    |
+| ------------------------------------- | ---- | --------------------------------------------------------------------------------------- |
+| 页面侧协议与 vitest 版本耦合（v4→v5） | 中   | `page/` 集中所有 vitest import；阶段 4 的 diff 面 = 2 个文件                            |
+| WS 在 chrome:// 不可用                | 中   | 阶段 3 先验证；轮询是已验证的保底                                                       |
+| 双轨配置漂移（CLI 生成 vs 手写）      | 低   | CLI 生成器输出可见的临时配置（`--show-config` 调试开关）                                |
+| Zotero 冷启动慢（watch 场景）         | 中   | `canReuse` 实现（同一实例跑多轮）+ RDP 热重载                                           |
+| `vi.mock` 提升产物在 chrome:// 的加载 | 高   | 阶段 4 专设冒烟项；失败则文档化限制                                                     |
+| snapshot 落盘（经 RPC 回写宿主文件）  | 低   | vitest 官方 snapshot 协议（`read/save/removeSnapshotFile`）随 pool 通道自动可用，待验证 |
+| Windows 上 Zotero 多进程残留          | 低   | `taskkill /f /im zotero.exe`（已验证）；scaffold 的 `killZotero` 复用                   |
 
 ## 7. 附录
 
@@ -233,7 +233,11 @@ onUnhandledError(error); // 页面级错误
 - ✅ rolldown 打包 vitest runtime + 测试文件（`rolldown@1.0.0-rc.15`，集成测试验证，2026-08）
 - ✅ esbuild 打包 vitest runtime（v4）在真实 Zotero 运行（module 脚本 + 动态 import，已被 rolldown 替代）
 - ✅ `vi.fn`/chai 风格断言/失败 diff/pending/退出码（真实 Zotero）
-- ✅ 鸭子类型驱动 `DefaultReporter`/`VerboseReporter`/`DotReporter`/`JsonReporter`/`JUnitReporter`（node POC）
+- ✅ custom pool 协议验证（`prototype/pool`，fork 子进程模拟执行环境）
+- ✅ **真实 Zotero 端到端**（`prototype/e2e`，2026-08）：vitest CLI → zoteroPool → HTTP bridge →
+  真实 Zotero beta → chrome:// 测试窗口 → 4/4 通过、失败传播退出码 1、进程清理
+- ✅ 页面侧简化 init 镜像官方 worker 协议（start/run/collect/stop + birpc + flatted）
+- ✅ 鸭子类型驱动 `DefaultReporter`/`VerboseReporter`/`DotReporter`/`JsonReporter`/`JUnitReporter`（node POC，**方案已作废**，vitest server 原生驱动）
 - ✅ `@vitest/runner`（v4）脱离 Vite 独立运行
 - ⚠️ v5 runtime 打包与运行（阶段一验证）
 - ❌ chrome:// 下 WebSocket（阶段二验证）
