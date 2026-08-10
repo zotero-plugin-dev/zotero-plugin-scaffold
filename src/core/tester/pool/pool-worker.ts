@@ -23,6 +23,30 @@ export class ZoteroPoolWorker implements PoolWorker {
   constructor(options: PoolOptions, poolOptions: ZoteroPoolOptions = {}) {
     this.poolOptions = options;
     this.options = resolveOptions(poolOptions);
+    const { isolate, fileParallelism } = options.project.config as any;
+    if (isolate) {
+      throw new Error(
+        "[zotero-pool] test.isolate must be false: every file runs in the same "
+        + "Zotero instance, one after another. Add `isolate: false` to the "
+        + "project's test config (vitest's default is true).",
+      );
+    }
+    if (fileParallelism !== false) {
+      throw new Error(
+        "[zotero-pool] test.fileParallelism must be false: files are scheduled "
+        + "serially so a single Zotero instance is reused (canReuse). Add "
+        + "`fileParallelism: false` to the project's test config.",
+      );
+    }
+  }
+
+  /**
+   * Reuses this worker (and thus the running Zotero instance) for subsequent
+   * test files. With `isolate: false`, vitest schedules files serially and
+   * hands the next task to the idle runner instead of spawning a new one.
+   */
+  canReuse(task: any): boolean {
+    return task.worker === this.name;
   }
 
   on(event: string, callback: (arg: any) => void): void {
