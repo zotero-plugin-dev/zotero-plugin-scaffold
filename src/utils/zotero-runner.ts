@@ -37,6 +37,12 @@ interface BinaryOptions {
   devtools?: boolean;
   debugOutputWindow?: boolean;
   debugOutputFile?: boolean;
+  /**
+   * Connect to the remote Firefox debugger server (RDP). Disable when the
+   * caller does not need it — e.g. the test pool, which installs plugins as
+   * proxy addons and would otherwise pay the RDP startup cost.
+   */
+  connectRDP?: boolean;
 }
 
 interface PluginsOptions {
@@ -59,6 +65,7 @@ const default_options = {
     devtools: true,
     debugOutputWindow: false,
     debugOutputFile: false,
+    connectRDP: true,
   },
   profile: {
     path: "./.scaffold/profile",
@@ -192,7 +199,9 @@ export class ZoteroRunner {
 
     // support for starting the remote debugger server
     const remotePort = await findFreeTcpPort();
-    args.push("-start-debugger-server", String(remotePort));
+    if (this.options.binary.connectRDP ?? true) {
+      args.push("-start-debugger-server", String(remotePort));
+    }
 
     logger.debug(`Zotero start args: ${args}`);
 
@@ -245,9 +254,11 @@ export class ZoteroRunner {
       this.zotero.stderr?.on("data", () => {});
     }
 
-    logger.debug("Connecting to the remote Firefox debugger...");
-    await this.remoteFirefox.connect(remotePort);
-    logger.debug(`Connected to the remote Firefox debugger on port: ${remotePort}`);
+    if (this.options.binary.connectRDP ?? true) {
+      logger.debug("Connecting to the remote Firefox debugger...");
+      await this.remoteFirefox.connect(remotePort);
+      logger.debug(`Connected to the remote Firefox debugger on port: ${remotePort}`);
+    }
   }
 
   private async installTemporaryPlugins() {

@@ -1,17 +1,16 @@
+import type { PoolOptions, PoolWorker, WorkerRequest } from "vitest/node";
+import type { ZoteroPoolOptions } from "./options.js";
 /**
  * Pool worker: owns the HTTP bridge, the bundling step and the Zotero
  * process lifecycle. Implements vitest's `PoolWorker` interface.
  */
-import type { ChildProcess } from "node:child_process";
-import type { PoolOptions, PoolWorker, WorkerRequest } from "vitest/node";
-import type { ZoteroPoolOptions } from "./options.js";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import process from "node:process";
 import * as flatted from "flatted";
+import { ZoteroRunner } from "../../../utils/zotero-runner.js";
 import { buildTesterPlugin } from "../bundler.js";
 import { HttpBridge } from "./http-bridge.js";
 import { resolveOptions } from "./options.js";
-import { killZotero, launchZotero } from "./zotero-launcher.js";
 
 export class ZoteroPoolWorker implements PoolWorker {
   readonly name = "zotero";
@@ -19,7 +18,7 @@ export class ZoteroPoolWorker implements PoolWorker {
   private readonly options: ReturnType<typeof resolveOptions>;
   private readonly listeners = new Map<string, Set<(arg: any) => void>>();
   private bridge?: HttpBridge;
-  private zotero?: ChildProcess;
+  private zotero?: ZoteroRunner;
 
   constructor(options: PoolOptions, poolOptions: ZoteroPoolOptions = {}) {
     this.poolOptions = options;
@@ -61,8 +60,7 @@ export class ZoteroPoolWorker implements PoolWorker {
     const bridge = new HttpBridge(message => this.emit("message", message));
     await bridge.start();
     this.bridge = bridge;
-    process.stdout.write(`[zotero-pool] HTTP bridge on http://127.0.0.1:${bridge.port}
-`);
+    process.stdout.write(`[zotero-pool] HTTP bridge on http://127.0.0.1:${bridge.port}\n`);
 
     // 2. bundle the tester plugin (page runtime + test files)
     const testerDir = join(process.cwd(), ".scaffold", "tester");
@@ -74,7 +72,36 @@ export class ZoteroPoolWorker implements PoolWorker {
     });
 
     // 3. launch Zotero with the tester plugin as a proxy addon
-    this.zotero = await launchZotero(this.options, testerDir);
+    //    (RDP is not needed: proxy addons are installed via profile files)
+    this.zotero = new ZoteroRunner({
+      binary: {
+        path: this.options.zoteroBin,
+        args: this.options.args,
+        devtools: false,
+        connectRDP: false,
+      },
+      profile: {
+        path: this.options.profileDir,
+        dataDir: this.options.dataDir,
+        createIfMissing: true,
+        customPrefs: {
+          // suppress the first-run connector install page
+          "extensions.zotero.firstRun": false,
+          "extensions.zotero.firstRun2": false,
+          ...this.options.extraPrefs,
+        },
+      },
+      plugins: {
+        asProxy: true,
+        list: [
+          { id: this.options.testerPluginId, sourceDir: testerDir },
+          ...(this.options.pluginDir && this.options.pluginId
+            ? [{ id: this.options.pluginId!, sourceDir: resolve(this.options.pluginDir) }]
+            : []),
+        ],
+      },
+    });
+    await this.zotero.run();
 
     // 4. wait for the test window (Zotero cold start takes 15-30s; vitest's
     //    START_TIMEOUT would fire first, hence the handshake)
@@ -82,7 +109,7 @@ export class ZoteroPoolWorker implements PoolWorker {
   }
 
   async stop(): Promise<void> {
-    killZotero();
+    this.zotero?.exit();
     this.zotero = undefined;
     this.bridge?.stop();
     this.bridge = undefined;
