@@ -78,7 +78,7 @@ export class ZoteroPoolWorker implements PoolWorker {
         path: this.options.zoteroBin,
         args: this.options.args,
         devtools: false,
-        connectRDP: false,
+        // connectRDP defaults to !asProxy — proxy addons need no RDP
       },
       profile: {
         path: this.options.profileDir,

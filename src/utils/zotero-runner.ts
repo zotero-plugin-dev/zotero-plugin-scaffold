@@ -38,9 +38,9 @@ interface BinaryOptions {
   debugOutputWindow?: boolean;
   debugOutputFile?: boolean;
   /**
-   * Connect to the remote Firefox debugger server (RDP). Disable when the
-   * caller does not need it — e.g. the test pool, which installs plugins as
-   * proxy addons and would otherwise pay the RDP startup cost.
+   * Connect to the remote Firefox debugger server (RDP). Defaults to
+   * `!plugins.asProxy` — proxy addons are installed via profile files and
+   * need no RDP. Set explicitly to override the derivation.
    */
   connectRDP?: boolean;
 }
@@ -65,7 +65,6 @@ const default_options = {
     devtools: true,
     debugOutputWindow: false,
     debugOutputFile: false,
-    connectRDP: true,
   },
   profile: {
     path: "./.scaffold/profile",
@@ -86,7 +85,7 @@ export class ZoteroRunner {
   public zotero?: ChildProcessWithoutNullStreams;
 
   constructor(options: ZoteroRunnerOptions) {
-    this.options = toMerged(default_options, options);
+    this.options = toMerged(default_options, options) as InternalZoteroRunnerOptions;
 
     if (!options.binary.path)
       throw new Error("Binary path must be provided.");
@@ -98,6 +97,16 @@ export class ZoteroRunner {
       this.options.profile.dataDir = "./.scaffold/data";
 
     logger.debug(this.options);
+  }
+
+  /**
+   * Whether to start and connect to the remote debugger server.
+   * Defaults to `!asProxy`: proxy addons are installed via profile files and
+   * need no RDP; temporary addons are installed over RDP. Explicitly set
+   * `binary.connectRDP` to override (e.g. asProxy with a debug session).
+   */
+  private get connectRDP(): boolean {
+    return this.options.binary.connectRDP ?? !this.options.plugins.asProxy;
   }
 
   get default_profile_path(): string {
@@ -199,7 +208,7 @@ export class ZoteroRunner {
 
     // support for starting the remote debugger server
     const remotePort = await findFreeTcpPort();
-    if (this.options.binary.connectRDP ?? true) {
+    if (this.connectRDP) {
       args.push("-start-debugger-server", String(remotePort));
     }
 
@@ -254,7 +263,7 @@ export class ZoteroRunner {
       this.zotero.stderr?.on("data", () => {});
     }
 
-    if (this.options.binary.connectRDP ?? true) {
+    if (this.connectRDP) {
       logger.debug("Connecting to the remote Firefox debugger...");
       await this.remoteFirefox.connect(remotePort);
       logger.debug(`Connected to the remote Firefox debugger on port: ${remotePort}`);
