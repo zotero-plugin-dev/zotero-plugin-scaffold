@@ -88,6 +88,9 @@ export class ZoteroPoolWorker implements PoolWorker {
           // suppress the first-run connector install page
           "extensions.zotero.firstRun": false,
           "extensions.zotero.firstRun2": false,
+          // proxy addons live in the PROFILE scope; ZoteroRunner's defaults
+          // set enabledScopes=5 (APP|ADDON) which excludes it
+          "extensions.enabledScopes": 15,
           ...this.options.extraPrefs,
         },
       },
@@ -101,7 +104,9 @@ export class ZoteroPoolWorker implements PoolWorker {
         ],
       },
     });
+    process.stdout.write("[zotero-pool] ZoteroRunner.run() starting..." + "\n");
     await this.zotero.run();
+    process.stdout.write("[zotero-pool] ZoteroRunner.run() done" + "\n");
 
     // 4. wait for the test window (Zotero cold start takes 15-30s; vitest's
     //    START_TIMEOUT would fire first, hence the handshake)

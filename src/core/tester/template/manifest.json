@@ -1,13 +1,13 @@
 {
   "manifest_version": 2,
-  "name": "Zotero Vitest Pool (e2e prototype)",
+  "name": "Zotero Tester (vitest pool)",
   "version": "0.1.0",
-  "description": "Runtime-generated tester plugin for the e2e prototype.",
+  "description": "Runtime-generated tester plugin for the vitest pool.",
   "homepage_url": "https://example.com",
   "author": "northword",
   "applications": {
     "zotero": {
-      "id": "zotero-vitest-pool-e2e@prototype",
+      "id": "__TESTER_PLUGIN_ID__",
       "update_url": "https://example.com",
       "strict_min_version": "7.999",
       "strict_max_version": "10.999"

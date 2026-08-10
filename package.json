@@ -32,6 +32,10 @@
     "./vendor": {
       "types": "./dist/vendor.d.ts",
       "import": "./dist/vendor.js"
+    },
+    "./vitest": {
+      "types": "./dist/core/tester/pool/index.d.ts",
+      "import": "./dist/core/tester/pool/index.js"
     }
   },
   "main": "./dist/index.js",
@@ -69,7 +73,8 @@
     "lib": "dist"
   },
   "peerDependencies": {
-    "esbuild": "^0.28.0"
+    "esbuild": "^0.28.0",
+    "vitest": "^4.1.4"
   },
   "peerDependenciesMeta": {
     "esbuild": {

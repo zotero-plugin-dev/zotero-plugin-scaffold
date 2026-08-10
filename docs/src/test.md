@@ -10,17 +10,12 @@ With `zotero-plugin-scaffold`, tests are executed in a live Zotero instance via 
 
 ## Quick Start
 
-### Add Test Script
+There are two ways to run tests in a live Zotero instance:
 
-Ensure `zotero-plugin-scaffold` is installed first. Then add a `test` script to your `package.json`:
-
-```json
-{
-  "scripts": {
-    "test": "zotero-plugin test"
-  }
-}
-```
+1. **`zoteroPool()` in your own `vitest.config.ts`** (recommended) — run with `vitest`,
+   mix Zotero tests with plain Node tests in one command (see below).
+2. **`zotero-plugin test` CLI** — the scaffold-managed entry, which wraps the same
+   pool internally (see [Running Tests via CLI](#running-tests-via-cli)).
 
 ### Install Vitest
 
@@ -30,7 +25,57 @@ Install `vitest` (v4) as a development dependency:
 npm install -D vitest@^4
 ```
 
-Scaffold bundles the Vitest runtime from your local installation with esbuild, so no CDN downloads are involved. It prefers the `vitest` in your project; if it cannot be found there, it falls back to the one bundled with the scaffold itself.
+Scaffold bundles the Vitest runtime from your local installation with rolldown, so no CDN downloads are involved. It prefers the `vitest` in your project; if it cannot be found there, it falls back to the one bundled with the scaffold itself.
+
+### zoteroPool (vitest.config.ts)
+
+Add a project (or a `poolMatchGlobs` rule) that uses the Zotero pool:
+
+```ts twoslash
+import { defineConfig } from "vitest/config";
+import { zoteroPool } from "zotero-plugin-scaffold/vitest";
+
+export default defineConfig({
+  test: {
+    projects: [
+      // plain Node tests (fast, no Zotero needed)
+      {
+        test: {
+          name: "unit",
+          include: ["test/unit/**"],
+          pool: "forks",
+        },
+      },
+      // tests that run inside a real Zotero instance
+      {
+        test: {
+          name: "zotero",
+          include: ["test/zotero/**"],
+          pool: zoteroPool(),
+        },
+      },
+    ],
+  },
+});
+```
+
+```bash
+vitest            # runs both projects; unit tests are fast, Zotero tests boot Zotero
+vitest zotero     # only the Zotero project
+```
+
+`zoteroPool` options (all optional):
+
+| Option                   | Default                         | Description                                                  |
+| ------------------------ | ------------------------------- | ------------------------------------------------------------ |
+| `zoteroBin`              | `ZOTERO_PLUGIN_ZOTERO_BIN_PATH` | Path to the Zotero executable                                |
+| `profileDir`             | `.scaffold/tester-profile`      | Zotero profile directory                                     |
+| `dataDir`                | `.scaffold/tester-data`         | Zotero data directory                                        |
+| `pluginDir` / `pluginId` | —                               | Load the user's plugin as a proxy addon alongside the tester |
+| `args`                   | —                               | Extra Zotero command-line arguments                          |
+| `startupDelay`           | `1000`                          | Delay after Zotero startup before the test window opens      |
+| `abortOnFail`            | `false`                         | Abort the run on the first failing test                      |
+| `extraPrefs`             | —                               | Extra `prefs.js` entries                                     |
 
 ### Writing Test Cases
 
@@ -50,12 +95,34 @@ describe("Startup", () => {
 });
 ```
 
-### Running Tests
+### Running Tests via CLI
+
+::: info
+The CLI currently drives the legacy runner; it will be rewired to the same
+`zoteroPool` implementation (thin wrapper) in an upcoming release.
+:::
 
 Run the tests using:
 
 ```bash
 npm run test
+```
+
+### Running Tests with CLI Options
+
+You can override configuration settings with CLI parameters. Use `zotero-plugin test --help` to view available options:
+
+```bash
+$ pnpm zotero-plugin test --help
+Usage: cli test [options]
+
+Run tests
+
+Options:
+  --abort-on-fail   Abort the test suite on first failure
+  --exit-on-finish  Exit the test suite after all tests have run
+  --no-watch        Same with `exit-on-finish`
+  -h, --help        display help for command
 ```
 
 ## Advanced Configuration

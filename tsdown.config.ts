@@ -3,7 +3,7 @@ import { defineConfig } from "tsdown";
 import Raw from "unplugin-raw/rolldown";
 
 export default defineConfig({
-  entry: ["./src/index.ts", "./src/vendor", "./src/cli.ts"],
+  entry: ["./src/index.ts", "./src/vendor", "./src/cli.ts", "./src/core/tester/pool/index.ts", "./src/core/tester/bundler.ts"],
   clean: true,
   // unbundle: true,
 
@@ -30,5 +30,9 @@ export default defineConfig({
   outputOptions: {
     chunkFileNames: "shared/scaffold-[name]-[hash].mjs",
   },
+  copy: [
+    { from: "src/core/tester/template", to: "dist/core/tester" },
+    { from: "src/core/tester/page", to: "dist/core/tester" },
+  ],
   plugins: [Raw()],
 });
