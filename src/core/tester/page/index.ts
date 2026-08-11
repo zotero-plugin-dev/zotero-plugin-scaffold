@@ -53,4 +53,14 @@ function dump(str: string): void {
 const protocol = new WorkerProtocol(transport, { runMethod }, dump);
 protocol.start();
 
+// Expose the worker state under vitest's official global key so vi members
+// that read `getWorkerState()` work in the page: fake timers, setConfig,
+// stubEnv, resetModules. The state object is the same one the protocol
+// updates (ctx/config on start), so nothing else changes.
+Object.defineProperty(globalThis, "__vitest_worker__", {
+  value: protocol.workerState,
+  configurable: true,
+  writable: true,
+});
+
 dump(`setup loaded, polling http://127.0.0.1:${port}\n`);
