@@ -75,6 +75,14 @@ export interface BuildTesterPluginOptions {
    * Defaults to "full".
    */
   mode?: "full" | "tests-only";
+  /**
+   * Explicit test file paths to bundle (absolute). Skips the glob step —
+   * watch takeovers pass the run request's context.files (vitest's
+   * affected-file set), which is the minimal correct set: files not in it
+   * are not re-run, and files whose shared deps changed are included by
+   * vitest's dependency tracking. Defaults to globbing `testFiles`.
+   */
+  files?: string[];
 }
 
 function resolveDeps(): Record<string, string> {
@@ -168,8 +176,8 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
 
   // ---- test file discovery ----
   const testDir = options.testDir ?? process.cwd();
-  const patterns = options.testFiles ?? ["**/*.{test,spec}.?(c|m)[jt]s?(x)"];
-  const testFiles = await glob(patterns, { cwd: testDir, absolute: true });
+  const testFiles = options.files
+    ?? await glob(options.testFiles ?? ["**/*.{test,spec}.?(c|m)[jt]s?(x)"], { cwd: testDir, absolute: true });
   const sep = String.fromCharCode(92); // backslash, built at runtime to dodge escaping
   const manifest: Record<string, string> = {};
   void manifest;

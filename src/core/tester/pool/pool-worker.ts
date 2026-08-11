@@ -201,7 +201,10 @@ export class ZoteroPoolWorker implements PoolWorker {
     // survives across watch runs).
     if (watch && this.hasRun && Array.isArray(invalidates) && invalidates.length > 0) {
       buildStampCounter += 1;
-      await this.buildBundle(buildStampCounter.toString(36), undefined, "tests-only");
+      // Rebuild only the files vitest will re-run (context.files — its
+      // affected-file set already includes files whose shared deps changed).
+      const files = (context.files ?? []).map((f: any) => f.filepath ?? f);
+      await this.buildBundle(buildStampCounter.toString(36), undefined, "tests-only", files);
     }
     this.hasRun = true;
     // Always hand the current manifest to the page: after a rebuild it
@@ -343,6 +346,7 @@ export class ZoteroPoolWorker implements PoolWorker {
     stamp?: string,
     testerDir = join(process.cwd(), ".scaffold", "tester", this.projectSuffix),
     mode: "full" | "tests-only" = "full",
+    files?: string[],
   ): Promise<void> {
     const key = resolve(testerDir);
     const chain = (bundleChains.get(key) ?? Promise.resolve()).then(async () => {
@@ -351,6 +355,7 @@ export class ZoteroPoolWorker implements PoolWorker {
         port: this.bridge?.port ?? 0,
         testDir: process.cwd(),
         testFiles: this.poolOptions.project.config.include,
+        files,
         stamp,
         mode,
       });
