@@ -21,10 +21,6 @@ export interface ZoteroPoolOptions {
   testerPluginId?: string;
   /** Additional Zotero command-line arguments. */
   args?: string[];
-  /** Milliseconds to wait after Zotero startup before opening the test window. */
-  startupDelay?: number;
-  /** Abort the run on the first failing test. */
-  abortOnFail?: boolean;
   /** Extra preferences written to the profile's prefs.js. */
   extraPrefs?: Record<string, string | number | boolean>;
 }
@@ -37,8 +33,6 @@ export interface ResolvedZoteroPoolOptions {
   pluginId?: string;
   testerPluginId: string;
   args?: string[];
-  startupDelay: number;
-  abortOnFail: boolean;
   extraPrefs: Record<string, string | number | boolean>;
 }
 
@@ -67,8 +61,6 @@ export function resolveOptions(
     pluginId: options.pluginId,
     testerPluginId: options.testerPluginId ?? TESTER_PLUGIN_ID,
     args: options.args,
-    startupDelay: options.startupDelay ?? 1000,
-    abortOnFail: options.abortOnFail ?? false,
     extraPrefs: options.extraPrefs ?? {},
   };
 }

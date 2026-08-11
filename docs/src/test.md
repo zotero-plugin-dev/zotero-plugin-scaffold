@@ -1,6 +1,6 @@
 # Testing
 
-This module facilitates testing Zotero plugins in a live Zotero environment using the [Vitest](https://vitest.dev/) runtime (the `expect`/`vi` API, powered by `@vitest/runner` and `@vitest/expect`, bundled into the test page with esbuild).
+This module facilitates testing Zotero plugins in a live Zotero environment using the [Vitest](https://vitest.dev/) runtime. Test files run inside a real Zotero instance through a vitest **custom pool** (`zoteroPool`): the vitest server drives the run natively — reporters, filtering, watch and exit codes are all vitest's own — while the test page is built at bundle time with rolldown and loaded into a chrome:// window where the privileged `Zotero.*` APIs are available.
 
 ## Why Use This Approach?
 
@@ -25,7 +25,7 @@ Install `vitest` (v5) as a development dependency:
 npm install -D vitest@^5
 ```
 
-Scaffold bundles the Vitest runtime from your local installation with rolldown, so no CDN downloads are involved. It prefers the `vitest` in your project; if it cannot be found there, it falls back to the one bundled with the scaffold itself.
+Scaffold bundles the Vitest runtime (resolved from your `vitest` installation) with rolldown, so no CDN downloads are involved.
 
 ### zoteroPool (vitest.config.ts)
 
@@ -81,8 +81,6 @@ vitest zotero     # only the Zotero project
 | `dataDir`                | `.scaffold/tester-data`         | Zotero data directory                                        |
 | `pluginDir` / `pluginId` | —                               | Load the user's plugin as a proxy addon alongside the tester |
 | `args`                   | —                               | Extra Zotero command-line arguments                          |
-| `startupDelay`           | `1000`                          | Delay after Zotero startup before the test window opens      |
-| `abortOnFail`            | `false`                         | Abort the run on the first failing test                      |
 | `extraPrefs`             | —                               | Extra `prefs.js` entries                                     |
 
 ::: warning Required project settings
@@ -174,8 +172,6 @@ export default defineConfig({
     watch: true,
     abortOnFail: false,
     headless: false,
-    startupDelay: 10000,
-    waitForPlugin: `() => Zotero.MyPlugin.initialized`,
     hooks: {}
   }
 });
@@ -189,19 +185,67 @@ Test files must have filenames ending with `.spec.js` or `.spec.ts` to be recogn
 
 ### Delay Running
 
-Ideally, tests should start only after the plugin has fully loaded. However, since Zotero does not provide a built-in mechanism to detect when a plugin is ready, you need to define a custom flag in your plugin to indicate its readiness.
+The pool starts tests as soon as the test window has loaded (the ready
+handshake). There is no built-in "wait for the plugin to initialize" delay —
+the old `test.startupDelay` / `test.waitForPlugin` options are not wired up
+in the vitest-pool implementation.
 
-By default, Scaffold delays test execution for 10,000 milliseconds after the temporary plugin is loaded (`test.startDelay`). While this duration is sufficient for most plugins, hardware performance and plugin complexity may require adjustments.
+If your tests need the plugin to be ready, wait for your own flag inside the
+test file, e.g. with a polling helper:
 
-To handle such cases, use the `test.waitForPlugin` configuration option. This option accepts a function body as a string. Tests will begin only after this function returns `true`.
+```ts
+import { beforeAll } from "vitest";
+
+beforeAll(async () => {
+  const deadline = Date.now() + 30000;
+  while (!Zotero.MyPlugin?.initialized) {
+    if (Date.now() > deadline)
+      throw new Error("plugin did not initialize");
+    await new Promise(r => setTimeout(r, 100));
+  }
+});
+```
+
+## `vi` Support
+
+The full `vi` API is available inside Zotero tests, with two groups:
+
+**Working** (verified on real Zotero): `vi.fn` / `vi.spyOn` / `vi.mocked` /
+`vi.stubGlobal` / `vi.clearAllMocks` / `vi.resetAllMocks` /
+`vi.restoreAllMocks` / `vi.useFakeTimers` (with `advanceTimersByTime`,
+`setSystemTime`, ...) / `vi.setConfig` / `vi.stubEnv` / `vi.resetModules` /
+`vi.waitFor` / `vi.waitUntil`.
+
+**Not available** (architectural limitation): `vi.mock` / `vi.doMock` /
+`vi.unmock` / `vi.doUnmock` / `vi.importActual` / `vi.importMock` and
+`vi.hoisted`. Vitest's module mocker needs the Vite module pipeline to
+intercept imports; the test page loads pre-bundled ESM with no import hook,
+so `vi.mock()` throws `Vitest mocker was not initialized in this
+environment`. Use `vi.fn` / `vi.spyOn` or manual dependency injection
+instead.
+
+## Debugging
+
+- Set `ZOTERO_PLUGIN_LOG_LEVEL=DEBUG` (or `logLevel: "DEBUG"` in the
+  scaffold config) to see the pool's internals — bridge port, bundle stats,
+  Zotero launch, worker takeovers.
+- Page errors (a failing test-window load, unhandled rejections) are
+  mirrored to the terminal as `[page-error]` / `[page-unhandledrejection]`
+  warnings, so a window that never handshakes is diagnosable without debug
+  mode.
 
 ## Watch Mode
 
-In watch mode, Scaffold automatically:
+In watch mode (`zotero-plugin test`, or `vitest --watch`), Scaffold:
 
-- Reruns affected tests when test files change (a fresh Zotero instance is
-  booted per rerun; the pool rebuilds the test bundle with a new stamp so the
-  updated code is what actually runs).
+- **Keeps the same Zotero instance alive between reruns**: after each run the
+  worker soft-stops (Zotero and its test window stay running) and the next run
+  takes the instance over, so a file change re-runs in ~15ms instead of a
+  ~30s cold boot.
+- **Rebuilds only the affected test files** when they change: the pool
+  rebundles just the files vitest is about to re-run (with a fresh artifact
+  stamp) and hands the page the new manifest, so the updated code is what
+  actually runs.
 - Recompiles source code and reloads plugins when the source changes.
 
 ## Running Tests on CI

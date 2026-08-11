@@ -44,7 +44,6 @@ export default defineConfig({
     pool: zoteroPool({
       pluginDir: ${JSON.stringify(pluginDir)},
       pluginId: ${JSON.stringify(ctx.id)},
-      startupDelay: ${ctx.test.startupDelay},
       extraPrefs: ${JSON.stringify(ctx.test.prefs)},
     }),
   },
