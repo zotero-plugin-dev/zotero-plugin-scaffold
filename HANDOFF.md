@@ -119,7 +119,7 @@ src/core/tester/
 5. `close timed out after 10000ms` 警告（退出码正确、进程干净，vitest custom pool 噪音，不阻塞；若想消掉可研究 vitest Pool 对 custom pool 的 teardown 时序）
 6. ~~阶段 4~~ → **已完成**（vitest 5.0.0-beta.7 全链路；vi.mock 确认 v4/v5 均不可用，架构性限制；见 §9）。待办：vitest v5 正式发布后 peer 版本从 `^5.0.0-beta.0` 改为 `^5.0.0`
 7. CI/headless：`prepareHeadless`（Linux）代码在，需 Linux CI 真机验证（本机 Windows 无法验证）
-8. 已知坑（勿重踩）：python 字符串替换在 eslint 格式化后静默失败（改文件用 write 或行级匹配）；`\\n` 经工具层转义（用 `chr(92)+"n"`）；eslint --fix 会重排 if/import（替换前先看实际格式）；Windows 下编辑器会写 CRLF（`core.autocrlf=input` 下 `git diff` 报假差异，提交前先转 LF）；**改页面/协议相关代码后 dist 需 `pnpm build:tsdown` 重建**（验证项目 symlink 直接吃 dist，且 `dist/core/tester/page/*.ts` 是源码拷贝）；execSync 传含嵌套引号的 powershell 命令会被 cmd 吞掉（用 `-EncodedCommand`）；git 会把含 NUL 字节的文件当二进制（虚拟模块 id 用 `\0` 转义常量而非字面 NUL）
+8. 已知坑（勿重踩）：**模板字符串拼接 PowerShell 脚本时，注释会诱发 eslint --fix 重排成 ...（一元加 → NaN 插值，脚本静默失败 → Zotero 残留）——用数组 join 拼接**；python 字符串替换在 eslint 格式化后静默失败（改文件用 write 或行级匹配）；`\\n` 经工具层转义（用 `chr(92)+"n"`）；eslint --fix 会重排 if/import（替换前先看实际格式）；Windows 下编辑器会写 CRLF（`core.autocrlf=input` 下 `git diff` 报假差异，提交前先转 LF）；**改页面/协议相关代码后 dist 需 `pnpm build:tsdown` 重建**（验证项目 symlink 直接吃 dist，且 `dist/core/tester/page/*.ts` 是源码拷贝）；execSync 传含嵌套引号的 powershell 命令会被 cmd 吞掉（用 `-EncodedCommand`）；git 会把含 NUL 字节的文件当二进制（虚拟模块 id 用 `\0` 转义常量而非字面 NUL）
 
 ## 8. 阶段 3 实现备忘（提交 `996dd2e`）
 
