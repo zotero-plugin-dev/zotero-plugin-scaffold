@@ -231,7 +231,7 @@ export class ZoteroPoolWorker implements PoolWorker {
     // per-run context manifest makes it import the updated test code.
     const profileKey = resolve(this.options.profileDir);
     const live = liveInstances.get(profileKey);
-    if (live && isZoteroRunningByProfile(profileKey)) {
+    if (live && live.zotero.isRunning()) {
       liveInstances.delete(profileKey);
       this.zotero = live.zotero;
       this.bridge = live.bridge;

@@ -412,6 +412,16 @@ export class ZoteroRunner {
       await this.reloadAllTemporaryPlugins();
   }
 
+  /**
+   * True if a zotero process using this runner's profile is still running.
+   * Instance-level wrapper over isZoteroRunningByProfile — callers that
+   * hold a runner (e.g. the pool's watch takeover) should use this instead
+   * of re-deriving the profile path.
+   */
+  public isRunning(): boolean {
+    return isZoteroRunningByProfile(resolve(this.options.profile.path));
+  }
+
   public exit(): void {
     const child = this.zotero;
     const pid = child?.pid;
