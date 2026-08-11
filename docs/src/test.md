@@ -183,28 +183,45 @@ The `test.entries` option allows you to configure the source directories for tes
 
 Test files must have filenames ending with `.spec.js` or `.spec.ts` to be recognized and executed.
 
-### Delay Running
+### Waiting for the Plugin to Be Ready
 
 The pool starts tests as soon as the test window has loaded (the ready
-handshake). There is no built-in "wait for the plugin to initialize" delay —
-the old `test.startupDelay` / `test.waitForPlugin` options are not wired up
-in the vitest-pool implementation.
-
-If your tests need the plugin to be ready, wait for your own flag inside the
-test file, e.g. with a polling helper:
+handshake), which can be before your plugin finishes initializing. Use
+vitest's **`setupFiles`** to wait for your own readiness flag — setup files
+run before any test, are bundled into the test page like test files, and the
+wait shows up in the `setup` part of vitest's Duration line:
 
 ```ts
-import { beforeAll } from "vitest";
+// setup-plugin-ready.ts — reference it via `setupFiles` in the zotero project
+const ready = () => Zotero.MyPlugin?.initialized;
+const deadline = Date.now() + 30000;
+while (!ready()) {
+  if (Date.now() > deadline)
+    throw new Error("plugin did not initialize in time");
+  await new Promise(r => setTimeout(r, 100));
+}
+```
 
-beforeAll(async () => {
-  const deadline = Date.now() + 30000;
-  while (!Zotero.MyPlugin?.initialized) {
-    if (Date.now() > deadline)
-      throw new Error("plugin did not initialize");
-    await new Promise(r => setTimeout(r, 100));
-  }
+```ts
+// vitest.config.ts
+import { defineConfig } from "vitest/config";
+import { zoteroPool } from "zotero-plugin-scaffold/vitest";
+
+export default defineConfig({
+  test: {
+    name: "zotero",
+    include: ["test/zotero/**"],
+    setupFiles: ["./setup-plugin-ready.ts"],
+    isolate: false,
+    fileParallelism: false,
+    pool: zoteroPool(),
+  },
 });
 ```
+
+When using the CLI (`zotero-plugin test`), the legacy `test.waitForPlugin`
+flag is still honored: the CLI generates a setup file that polls your
+expression (e.g. `() => Zotero.MyPlugin.initialized`) before any test runs.
 
 ## `vi` Support
 

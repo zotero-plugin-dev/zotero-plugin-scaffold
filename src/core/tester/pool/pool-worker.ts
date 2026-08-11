@@ -215,6 +215,8 @@ export class ZoteroPoolWorker implements PoolWorker {
       // Rebuild only the files vitest will re-run (context.files — its
       // affected-file set already includes files whose shared deps changed).
       const files = (context.files ?? []).map(f => f.filepath);
+      // Setup files participate in the same rebuild: a changed setup must
+      // get a new stamp too, or the page's module cache keeps the old one.
       await this.buildBundle(buildStampCounter.toString(36), undefined, "tests-only", files);
     }
     this.hasRun = true;
@@ -367,6 +369,7 @@ export class ZoteroPoolWorker implements PoolWorker {
         testDir: process.cwd(),
         testFiles: this.poolOptions.project.config.include,
         files,
+        setupFiles: this.poolOptions.project.config.setupFiles,
         stamp,
         mode,
       });

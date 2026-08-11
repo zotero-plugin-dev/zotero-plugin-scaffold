@@ -14,6 +14,15 @@ export function generateVitestConfig(ctx: Context): string {
   const include = entries.map(entry =>
     `${entry.replace(/[\\/]+$/, "")}/**/*.{spec,test}.?(c|m)[jt]s?(x)`,
   );
+  // The legacy test.waitForPlugin flag becomes a vitest setupFile: the CLI
+  // writes .scaffold/setup-wait-plugin.js (see Test.run) that polls the
+  // expression before any test starts. The pool bundles setupFiles into the
+  // page like test files, and the wait shows up in vitest's "setup" duration.
+  const waitForPlugin = ctx.test.waitForPlugin?.trim();
+  const setupFiles = waitForPlugin && waitForPlugin !== "() => true"
+    ? `,
+    setupFiles: [${JSON.stringify(join(process.cwd(), ".scaffold", "setup-wait-plugin.js"))}]`
+    : "";
 
   // The plugin's built source, as a cwd-relative path for the pool launcher.
   const sep = String.fromCharCode(92);
@@ -40,7 +49,7 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: ${ctx.test.vitest.timeout},
     hookTimeout: ${ctx.test.vitest.timeout},
-    bail: ${ctx.test.abortOnFail ? 1 : 0}${reporter}${outputFile},
+    bail: ${ctx.test.abortOnFail ? 1 : 0}${reporter}${outputFile}${setupFiles},
     pool: zoteroPool({
       pluginDir: ${JSON.stringify(pluginDir)},
       pluginId: ${JSON.stringify(ctx.id)},

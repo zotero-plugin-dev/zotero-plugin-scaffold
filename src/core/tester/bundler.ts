@@ -83,6 +83,12 @@ export interface BuildTesterPluginOptions {
    * vitest's dependency tracking. Defaults to globbing `testFiles`.
    */
   files?: string[];
+  /**
+   * Vitest setupFiles (absolute paths) to bundle alongside the test files.
+   * They are loaded by the page's runner.importFile(type "setup") before
+   * each collected file, so they must be part of the manifest too.
+   */
+  setupFiles?: string[];
 }
 
 function resolveDeps(): Record<string, string> {
@@ -182,7 +188,8 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
   const manifest: Record<string, string> = {};
   void manifest;
   const testInput: Record<string, string> = {};
-  for (const file of testFiles) {
+  const inputFiles = [...testFiles, ...(options.setupFiles ?? [])];
+  for (const file of inputFiles) {
     const relPath = relative(testDir, file).split(sep).join("/");
     // flatten the source path so every artifact sits directly in content/tests/
     // (their relative import "../runtime.js" then resolves correctly); the
@@ -193,6 +200,8 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
     testInput[outName.slice(0, outName.lastIndexOf("."))] = file;
     manifest[file.split(sep).join("/")] = outName;
   }
+  // setup files also participate in the "bundled N files" log for clarity
+  const testFilesCount = testFiles.length;
 
   if (!testsOnly) {
   // ---- bundle the vitest runtime ----
@@ -287,7 +296,7 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
     });
   }
 
-  logger.debug(`[zotero-pool] bundled ${testFiles.length} test file(s) → ${contentDir}`);
+  logger.debug(`[zotero-pool] bundled ${testFilesCount} test file(s) → ${contentDir}`);
   return manifest;
 }
 

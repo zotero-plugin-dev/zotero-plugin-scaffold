@@ -49,7 +49,10 @@ export class ZoteroVitestRunner {
     this.manifest = manifest ?? bakedManifest;
     this.config = {
       root: config.root || "/",
-      setupFiles: [],
+      // vitest runs setupFiles before each collected file (runner.importFile
+      // with type "setup"); the bundler bakes them into the manifest like
+      // test files, so they load from the bundled artifacts.
+      setupFiles: config.setupFiles ?? [],
       // Must match the server's project name: file task ids are hashed from
       // `relative(root, filepath) + projectName`, and the server links the
       // collected task to the specification via that id. A mismatch (e.g.

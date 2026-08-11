@@ -63,4 +63,15 @@ describe("generateVitestConfig", () => {
     expect(config).not.toContain("reporters");
     expect(config).not.toContain("outputFile");
   });
+
+  it("turns test.waitForPlugin into a setupFile (legacy flag)", () => {
+    const config = generateVitestConfig(makeContext({ waitForPlugin: "() => Zotero.MyPlugin.initialized" }));
+    expect(config).toContain("setupFiles:");
+    expect(config).toContain("setup-wait-plugin.js");
+  });
+
+  it("omits setupFiles for the default waitForPlugin", () => {
+    const config = generateVitestConfig(makeContext());
+    expect(config).not.toContain("setupFiles");
+  });
 });
