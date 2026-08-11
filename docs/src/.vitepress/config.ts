@@ -33,7 +33,7 @@ export default defineConfig({
       {
         text: "Design",
         items: [
-          { text: "Vitest v5 Refactor", link: "/design/vitest-v5-refactor" },
+          { text: "Vitest Pool", link: "/design/vitest-pool" },
         ],
       },
       {
