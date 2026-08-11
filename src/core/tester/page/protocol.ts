@@ -20,7 +20,6 @@ export interface RunHandlers {
   runMethod: (context: RunContext, isCollect: boolean, state: WorkerStateLike) => Promise<void>;
 }
 
-export class WorkerProtocol {
 /**
  * Worker protocol for the in-page test runner, mirroring vitest's official
  * `init()` from `vitest/worker` (message framing, not the node internals).
@@ -40,7 +39,7 @@ export class WorkerProtocol {
  * chunk by the bundler, so the page and the test files share one instance of
  * every vitest module.
  */
-
+export class WorkerProtocol {
   private readonly state: WorkerStateLike;
   private readonly rpc: PageRpc;
   private pollTimer: ReturnType<typeof setInterval> | undefined;

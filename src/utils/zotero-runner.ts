@@ -87,6 +87,13 @@ const default_options = {
   },
 } satisfies DefaultZoteroRunnerOptions;
 
+/**
+ * Manages one Zotero process: profile preparation, launch (optionally with
+ * the remote debugger), proxy/temporary plugin installation, reloading and
+ * shutdown. The pool keeps one runner per live instance; helpers that act
+ * on a profile without a runner (cold-boot cleanup, takeover checks) live
+ * as module-level functions below.
+ */
 export class ZoteroRunner {
   private options: InternalZoteroRunnerOptions;
   private remoteFirefox = new RemoteFirefox();

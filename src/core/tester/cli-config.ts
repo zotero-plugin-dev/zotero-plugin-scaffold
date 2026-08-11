@@ -3,13 +3,13 @@ import { join, relative } from "node:path";
 import process from "node:process";
 import { toArray } from "../../utils/string.js";
 
-export function generateVitestConfig(ctx: Context): string {
 /**
  * Generates the temporary vitest config that the `zotero-plugin test` CLI
  * delegates to. The config wires the zotero pool (same implementation the
  * user would configure manually — the CLI is a thin wrapper).
  */
 
+export function generateVitestConfig(ctx: Context): string {
   const entries = toArray(ctx.test.entries);
   const include = entries.map(entry =>
     `${entry.replace(/[\\/]+$/, "")}/**/*.{spec,test}.?(c|m)[jt]s?(x)`,

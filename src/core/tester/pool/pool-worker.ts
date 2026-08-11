@@ -55,6 +55,11 @@ export interface WorkerResources {
   dataDir: string;
 }
 
+/**
+ * Finds an active worker sharing the same profile/data dirs — two zotero
+ * projects booting a Zotero against the same resources must not run in
+ * parallel.
+ */
 export function findResourceConflict(
   active: ReadonlySet<{ resources: WorkerResources }>,
   resources: WorkerResources,
@@ -62,12 +67,11 @@ export function findResourceConflict(
   return [...active].find(w => w.resources.profileDir === resources.profileDir && w.resources.dataDir === resources.dataDir)?.resources;
 }
 
-export class ZoteroPoolWorker implements PoolWorker {
 /**
  * Pool worker: owns the HTTP bridge, the bundling step and the Zotero
  * process lifecycle. Implements vitest's `PoolWorker` interface.
  */
-
+export class ZoteroPoolWorker implements PoolWorker {
   readonly name = "zotero";
   private readonly poolOptions: PoolOptions;
   private readonly options: ReturnType<typeof resolveOptions>;
