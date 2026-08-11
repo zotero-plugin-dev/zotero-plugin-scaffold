@@ -472,7 +472,8 @@ function killByProfile(profilePath: string): void {
       // -EncodedCommand (UTF-16LE base64) avoids the nested-quote mangling
       // that execSync → cmd.exe would inflict on a plain -Command string.
       const escaped = profilePath.replaceAll("'", "''");
-      const script = `Get-CimInstance Win32_Process -Filter "Name='zotero.exe'" `
+      const script = `$ProgressPreference = 'SilentlyContinue'; `
+        + `Get-CimInstance Win32_Process -Filter "Name='zotero.exe'" `
         + `| Where-Object { $_.CommandLine -like '*${escaped}*' } `
         + `| ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
       const encoded = Buffer.from(script, "utf16le").toString("base64");

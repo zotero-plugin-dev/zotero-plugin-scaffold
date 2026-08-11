@@ -8,6 +8,7 @@ import { join, resolve } from "node:path";
 import process from "node:process";
 import { delay } from "es-toolkit";
 import * as flatted from "flatted";
+import { logger } from "../../../utils/logger.js";
 import { ZoteroRunner } from "../../../utils/zotero-runner.js";
 import { buildTesterPlugin } from "../bundler.js";
 import { HttpBridge } from "./http-bridge.js";
@@ -192,8 +193,8 @@ export class ZoteroPoolWorker implements PoolWorker {
         if (attempt >= maxAttempts) {
           throw error;
         }
-        process.stdout.write(
-          `[zotero-pool] test window did not come up (attempt ${attempt}/${maxAttempts}), retrying\n`,
+        logger.warn(
+          `[zotero-pool] test window did not come up (attempt ${attempt}/${maxAttempts}), retrying`,
         );
         await delay(2000);
       }
@@ -206,7 +207,7 @@ export class ZoteroPoolWorker implements PoolWorker {
     const bridge = new HttpBridge(message => this.emit("message", message));
     await bridge.start();
     this.bridge = bridge;
-    process.stdout.write(`[zotero-pool] HTTP bridge on http://127.0.0.1:${bridge.port}\n`);
+    logger.debug(`[zotero-pool] HTTP bridge on http://127.0.0.1:${bridge.port}`);
 
     // 2. bundle the tester plugin (page runtime + test files); per-project
     //    dir so parallel projects never overwrite each other's bridge port
@@ -245,9 +246,9 @@ export class ZoteroPoolWorker implements PoolWorker {
         ],
       },
     });
-    process.stdout.write("[zotero-pool] ZoteroRunner.run() starting..." + "\n");
+    logger.debug("[zotero-pool] ZoteroRunner.run() starting...");
     await this.zotero.run();
-    process.stdout.write("[zotero-pool] ZoteroRunner.run() done" + "\n");
+    logger.debug("[zotero-pool] ZoteroRunner.run() done");
 
     // 4. wait for the test window (Zotero cold start takes 15-30s; vitest's
     //    START_TIMEOUT would fire first, hence the handshake)

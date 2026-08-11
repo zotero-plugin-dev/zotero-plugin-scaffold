@@ -8,8 +8,8 @@ import type { AddressInfo } from "node:net";
  *   page → host: POST /debug  (page logs)
  */
 import http from "node:http";
-import process from "node:process";
 import * as flatted from "flatted";
+import { logger } from "../../../utils/logger.js";
 import { findFreeTcpPort } from "../../../utils/zotero/remote-zotero.js";
 
 export class HttpBridge {
@@ -63,7 +63,7 @@ export class HttpBridge {
           res.end("{}");
         }
         catch (e) {
-          console.error(`[zotero-pool] /post parse error:`, e);
+          logger.error(`[zotero-pool] /post parse error: ${e}`);
           res.writeHead(400);
           res.end(String(e));
         }
@@ -76,7 +76,15 @@ export class HttpBridge {
         try {
           const { message } = JSON.parse(body) as { message?: string };
           if (message) {
-            process.stdout.write(`[zotero-page] ${message}`);
+            // page errors are the only signal when the test window fails to
+            // come up — surface them at warn level; everything else is debug
+            const text = String(message);
+            if (text.includes("[page-error]") || text.includes("[page-unhandledrejection]")) {
+              logger.warn(text);
+            }
+            else {
+              logger.debug(text);
+            }
           }
         }
         catch {

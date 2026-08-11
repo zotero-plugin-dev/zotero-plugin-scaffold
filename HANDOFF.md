@@ -149,7 +149,10 @@ src/core/tester/
 - **真机验证**（zotero-format-metadata，vitest 5.0.0-beta.7）：z-a 4/4、z-b 1/1、顶层 2 files 5 tests、
   全量 16 files / 107 passed | 1 skipped、CLI 3 files 6 tests —— 全绿，零残留进程
 - **已知噪音**：`close timed out`/`something prevents N Vite servers from exiting`（v4/v5 均有，
-  退出码正确不阻塞）；`<Objs ...Preparing modules for first use...>` CLIXML 输出是 killByProfile 的
-  powershell 首次执行噪音（可接受；想消可给 powershell 加 `-NoProfile -NonInteractive` 或预热）
+  退出码正确不阻塞）。CLIXML 噪音已修（killByProfile 脚本加 `='SilentlyContinue'`）
+- **日志级别**（后续改动）：pool/bundler/http-bridge 的 `[zotero-pool]`/`[zotero-page]` 日志全部改走
+  scaffold 的 `logger`（复用）：正常流程 `logger.debug`（默认 INFO 隐藏，`ZOTERO_PLUGIN_LOG_LEVEL=DEBUG`
+  或 config `logLevel` 开启）；启动重试/页面错误（`[page-error]`/`[page-unhandledrejection]`）`logger.warn`
+  默认可见
 - 坑：模板字符串内嵌反引号会终止字符串（TS 报 `';' expected`）；tsc 全量有 pre-existing 报错
   `test/e2e/fixtures/build.ts`（自引用包解析，非本改动引入）

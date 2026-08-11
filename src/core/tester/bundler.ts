@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { ensureDir, outputFile } from "fs-extra/esm";
 import { rolldown } from "rolldown";
 import { glob } from "tinyglobby";
+import { logger } from "../../utils/logger.js";
 import pageIndexRaw from "./page/index.ts?raw";
 import pageProtocolRaw from "./page/protocol.ts?raw";
 import pageRpcRaw from "./page/rpc.ts?raw";
@@ -260,8 +261,7 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
     });
   }
 
-  process.stdout.write(`[zotero-pool] bundled ${testFiles.length} test file(s) → ${contentDir}
-`);
+  logger.debug(`[zotero-pool] bundled ${testFiles.length} test file(s) → ${contentDir}`);
   return manifest;
 }
 
