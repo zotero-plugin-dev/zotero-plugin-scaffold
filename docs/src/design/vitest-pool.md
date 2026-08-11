@@ -179,7 +179,7 @@ src/core/tester/
 
 ### E. 遗留事项
 
-- `close timed out after 10000ms` 警告（不阻塞；想消掉需研究 vitest Pool 对 custom pool 的 teardown 时序）
+- ~~`close timed out after 10000ms` 噪音~~ → **已修复（提交 …）**：根因是 rolldown `1.0.0-rc.15` 每次 build 创建的 Rust 回调线程（napi threadsafe function）不释放，句柄挂住 vitest 进程 → 10s 后强制退出。升级 rolldown `1.1.3` 后干净退出；bundler 的 rolldown build 也补了 `close()`；CLI 配置加 `teardownTimeout: 1000` 兜底
 - vitest v5 正式发布后：peer 版本 `^5.0.0-beta.0` → `^5.0.0`，重新验证一次
 - CI/headless：`prepareHeadless`（Linux）需 Linux CI 真机验证（Windows 无法验证）
 - `vi.mock`：潜在路径是构建期接 `@vitest/mocker` 的 `hoistMocks` 转换 + import 重写到 mock 工厂产物（不牺牲特权页面）

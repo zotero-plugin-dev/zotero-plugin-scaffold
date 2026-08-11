@@ -221,12 +221,19 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
       treeshake: false,
       plugins: [createRuntimeResolvePlugin(deps)],
     });
-    await runtimeBuild.write({
-      dir: contentDir,
-      format: "esm",
-      entryFileNames: "runtime.js",
-      sourcemap: true,
-    });
+    try {
+      await runtimeBuild.write({
+        dir: contentDir,
+        format: "esm",
+        entryFileNames: "runtime.js",
+        sourcemap: true,
+      });
+    }
+    finally {
+      // close() frees rolldown's Rust threads/file handles — without it the
+      // process stays alive (vitest then force-exits after teardownTimeout).
+      await runtimeBuild.close();
+    }
     await rm(runtimeEntry, { force: true });
 
     // ---- bundle the page worker (content/setup.js) ----
@@ -284,12 +291,17 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
           },
         ],
       });
-      await pageBuild.write({
-        dir: contentDir,
-        format: "esm",
-        entryFileNames: "setup.js",
-        sourcemap: true,
-      });
+      try {
+        await pageBuild.write({
+          dir: contentDir,
+          format: "esm",
+          entryFileNames: "setup.js",
+          sourcemap: true,
+        });
+      }
+      finally {
+        await pageBuild.close();
+      }
     }
     finally {
       await rm(pageTmp, { recursive: true, force: true }).catch(() => {});
@@ -303,12 +315,17 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
       treeshake: false,
       plugins: [createRuntimeAliasPlugin("../runtime.js")],
     });
-    await testsBuild.write({
-      dir: contentDir,
-      format: "esm",
-      entryFileNames: "[name].js",
-      sourcemap: true,
-    });
+    try {
+      await testsBuild.write({
+        dir: contentDir,
+        format: "esm",
+        entryFileNames: "[name].js",
+        sourcemap: true,
+      });
+    }
+    finally {
+      await testsBuild.close();
+    }
   }
 
   logger.debug(`[zotero-pool] bundled ${testFilesCount} test file(s) → ${contentDir}`);

@@ -45,6 +45,11 @@ export default defineConfig({
     // pool worker is reused (canReuse) instead of booting Zotero per file.
     isolate: false,
     fileParallelism: false,
+    // rolldown's Rust callback threads keep the process alive after the run
+    // (vitest 5 beta + rolldown behavior; they are not released by close()).
+    // Shrink the teardown timeout so the CLI exits ~1s after tests instead
+    // of waiting out the default 10s.
+    teardownTimeout: 1000,
     testTimeout: ${ctx.test.vitest.timeout},
     hookTimeout: ${ctx.test.vitest.timeout},
     bail: ${ctx.test.abortOnFail ? 1 : 0}${reporter}${outputFile},
