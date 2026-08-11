@@ -18,6 +18,13 @@ import { ANSI_ESCAPE_RE, createMessageNormalizer } from "./zotero/log-normalizer
 import { prefs as defaultPrefs } from "./zotero/preference.js";
 import { findFreeTcpPort, RemoteFirefox } from "./zotero/remote-zotero.js";
 
+/** An entry of Zotero's extensions.json (the fields this runner touches). */
+interface AddonInfo {
+  id: string;
+  active?: boolean;
+  userDisabled?: boolean;
+}
+
 export interface ZoteroRunnerOptions {
   binary: BinaryOptions;
   profile: ProfileOptions;
@@ -310,8 +317,8 @@ export class ZoteroRunner {
     // Force enable plugin in extensions.json
     const addonInfoFilePath = join(this.options.profile.path, "extensions.json");
     if (await pathExists(addonInfoFilePath)) {
-      const content = await readJSON(addonInfoFilePath);
-      content.addons = content.addons.map((addon: any) => {
+      const content = await readJSON(addonInfoFilePath) as { addons: AddonInfo[] };
+      content.addons = content.addons.map((addon) => {
         if (addon.id === id && addon.active === false) {
           addon.active = true;
           addon.userDisabled = false;

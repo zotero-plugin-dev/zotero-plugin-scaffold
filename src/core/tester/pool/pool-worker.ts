@@ -1,4 +1,5 @@
-import type { PoolOptions, PoolWorker, WorkerRequest } from "vitest/node";
+import type { PoolOptions, PoolTask, PoolWorker, WorkerRequest } from "vitest/node";
+import type { RunContext } from "../page/types.js";
 import type { ZoteroPoolOptions } from "./options.js";
 /**
  * Pool worker: owns the HTTP bridge, the bundling step and the Zotero
@@ -69,7 +70,7 @@ export class ZoteroPoolWorker implements PoolWorker {
   readonly name = "zotero";
   private readonly poolOptions: PoolOptions;
   private readonly options: ReturnType<typeof resolveOptions>;
-  private readonly listeners = new Map<string, Set<(arg: any) => void>>();
+  private readonly listeners = new Map<string, Set<(arg: unknown) => void>>();
   private bridge?: HttpBridge;
   private zotero?: ZoteroRunner;
 
@@ -97,15 +98,19 @@ export class ZoteroPoolWorker implements PoolWorker {
    * like --watch that never reach the project config.
    */
   private isWatchMode(): boolean {
-    return (this.poolOptions.project.vitest?.config as any)?.watch === true
-      || (this.poolOptions.project.config as any).watch === true;
+    // Watch mode lives on the global vitest config; project.config.watch is
+    // undefined at runtime (and absent from its type).
+    return this.poolOptions.project.vitest?.config.watch === true;
   }
 
   constructor(options: PoolOptions, poolOptions: ZoteroPoolOptions = {}) {
     this.poolOptions = options;
     this.options = resolveOptions(poolOptions, options.project.config.name);
     this.projectSuffix = options.project.config.name ? `-${options.project.config.name}` : "";
-    const { isolate, fileParallelism } = options.project.config as any;
+    const { isolate } = options.project.config;
+    // vitest 5's resolved config type dropped fileParallelism (it is folded
+    // into maxWorkers at resolution); check it at runtime for older majors.
+    const fileParallelism = (options.project.config as { fileParallelism?: boolean }).fileParallelism;
     if (isolate) {
       throw new Error(
         "[zotero-pool] test.isolate must be false: every file runs in the same "
@@ -127,27 +132,28 @@ export class ZoteroPoolWorker implements PoolWorker {
    * test files. With `isolate: false`, vitest schedules files serially and
    * hands the next task to the idle runner instead of spawning a new one.
    */
-  canReuse(task: any): boolean {
+  canReuse(task: PoolTask): boolean {
     return task.worker === this.name;
   }
 
-  on(event: string, callback: (arg: any) => void): void {
+  on(event: string, callback: (arg: unknown) => void): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
     this.listeners.get(event)!.add(callback);
   }
 
-  off(event: string, callback: (arg: any) => void): void {
+  off(event: string, callback: (arg: unknown) => void): void {
     this.listeners.get(event)?.delete(callback);
   }
 
-  private emit(event: string, arg: any): void {
+  private emit(event: string, arg: unknown): void {
     // A "stopped" reply means vitest is tearing this worker down (its stop()
     // call follows after the page handshake) — soft-stop immediately so the
     // next watch-rerun worker can take the instance over before a cold boot
     // could mistake it for a leftover and kill it.
-    if (event === "message" && arg?.type === "stopped" && arg.__vitest_worker_response__ && this.isWatchMode()) {
+    const message = arg as { type?: string; __vitest_worker_response__?: boolean } | undefined;
+    if (event === "message" && message?.type === "stopped" && message.__vitest_worker_response__ && this.isWatchMode()) {
       this.softStop();
     }
     for (const cb of this.listeners.get(event) ?? []) {
@@ -192,8 +198,8 @@ export class ZoteroPoolWorker implements PoolWorker {
     if (message.type !== "run" && message.type !== "collect") {
       return;
     }
-    const context = message.context as any;
-    const invalidates = context?.invalidates;
+    const context = message.context as unknown as RunContext;
+    const invalidates = context.invalidates;
     const watch = this.isWatchMode();
     // The first run/collect of a freshly started worker carries the stale
     // invalidates that caused the restart — start() already bundled the
@@ -203,7 +209,7 @@ export class ZoteroPoolWorker implements PoolWorker {
       buildStampCounter += 1;
       // Rebuild only the files vitest will re-run (context.files — its
       // affected-file set already includes files whose shared deps changed).
-      const files = (context.files ?? []).map((f: any) => f.filepath ?? f);
+      const files = (context.files ?? []).map(f => f.filepath);
       await this.buildBundle(buildStampCounter.toString(36), undefined, "tests-only", files);
     }
     this.hasRun = true;

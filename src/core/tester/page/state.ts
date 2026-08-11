@@ -10,12 +10,13 @@
  * (fake timers, setConfig, stubEnv, resetModules) — the page publishes it
  * under `globalThis.__vitest_worker__`.
  */
-import type { WorkerGlobalState } from "vitest";
+import type { ContextRPC, SerializedConfig, WorkerGlobalState } from "vitest";
+import type { PageHostRpc } from "./types.js";
 
 export interface WorkerStateLike {
-  ctx: any;
-  config: any;
-  rpc: any;
+  ctx: ContextRPC | null;
+  config: SerializedConfig | null;
+  rpc: PageHostRpc;
   evaluatedModules: Map<string, unknown>;
   resolvingModules: Set<unknown>;
   moduleExecutionInfo: Map<string, unknown>;
@@ -37,11 +38,13 @@ export interface WorkerStateLike {
 type _WorkerStateKeysSubset = keyof WorkerStateLike extends keyof WorkerGlobalState ? true : never;
 const _workerStateKeysCheck: _WorkerStateKeysSubset = true;
 
-export function createWorkerState(rpc: any, config: any): WorkerStateLike {
+export function createWorkerState(rpc: PageHostRpc | null, config: SerializedConfig | null): WorkerStateLike {
   return {
     ctx: null,
     config,
-    rpc,
+    // The protocol constructs the state before its birpc client, then assigns
+    // state.rpc right after — non-null by construction from then on.
+    rpc: rpc as PageHostRpc,
     evaluatedModules: new Map(),
     resolvingModules: new Set(),
     moduleExecutionInfo: new Map(),

@@ -11,14 +11,18 @@ import { HttpTransport } from "./transport.js";
 // (see protocol.ts) — the same code path as `globals: true`, so no list is
 // maintained here.
 
-declare const document: any;
-declare const location: any;
-
-const port = new URLSearchParams(location.search).get("port");
+// The test window is opened with ?port=<bridge-port> (see template/bootstrap.js).
+const port = new URLSearchParams(location.search).get("port") ?? "";
+if (!port) {
+  throw new Error("missing ?port= in the test window URL");
+}
 const transport = new HttpTransport(`http://127.0.0.1:${port}`);
 
 function dump(str: string): void {
-  document.querySelector("#status").textContent += str;
+  const status = document.querySelector("#status");
+  if (status) {
+    status.textContent += str;
+  }
   // Mirror page logs to the host for headless debugging.
   transport.debug(str).catch(() => {});
 }

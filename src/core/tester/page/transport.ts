@@ -11,7 +11,19 @@
  *   handshake:  POST /ready (fires once the page starts polling)
  *   debug:      POST /debug (page logs mirrored to the host)
  */
-declare const Zotero: any;
+/** Minimal surface of Zotero's privileged HTTP client used by the page. */
+interface ZoteroHttpResponse {
+  status: number;
+  responseText: string;
+}
+interface ZoteroHttp {
+  request: (
+    method: string,
+    url: string,
+    options?: { body?: string; headers?: Record<string, string> },
+  ) => Promise<ZoteroHttpResponse>;
+}
+declare const Zotero: { HTTP: ZoteroHttp };
 
 export class HttpTransport {
   constructor(private readonly base: string) {}

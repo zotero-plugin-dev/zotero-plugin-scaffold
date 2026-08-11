@@ -1,4 +1,3 @@
-import type { ZoteroPoolOptions } from "./options.js";
 /**
  * Zotero test pool for vitest — the public entry point.
  *
@@ -35,20 +34,20 @@ import type { ZoteroPoolOptions } from "./options.js";
  *   (maxWorkers is 1 for the whole group); each uses its own derived
  *   profile/data dir, so they never contend for resources.
  */
+import type { PoolRunnerInitializer } from "vitest/node";
+import type { ZoteroPoolOptions } from "./options.js";
 import { ZoteroPoolWorker } from "./pool-worker.js";
 
 /**
  * The pool object passed to vitest's `pool` option.
  *
- * The signature intentionally avoids referencing vitest's own types: the
- * declaration bundler (rolldown-plugin-dts) inlines dependency types, and an
- * inlined `PoolRunnerInitializer` copy would be nominally incompatible with
- * the type the user's `vitest/config` resolves. `createPoolWorker: any` stays
- * structurally assignable to vitest's `PoolRunnerInitializer`.
+ * createPoolWorker is typed via vitest's PoolRunnerInitializer. The
+ * declaration file imports the type instead of inlining it, so the user's
+ * own vitest version (a peer dependency) provides the definition.
  */
 export interface ZoteroPool {
   readonly name: string;
-  createPoolWorker: (options: any) => any;
+  createPoolWorker: PoolRunnerInitializer["createPoolWorker"];
 }
 
 export function zoteroPool(options: ZoteroPoolOptions = {}): ZoteroPool {

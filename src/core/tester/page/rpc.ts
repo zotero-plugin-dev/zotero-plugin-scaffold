@@ -1,4 +1,5 @@
 import type { WorkerStateLike } from "./state.js";
+import type { PageHostRpc } from "./types.js";
 /**
  * birpc client for the in-page worker, mirroring vitest's `createRuntimeRpc`
  * (packages/vitest/src/runtime/rpc.ts).
@@ -25,7 +26,8 @@ export function errorReplacer(_key: string, value: unknown): unknown {
 }
 
 export interface PageRpc {
-  rpc: any;
+  /** The birpc proxy for calling host methods (typed by PageHostRpc). */
+  rpc: PageHostRpc;
   /** Callbacks registered by birpc; feed non-request messages here. */
   onMessageCallbacks: Array<(message: unknown) => void>;
 }
@@ -38,7 +40,7 @@ export function createPageRpc(
   state: WorkerStateLike,
 ): PageRpc {
   const onMessageCallbacks: Array<(message: unknown) => void> = [];
-  const rpc = createBirpc(
+  const rpc = createBirpc<PageHostRpc, { onCancel: (reason: unknown) => Promise<void> }>(
     {
       async onCancel(reason: unknown) {
         state.current = undefined;

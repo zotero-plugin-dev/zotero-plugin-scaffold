@@ -1,6 +1,8 @@
+import type { WorkerRequest } from "vitest/node";
 import type { PageRpc } from "./rpc.js";
 import type { WorkerStateLike } from "./state.js";
 import type { HttpTransport } from "./transport.js";
+import type { RunContext } from "./types.js";
 /**
  * Worker protocol for the in-page test runner, mirroring vitest's official
  * `init()` from `vitest/worker` (message framing, not the node internals).
@@ -25,9 +27,16 @@ import { processError, setupCommonEnv } from "vitest/internal/browser";
 import { createPageRpc, errorReplacer } from "./rpc.js";
 import { createWorkerState } from "./state.js";
 
+/** Type guard for host→page protocol messages (mirrors vitest's framing). */
+function isWorkerRequest(message: unknown): message is WorkerRequest {
+  return typeof message === "object"
+    && message !== null
+    && (message as { __vitest_worker_request__?: unknown }).__vitest_worker_request__ === true;
+}
+
 export interface RunHandlers {
   /** Runs (or collects) the files from the given context. */
-  runMethod: (context: any, isCollect: boolean, state: WorkerStateLike) => Promise<void>;
+  runMethod: (context: RunContext, isCollect: boolean, state: WorkerStateLike) => Promise<void>;
 }
 
 export class WorkerProtocol {
@@ -117,8 +126,8 @@ export class WorkerProtocol {
       this.dump(`dispatch parse error: ${e}\n`);
       return;
     }
-    if (message && typeof message === "object" && (message as any).__vitest_worker_request__ === true) {
-      this.handleRequest(message as any).catch(e => this.dump(`request error: ${e}\n`));
+    if (isWorkerRequest(message)) {
+      this.handleRequest(message).catch(e => this.dump(`request error: ${e}\n`));
     }
     else {
       for (const cb of this.rpc.onMessageCallbacks) {
@@ -132,17 +141,17 @@ export class WorkerProtocol {
     }
   }
 
-  private async handleRequest(message: any): Promise<void> {
+  private async handleRequest(message: WorkerRequest): Promise<void> {
     switch (message.type) {
       case "start": {
-        this.state.ctx = message.context;
+        this.state.ctx = message.context as never;
         this.state.config = message.context.config;
         // Run vitest's own environment setup: injects the official globals
         // (the same `globalApis` list behind `globals: true`) and the config
         // defines. Legacy mocha-style test files rely on global describe/it,
         // so force `globals: true` regardless of the user config. This goes
         // through vitest's public entry — no hand-maintained list on our side.
-        (this.state.config as any).globals = true;
+        (this.state.config as { globals?: boolean }).globals = true;
         await setupCommonEnv(this.state.config);
         this.dump("started\n");
         await this.post({ type: "started", __vitest_worker_response__: true });
@@ -153,8 +162,8 @@ export class WorkerProtocol {
         const isCollect = message.type === "collect";
         // Snapshot the context for THIS run before queueing: a later request
         // may overwrite state.ctx while this one is still queued.
-        const ctx = { ...this.state.ctx, ...message.context };
-        this.state.ctx = ctx;
+        const ctx = { ...this.state.ctx, ...message.context } as RunContext;
+        this.state.ctx = ctx as never;
         this.state.filepath = undefined;
         const generation = ++this.runGeneration;
         const run = this.runChain.then(async () => {

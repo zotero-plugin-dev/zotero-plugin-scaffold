@@ -2,7 +2,7 @@ import type { Context } from "../../types/index.js";
 import { describe, expect, it } from "vitest";
 import { generateVitestConfig } from "./cli-config.js";
 
-function makeContext(overrides: Record<string, any> = {}): Context {
+function makeContext(overrides: Partial<Context["test"]> = {}): Context {
   return {
     id: "my-plugin@example.com",
     dist: "dist",
@@ -18,7 +18,7 @@ function makeContext(overrides: Record<string, any> = {}): Context {
       hooks: {},
       ...overrides,
     },
-  } as any;
+  } as unknown as Context;
 }
 
 describe("generateVitestConfig", () => {

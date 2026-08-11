@@ -1,4 +1,3 @@
-import type { WorkerStateLike } from "./state.js";
 /**
  * Minimal VitestRunner for the in-page test runner.
  *
@@ -8,6 +7,14 @@ import type { WorkerStateLike } from "./state.js";
  * onTaskUpdate → rpc.onTaskUpdate. This lets vitest's server-side state build
  * the reported task tree natively — no duck-typed TestModule/TestCase.
  */
+import type {
+  RunnerTestFile,
+  SerializedConfig,
+  RunnerTaskEventPack as TaskEventPack,
+  RunnerTaskResultPack as TaskResultPack,
+} from "vitest";
+import type { WorkerStateLike } from "./state.js";
+import type { FileSpecification, RunContext } from "./types.js";
 import { collectTests, startTests } from "vitest/internal/browser";
 import { createWorkerState } from "./state.js";
 
@@ -25,9 +32,9 @@ export class ZoteroVitestRunner {
   pool = "zotero";
   viteEnvironment = "node";
   // reporting callbacks (patched by patchRunner, called by @vitest/runner)
-  onTaskUpdate?: (tasks: unknown, events: unknown) => unknown;
-  onCollectStart?: (file: unknown) => unknown;
-  onCollected?: (files: any[]) => unknown;
+  onTaskUpdate?: (tasks: TaskResultPack[], events: TaskEventPack[]) => unknown;
+  onCollectStart?: (file: RunnerTestFile) => unknown;
+  onCollected?: (files: RunnerTestFile[]) => unknown;
   private readonly importDurations = new Map<string, { start: number; end: number }>();
   /**
    * Source path → bundled artifact. The run request carries the current
@@ -37,7 +44,7 @@ export class ZoteroVitestRunner {
    */
   private readonly manifest: Record<string, string>;
 
-  constructor(config: any, manifest?: Record<string, string>) {
+  constructor(config: SerializedConfig, manifest?: Record<string, string>) {
     this.manifest = manifest ?? bakedManifest;
     this.config = {
       root: config.root || "/",
@@ -72,7 +79,7 @@ export class ZoteroVitestRunner {
   }
 
   /** Test files are pre-bundled by rolldown; map source path → artifact. */
-  async importFile(filepath: string): Promise<void> {
+  async importFile(filepath: string, _type?: string): Promise<void> {
     const start = performance.now();
     const rel = this.manifest[filepath];
     if (!rel) {
@@ -93,35 +100,37 @@ export class ZoteroVitestRunner {
  */
 export function patchRunner(runner: ZoteroVitestRunner, state: WorkerStateLike): void {
   const originalOnTaskUpdate = runner.onTaskUpdate;
-  runner.onTaskUpdate = async (tasks: unknown, events: unknown) => {
+  runner.onTaskUpdate = async (tasks: TaskResultPack[], events: TaskEventPack[]) => {
     const p = state.rpc.onTaskUpdate(tasks, events);
     await originalOnTaskUpdate?.call(runner, tasks, events);
     return p;
   };
 
   const originalOnCollectStart = runner.onCollectStart;
-  runner.onCollectStart = async (file: unknown) => {
+  runner.onCollectStart = async (file: RunnerTestFile) => {
     await state.rpc.onQueued(file);
     await originalOnCollectStart?.call(runner, file);
   };
 
   const originalOnCollected = runner.onCollected;
-  runner.onCollected = async (files: any[]) => {
+  runner.onCollected = async (files: RunnerTestFile[]) => {
     files.forEach((file) => {
       file.prepareDuration = state.durations.prepare;
       file.environmentLoad = state.durations.environment;
       state.durations.prepare = 0;
       state.durations.environment = 0;
     });
-    const sanitizeRetryConditions = (task: any) => {
-      if (task.retry && typeof task.retry === "object" && typeof task.retry.condition === "function") {
+    // The runner's task tree mixes suites (with children) and tests; the
+    // recursion only needs `retry` + `tasks` from each node.
+    type RetryableTask = RunnerTestFile & { tasks?: RetryableTask[] };
+    const sanitizeRetryConditions = (task: RetryableTask) => {
+      if (task.retry && typeof task.retry === "object"
+        && typeof (task.retry as { condition?: unknown }).condition === "function") {
         task.retry = { ...task.retry, condition: undefined };
       }
-      if (task.tasks) {
-        task.tasks.forEach(sanitizeRetryConditions);
-      }
+      task.tasks?.forEach(child => sanitizeRetryConditions(child as RetryableTask));
     };
-    files.forEach(sanitizeRetryConditions);
+    files.forEach(file => sanitizeRetryConditions(file as RetryableTask));
     state.rpc.onCollected(files);
     await originalOnCollected?.call(runner, files);
   };
@@ -132,18 +141,22 @@ export function patchRunner(runner: ZoteroVitestRunner, state: WorkerStateLike):
  * `collectTests` for the collect phase, `startTests` for a full run.
  */
 export async function runMethod(
-  context: any,
+  context: RunContext,
   isCollect: boolean,
   state: WorkerStateLike,
 ): Promise<void> {
-  const runner = new ZoteroVitestRunner(state.config, context?.testerManifest);
+  if (!state.config) {
+    throw new Error("runMethod called before the start handshake");
+  }
+  const runner = new ZoteroVitestRunner(state.config, context.testerManifest);
   patchRunner(runner, state);
+  const files: FileSpecification[] = context.files;
   if (isCollect) {
-    const files = await collectTests(context.files, runner as any);
-    await runner.onCollected?.(files);
+    const collected = await collectTests(files, runner as never);
+    await runner.onCollected?.(collected);
   }
   else {
-    await startTests(context.files, runner as any);
+    await startTests(files, runner as never);
   }
 }
 

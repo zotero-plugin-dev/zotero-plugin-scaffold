@@ -58,13 +58,14 @@ describe("httpBridge protocol", () => {
   it("handles cyclic task trees over flatted", async () => {
     const { bridge, received } = await startBridge();
     // a file task references itself (file.file) — JSON.stringify would throw
-    const file: any = { type: "file", name: "a.mjs", tasks: [] };
+    interface FileTask { type: string; name: string; tasks: unknown[]; file?: FileTask }
+    const file: FileTask = { type: "file", name: "a.mjs", tasks: [] };
     file.file = file;
     const msg = { type: "rpc", method: "onCollected", files: [file] };
     await post(bridge, "/post", flatted.stringify(msg));
     expect(received).toHaveLength(1);
-    const parsed = received[0] as any;
-    expect(parsed.files[0].file).toBe(parsed.files[0]);
+    const parsed = received[0] as { type?: string; files?: FileTask[] };
+    expect(parsed.files?.[0]?.file).toBe(parsed.files?.[0]);
     bridge.stop();
   });
 
