@@ -60,7 +60,7 @@ export default class Test extends Base {
     if (!existsSync(vitestCli)) {
       logger.error(
         "vitest not found in this project. Install it with "
-        + "`npm install -D vitest@^4` (the zotero pool runs on vitest).",
+        + "`npm install -D vitest@^5` (the zotero pool runs on vitest).",
       );
       process.exit(1);
     }

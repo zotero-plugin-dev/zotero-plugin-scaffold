@@ -7,6 +7,32 @@
   <body>
     <div id="status" style="font-family: monospace; white-space: pre"></div>
     <script src="chrome://zotero/content/include.js"></script>
+    <script>
+      // Mirrors page errors to the host bridge (/debug) so a failing setup.js
+      // or runtime chunk shows up in the vitest output instead of a silent
+      // window that never handshakes.
+      (function () {
+        var port = new URLSearchParams(location.search).get("port");
+        function report(kind, payload) {
+          try {
+            Zotero.HTTP.request("POST", "http://127.0.0.1:" + port + "/debug", {
+              body: JSON.stringify({ message: kind + " " + payload + "\n" }),
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          catch (e) { /* host not reachable yet */ }
+        }
+        window.addEventListener("error", function (e) {
+          report("[page-error]", (e.message || String(e.type))
+            + " @ " + (e.filename || "?") + ":" + (e.lineno || "?")
+            + (e.error && e.error.stack ? "\n" + e.error.stack : ""));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          var r = e.reason;
+          report("[page-unhandledrejection]", r && r.stack ? r.stack : String(r));
+        });
+      })();
+    </script>
     <script type="module" src="runtime.js"></script>
     <script type="module" src="setup.js"></script>
   </body>

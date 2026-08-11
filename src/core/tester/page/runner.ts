@@ -8,7 +8,7 @@ import type { WorkerStateLike } from "./state.js";
  * onTaskUpdate → rpc.onTaskUpdate. This lets vitest's server-side state build
  * the reported task tree natively — no duck-typed TestModule/TestCase.
  */
-import { collectTests, startTests } from "@vitest/runner";
+import { collectTests, startTests } from "vitest/internal/browser";
 import { createWorkerState } from "./state.js";
 
 /**

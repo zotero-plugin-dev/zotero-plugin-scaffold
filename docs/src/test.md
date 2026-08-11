@@ -19,10 +19,10 @@ There are two ways to run tests in a live Zotero instance:
 
 ### Install Vitest
 
-Install `vitest` (v4) as a development dependency:
+Install `vitest` (v5) as a development dependency:
 
 ```bash
-npm install -D vitest@^4
+npm install -D vitest@^5
 ```
 
 Scaffold bundles the Vitest runtime from your local installation with rolldown, so no CDN downloads are involved. It prefers the `vitest` in your project; if it cannot be found there, it falls back to the one bundled with the scaffold itself.

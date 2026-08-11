@@ -1,7 +1,6 @@
 import type { PageRpc } from "./rpc.js";
 import type { WorkerStateLike } from "./state.js";
 import type { HttpTransport } from "./transport.js";
-import { serializeError } from "@vitest/utils/error";
 /**
  * Worker protocol for the in-page test runner, mirroring vitest's official
  * `init()` from `vitest/worker` (message framing, not the node internals).
@@ -22,6 +21,7 @@ import { serializeError } from "@vitest/utils/error";
  * every vitest module.
  */
 import { parse as flattedParse, stringify as flattedStringify } from "flatted";
+import { processError } from "vitest/internal/browser";
 import { createPageRpc, errorReplacer } from "./rpc.js";
 import { createWorkerState } from "./state.js";
 
@@ -144,7 +144,7 @@ export class WorkerProtocol {
           await this.post({
             type: "testfileFinished",
             __vitest_worker_response__: true,
-            error: serializeError(error),
+            error: processError(error),
           });
         }
         break;

@@ -226,13 +226,34 @@ custom pool 路线——不再"封装 vitest"，而是让 **vitest 原生驱动 
   并行 project 的实例；Zotero 因 `lastAppBuildId` 置空会自重启，spawn 的 PID
   是瞬时的，必须按命令行匹配真实实例）
 
-### 阶段 4：vitest v5 + vi.mock 评估
+### 阶段 4：vitest v5 迁移（已完成，基于 5.0.0-beta.7 评估）
 
-| 项      | 内容                                                                                                        |
-| ------- | ----------------------------------------------------------------------------------------------------------- |
-| v5 迁移 | 入口路径变化集中在 `page/`（import 来源）+ `bundler.ts`（resolve 表）；`@vitest/runner` 解析删除（附录 A）  |
-| vi.mock | 评估 v5 native mocker 是否修复（rpc/interceptor 注入）；不行则接 vite transform 管线（rolldown-vite build） |
-| 验收    | v5 + 真机全绿；vi.mock 可行则补 mock 用例                                                                   |
+| 项      | 内容                                                                  | 状态                         |
+| ------- | --------------------------------------------------------------------- | ---------------------------- |
+| v5 迁移 | 入口路径变化集中在 `page/`（import 来源）+ `bundler.ts`（resolve 表） | ✅ 真机全绿                  |
+| vi.mock | 评估 v5 native mocker 是否修复（rpc/interceptor 注入）                | ❌ 架构性限制（见下）        |
+| 验收    | v5 + 真机全绿；vi.mock 可行则补 mock 用例                             | 真机 16 files / 107 passed ✓ |
+
+**v5 迁移要点**（diff 面 = `page/runner.ts` + `page/protocol.ts` + `bundler.ts` + package.json）：
+
+- `@vitest/runner` 合并进 vitest 主包：`startTests`/`collectTests` 从
+  `vitest/internal/browser` 导入（v5 内部名 `publicCollect`，导出时别名 `collectTests`，名字兼容）；
+  `describe`/`it`/hooks 从 `vitest` 主入口
+- `serializeError`（`@vitest/utils/error`）不再导出 → 页面用 `processError`（`vitest/internal/browser`，官方错误序列化）
+- `@vitest/runner`/`@vitest/utils` 从 dependencies 移除（v5 合并进主包）；peer `vitest` → `^5.0.0-beta.0`（正式版发布后改 `^5.0.0`）
+- **关键坑**：v5 顶层执行 `class VitestEvaluatedModules extends EvaluatedModules`——bundler 的
+  `vite/module-runner` stub 若把 `EvaluatedModules` 置为 `undefined`，页面加载即抛
+  `class heritage (void 0) is not an object or null`（真机抓到）。stub 需提供带
+  `getModuleSourceMapById` 的基类 + `ssr*Key` 符号
+- 页面错误上报：`template/index.html` 内联脚本把 window error/unhandledrejection POST 到 bridge
+  `/debug`（此前 setup.js 加载失败 = 静默窗口永不握手，排查全靠猜；现在直接可见）
+
+**vi.mock 结论（架构性限制）**：v5 的 mocker 拦截器（`@vitest/mocker/browser` 的
+`ModuleMockerServerInterceptor` 等）依赖 vite 模块管线，zoteroPool 页面是 rolldown 打包的
+原生 ESM，无运行时 import 拦截钩子 → `vi.mock` 抛 `Vitest mocker was not initialized in
+this environment`，**v4/v5 均不可用**。可用的 mock 手段：`vi.fn`/`vi.spyOn`（对象方法 spy，
+已验证）、手动依赖注入。如需模块级 mock，走 vite transform 管线（rolldown-vite build）是
+另一套架构，不在本方案内
 
 ## 6. 风险与未决问题
 
@@ -248,16 +269,18 @@ custom pool 路线——不再"封装 vitest"，而是让 **vitest 原生驱动 
 
 ## 7. 附录
 
-### A. v5 import 路径速查
+### A. v5 import 路径速查（已实测）
 
-| 用途                                 | v4                           | v5                                                      |
-| ------------------------------------ | ---------------------------- | ------------------------------------------------------- |
-| `startTests`/`collectTests`          | `@vitest/runner`             | `vitest/internal/browser`                               |
-| `describe`/`it`/`test`/`suite`/hooks | `@vitest/runner`             | `vitest`（主入口）                                      |
-| `expect`/`vi`/`assert`/`should`      | `vitest`                     | `vitest`（主入口）                                      |
-| `VitestRunner` 类型                  | `@vitest/runner`             | `vitest`（或 `vitest/runtime`）                         |
-| reporter                             | `vitest/reporters`（已废弃） | `vitest/node`                                           |
-| 官方 `TestRunner`                    | `vitest`（内部）             | `vitest`（`runtime/runners/test`，仍耦合 worker，不用） |
+| 用途                                 | v4                                      | v5                                                                                         |
+| ------------------------------------ | --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `startTests`/`collectTests`          | `@vitest/runner`                        | `vitest/internal/browser`（内部名 `publicCollect`，别名导出 `collectTests`）               |
+| `describe`/`it`/`test`/`suite`/hooks | `@vitest/runner`                        | `vitest`（主入口）                                                                         |
+| `expect`/`vi`/`assert`/`should`      | `vitest`                                | `vitest`（主入口）                                                                         |
+| `processError`（错误序列化）         | `@vitest/utils/error`（serializeError） | `vitest/internal/browser`（`serializeError` 已不导出）                                     |
+| `VitestRunner` 类型                  | `@vitest/runner`                        | `vitest`（或 `vitest/runtime`）                                                            |
+| reporter                             | `vitest/reporters`（已废弃）            | `vitest/node`                                                                              |
+| 官方 `TestRunner`                    | `vitest`（内部）                        | `vitest`（`runtime/runners/test`，仍耦合 worker，不用）                                    |
+| `vite/module-runner`                 | —                                       | stub 需 `ModuleRunner` + `EvaluatedModules`（带 `getModuleSourceMapById`）+ `ssr*Key` 符号 |
 
 ### B. RPC 方法表（复刻自 `packages/browser/src/types.ts`）
 
@@ -282,6 +305,8 @@ custom pool 路线——不再"封装 vitest"，而是让 **vitest 原生驱动 
 - ✅ 页面侧简化 init 镜像官方 worker 协议（start/run/collect/stop + birpc + flatted）
 - ✅ 鸭子类型驱动 `DefaultReporter`/`VerboseReporter`/`DotReporter`/`JsonReporter`/`JUnitReporter`（node POC，**方案已作废**，vitest server 原生驱动）
 - ✅ `@vitest/runner`（v4）脱离 Vite 独立运行
-- ⚠️ v5 runtime 打包与运行（阶段一验证）
-- ❌ chrome:// 下 WebSocket（阶段二验证）
-- ❌ rolldown 打包 + `vi.mock`（阶段四验证）
+- ✅ **vitest 5.0.0-beta.7 全链路**（2026-08）：scaffold 单测 72 passed（v5 跑）；真机 16 files /
+  107 passed（z-a/z-b/顶层/全量/CLI）；`EvaluatedModules` stub 坑已修（见阶段 4）
+- ✅ chrome:// 下 WebSocket 可用（2026-08 实测：构造函数不抛、真实发起连接；未升级，轮询保留）
+- ❌ `vi.mock`（v4/v5 均不可用）：mocker 需 vite 模块管线初始化，rolldown 打包 + 原生 ESM 页面
+  无 import 拦截钩子；`vi.fn`/`vi.spyOn` 可用

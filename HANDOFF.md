@@ -1,6 +1,6 @@
-# 交接文档：vitest pool 测试系统（阶段 0–2 + 多 project 支持完成）
+# 交接文档：vitest pool 测试系统（阶段 0–4 完成）
 
-> 状态快照：2026-08-10，分支 `vitest-runner`。本文供接手者快速恢复上下文。
+> 状态快照：2026-08-11，分支 `vitest-runner`。本文供接手者快速恢复上下文。
 
 ## 1. 目标与架构
 
@@ -34,6 +34,7 @@ vitest CLI → zoteroPool() → pool-worker（HTTP bridge + ZoteroRunner 生命�
 | `a5e3bc7`           | 修复：恢复 `ZoteroPool` 公共签名（阶段 1 修改曾丢失）；`zoteroPool()` 单次调用限制                                                                                                     |
 | `5e3738e`           | 多 project 支持 + 阻塞修复（File 任务 id 缺 project name，见 §4）；protocol 透传清理；调试日志清理                                                                                     |
 | `996dd2e`           | 阶段 3：reporter/outputFile 透传、watch 重跑（stamp + context manifest）、Zotero 启动重试、exit() 按 profile 定向杀进程、bundler NUL 修复（见 §8）                                     |
+| 未提交              | 阶段 4：vitest 5.0.0-beta.7 迁移（import 路径、EvaluatedModules stub、processError、页面错误上报）+ vi.mock 评估（见 §9）                                                              |
 
 ## 3. 多 project 支持（已完成，提交 `5e3738e`）
 
@@ -99,9 +100,9 @@ src/core/tester/
 ## 6. 真机验证环境
 
 - Zotero beta：`D:/Code/zotero/tools/zotero-beta-build/zotero.exe`（env `ZOTERO_PLUGIN_ZOTERO_BIN_PATH`）
-- 验证项目：`d:/Code/zotero/northword/zotero-format-metadata`（node_modules/zotero-plugin-scaffold 为 symlink 指向 scaffold 根，dist 即时生效；vitest 4.1.10）
+- 验证项目：`d:/Code/zotero/northword/zotero-format-metadata`（node_modules/zotero-plugin-scaffold 为 symlink 指向 scaffold 根，dist 即时生效；vitest 5.0.0-beta.7）
 - 命令：`cd zotero-format-metadata && ZOTERO_PLUGIN_ZOTERO_BIN_PATH=... npx vitest run --config zotero.vitest.config.ts`
-- **当前验证结果（提交 996dd2e 后全绿，零残留 Zotero 进程）**：
+- **当前验证结果（阶段 4 提交后全绿，零残留 Zotero 进程；scaffold 单测 72 passed 由 v5 跑）**：
   - 顶层 pool 版（`zotero.vitest.config.ts`）：2 files 5 tests ✓
   - projects 版（`vitest.config.ts`）：`--project=z-a` 4/4 ✓、`--project=z-b` 1/1 ✓、`--project=z-a --project=z-b` 5/5 ✓
   - 全量 `vitest run`（unit + z-a + z-b）：16 files / 107 passed | 1 skipped ✓（unit project 已加 `sequence: { groupOrder: 1 }`）
@@ -116,7 +117,7 @@ src/core/tester/
 3. ~~提交多 project 改造~~ → **已提交并真机验证**（`5e3738e`）
 4. ~~阶段 3~~ → **已完成（提交 `996dd2e`）**：reporter/outputFile（`--reporter`/`--output-file`）、watch 重跑（stamp + context manifest；vitest 4 每次重跑重建 worker → 新 Zotero）、启动重试、exit() 定向杀进程、WS 探测（chrome:// 可用，未升级，见 §8）
 5. `close timed out after 10000ms` 警告（退出码正确、进程干净，vitest custom pool 噪音，不阻塞；若想消掉可研究 vitest Pool 对 custom pool 的 teardown 时序）
-6. 阶段 4：vitest v5 迁移 + vi.mock 评估
+6. ~~阶段 4~~ → **已完成**（vitest 5.0.0-beta.7 全链路；vi.mock 确认 v4/v5 均不可用，架构性限制；见 §9）。待办：vitest v5 正式发布后 peer 版本从 `^5.0.0-beta.0` 改为 `^5.0.0`
 7. CI/headless：`prepareHeadless`（Linux）代码在，需 Linux CI 真机验证（本机 Windows 无法验证）
 8. 已知坑（勿重踩）：python 字符串替换在 eslint 格式化后静默失败（改文件用 write 或行级匹配）；`\\n` 经工具层转义（用 `chr(92)+"n"`）；eslint --fix 会重排 if/import（替换前先看实际格式）；Windows 下编辑器会写 CRLF（`core.autocrlf=input` 下 `git diff` 报假差异，提交前先转 LF）；**改页面/协议相关代码后 dist 需 `pnpm build:tsdown` 重建**（验证项目 symlink 直接吃 dist，且 `dist/core/tester/page/*.ts` 是源码拷贝）；execSync 传含嵌套引号的 powershell 命令会被 cmd 吞掉（用 `-EncodedCommand`）；git 会把含 NUL 字节的文件当二进制（虚拟模块 id 用 `\0` 转义常量而非字面 NUL）
 
@@ -128,3 +129,27 @@ src/core/tester/
 - **启动重试**：worker `start()` 3 次 × `waitReady(25s)`（总预算 < vitest WORKER_START_TIMEOUT 90s），每次尝试新建 bridge+bundle+Zotero；强杀后 profile 锁未释放的场景实测触发过
 - **WS 探测结论**：chrome:// 页面 `new WebSocket("ws://127.0.0.1:port")` 可用、CSP 不拦（实测构造函数不抛、真实发起连接）。未升级：轮询 150ms 延迟可接受、验收不含此项、阶段 4 会再碰协议层
 - **`close timed out` 噪音**：每次 stop 都会出现，与 Zotero 退出无关（页面 `stopped` 响应正常），怀疑 vitest 对 custom pool teardown 的时序问题，不阻塞
+
+## 9. 阶段 4 实现备忘（vitest 5.0.0-beta.7，未提交）
+
+- **diff 面**：`page/runner.ts` + `page/protocol.ts` + `bundler.ts` + package.json + `template/index.html`
+  - `@vitest/runner` 合并进 vitest 主包（v5 依赖只剩 `@vitest/mocker`）：
+    - `startTests`/`collectTests` → `vitest/internal/browser`（v5 内部 `publicCollect`，导出别名 `collectTests`）
+    - `describe`/`it`/hooks → `vitest` 主入口
+  - `serializeError`（`@vitest/utils/error`）不再导出 → 页面用 `processError`（`vitest/internal/browser`）
+  - `@vitest/runner`/`@vitest/utils` 从 dependencies 移除；peer `vitest` → `^5.0.0-beta.0`
+  - bundler 的 `vite/module-runner` stub：`EvaluatedModules` 必须是类（带 `getModuleSourceMapById`），
+    v5 顶层执行 `class VitestEvaluatedModules extends EvaluatedModules`，stub 成 undefined 会抛
+    `class heritage (void 0) is not an object or null`（页面加载即炸，真机实测抓到）；另需 `ssr*Key` 符号
+  - `template/index.html`：内联错误上报脚本（window error/unhandledrejection → bridge /debug）——
+    **保留**，页面加载失败不再静默
+- **vi.mock 结论**：`Vitest mocker was not initialized in this environment. vi.queueMock() is forbidden.`
+  —— v5 mocker 拦截器（`@vitest/mocker/browser`）依赖 vite 模块管线，rolldown 打包 + 原生 ESM 页面
+  无 import 拦截钩子，**v4/v5 均不可用**（架构性限制，已文档化）。可用替代：`vi.fn`/`vi.spyOn`/手动 DI
+- **真机验证**（zotero-format-metadata，vitest 5.0.0-beta.7）：z-a 4/4、z-b 1/1、顶层 2 files 5 tests、
+  全量 16 files / 107 passed | 1 skipped、CLI 3 files 6 tests —— 全绿，零残留进程
+- **已知噪音**：`close timed out`/`something prevents N Vite servers from exiting`（v4/v5 均有，
+  退出码正确不阻塞）；`<Objs ...Preparing modules for first use...>` CLIXML 输出是 killByProfile 的
+  powershell 首次执行噪音（可接受；想消可给 powershell 加 `-NoProfile -NonInteractive` 或预热）
+- 坑：模板字符串内嵌反引号会终止字符串（TS 报 `';' expected`）；tsc 全量有 pre-existing 报错
+  `test/e2e/fixtures/build.ts`（自引用包解析，非本改动引入）

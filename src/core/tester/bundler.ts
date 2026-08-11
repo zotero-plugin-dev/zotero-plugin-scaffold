@@ -34,10 +34,10 @@ import manifestRaw from "./template/manifest.json?raw";
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
 
 const RUNTIME_ENTRY = `
-export { describe, it, test, suite, beforeAll, afterAll, beforeEach, afterEach, startTests, collectTests } from "@vitest/runner";
+export { describe, it, test, suite, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
+export { startTests, collectTests, processError } from "vitest/internal/browser";
 export { expect, vi, assert, should } from "vitest";
 export { createBirpc } from "birpc";
-export { serializeError } from "@vitest/utils/error";
 export { stringify, parse } from "flatted";
 `;
 
@@ -103,11 +103,35 @@ function resolveDeps(): Record<string, string> {
     }
     return join(pkgDir, rel);
   };
+  // vitest 5 merged @vitest/runner and @vitest/utils into the main package;
+  // the in-page runtime entry lives behind the ./internal/browser export.
+  const vitestDir = dirname(req.resolve("vitest/package.json"));
+  const vitestPkg = JSON.parse(readFileSync(join(vitestDir, "package.json"), "utf8")) as {
+    exports?: Record<string, unknown>;
+  };
+  const pickEntry = (t: unknown): string | undefined => {
+    if (typeof t === "string") {
+      return t;
+    }
+    if (t && typeof t === "object") {
+      const o = t as Record<string, unknown>;
+      for (const key of ["import", "default", "require", "browser"]) {
+        const v = pickEntry(o[key]);
+        if (v) {
+          return v;
+        }
+      }
+    }
+    return undefined;
+  };
+  const browserRel = pickEntry(vitestPkg.exports?.["./internal/browser"]);
+  if (!browserRel) {
+    throw new Error("Cannot resolve vitest/internal/browser entry (vitest 5 required)");
+  }
   return {
     vitest: resolve("vitest"),
-    runner: resolve("@vitest/runner"),
+    vitestBrowser: join(vitestDir, browserRel),
     birpc: resolve("birpc"),
-    utils: resolve("@vitest/utils"),
     flatted: resolve("flatted"),
   };
 }
@@ -248,12 +272,10 @@ function createRuntimeResolvePlugin(deps: Record<string, string>) {
     resolveId(source: string) {
       if (source === "vitest")
         return deps.vitest;
-      if (source === "@vitest/runner")
-        return deps.runner;
+      if (source === "vitest/internal/browser")
+        return deps.vitestBrowser;
       if (source === "birpc")
         return deps.birpc;
-      if (source === "@vitest/utils/error")
-        return join(dirname(deps.utils), "error.js");
       if (source === "flatted")
         return deps.flatted;
       if (source === "vite/module-runner")
@@ -270,7 +292,19 @@ export class ModuleRunner {
     throw new Error("ModuleRunner is not available inside Zotero");
   }
 }
-export const EvaluatedModules = undefined;
+// vitest 5 evaluates "class VitestEvaluatedModules extends EvaluatedModules"
+// at module top level, so the base class must exist (undefined would throw
+// "class heritage (void 0) is not an object or null" on page load).
+export class EvaluatedModules {
+  getModuleSourceMapById() {
+    return undefined;
+  }
+}
+export const ssrImportKey = Symbol.for("vite:import");
+export const ssrDynamicImportKey = Symbol.for("vite:dynamic-import");
+export const ssrModuleExportsKey = Symbol.for("vite:module-exports");
+export const ssrExportAllKey = Symbol.for("vite:export-all");
+export const ssrImportMetaKey = Symbol.for("vite:import-meta");
 `;
       }
       if (id === NODE_STUB_ID) {
@@ -295,8 +329,10 @@ function createRuntimeAliasPlugin(runtimePath: string) {
     resolveId(source: string) {
       if (
         source === "vitest"
-        || source === "chai"
+        || source === "vitest/internal/browser"
+        // legacy: test files written against @vitest/runner (vitest 4)
         || source === "@vitest/runner"
+        || source === "chai"
         || source === "birpc"
         || source === "flatted"
         || source === "@vitest/utils/error"
