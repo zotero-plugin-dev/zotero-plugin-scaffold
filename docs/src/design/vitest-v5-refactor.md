@@ -212,11 +212,17 @@ custom pool 路线——不再"封装 vitest"，而是让 **vitest 原生驱动 
 
 - reporter/outputFile：`TestConfig.reporter`/`outputFile` + CLI 参数
   `--reporter`/`--output-file`，透传进生成的 vitest 配置
-- watch：vitest 4 每次 watch 重跑都会 stop 并重建 pool worker（`queue` 空即
-  stop，custom pool 无跨 run 复用）→ 每次重跑新起 Zotero（~30s）。测试文件变更
-  由 worker 的 `buildTesterPlugin` 全量重建 + 产物名带 stamp
-  （`tests/<stamp>-<file>.js`）+ run 请求 context 携带最新 manifest
-  （`testerManifest`）覆盖 setup.js 内嵌清单——页面免 reload 就能 import 新 URL
+- watch：vitest 4/5 每次 run 结束 stop pool worker（`queue` 空即 stop）。**实例复用
+  （提交 `8f66ce5`）**：worker 软停（页面回 `stopped` 时立即软停，早于 vitest 的
+  `worker.stop()`，防竞态误杀；不杀 Zotero、不关 bridge，`liveInstances` 注册表按
+  profile 存，`process.once("exit")` 兜底清理）→ 下一个 worker `start()` 接管
+  （`isPageAlive(2000)` 心跳检查替代 PowerShell 进程探测；`setHandler` 重指桥；
+  模块级 `buildStampCounter` 重建产物——stamp 必须跨 worker 唯一，否则页面模块
+  缓存返回旧代码 → "No test suite found"）→ 重跑 ~15ms。页面协议 run/collect
+  串行化（`runChain`）+ generation 只保留最新（连续变更时 vitest cancel 旧 run，
+  过期 run 的响应会被新 runner 误收）。测试文件变更触发 `maybeRebuild`：按
+  `context.files`（vitest 受影响文件集）只重建本次要跑的文件（`files` 选项跳过
+  glob），manifest 经 `context.testerManifest` 下发，页面免 reload import 新 URL
 - WS 探测结论：chrome:// 页面 `new WebSocket("ws://127.0.0.1:…")` 可用、CSP 不拦
   （实测：构造函数不抛、真实发起连接）。未实施升级——轮询（150ms）延迟可接受、
   验收不含此项、v5 迁移将再次触碰协议层，届时一并评估
@@ -310,3 +316,76 @@ this environment`，**v4/v5 均不可用**。可用的 mock 手段：`vi.fn`/`vi
 - ✅ chrome:// 下 WebSocket 可用（2026-08 实测：构造函数不抛、真实发起连接；未升级，轮询保留）
 - ❌ `vi.mock`（v4/v5 均不可用）：mocker 需 vite 模块管线初始化，rolldown 打包 + 原生 ESM 页面
   无 import 拦截钩子；`vi.fn`/`vi.spyOn` 可用
+
+### D. 代码地图与维护（2026-08 更新）
+
+```
+src/core/tester/
+├── index.ts            # Test 类（CLI 薄封装：build → 生成配置 → spawn vitest）
+├── cli-config.ts       # 临时 vitest.config 生成器（+ cli-config.test.ts）
+├── bundler.ts          # buildTesterPlugin：runtime chunk + page 源码(?raw) + 测试文件 + manifest
+│                       #   （返回 manifest；产物名 stamp 前缀；mode: full|tests-only；files: 按需打包）
+├── template/           # 插件静态文件（manifest/bootstrap/index.html，__TESTER_PLUGIN_ID__ 占位）
+├── page/               # 页面运行时（TS 源码 → rolldown → content/setup.js）
+│   ├── index.ts        # 入口：组装 transport/protocol；globals 由 setupCommonEnv 注入（见 protocol.ts）
+│   ├── protocol.ts     # 协议状态机（start/run/collect/stop + rpc 分流）；start 时调官方 setupCommonEnv
+│   ├── rpc.ts          # birpc 客户端 + flatted 序列化（PageHostRpc 泛型）
+│   ├── runner.ts       # ZoteroVitestRunner（name 透传 config.name；manifest 优先取 context.testerManifest）
+│   ├── transport.ts    # Zotero.HTTP.request 客户端（/post /poll /ready /debug）
+│   ├── state.ts        # WorkerStateLike（官方 WorkerGlobalState 子集，编译期契约校验）
+│   ├── types.ts        # 页面消息契约（RunContext/PageCtx/PageHostRpc）
+│   └── tests-manifest.ts  # tsc 占位（bundler 虚拟模块替换）
+├── pool/
+│   ├── index.ts        # zoteroPool() 公共入口 + ZoteroPool 类型（PoolRunnerInitializer 类型化）
+│   ├── pool-worker.ts  # PoolWorker：软停/接管（watch 实例复用）、启动重试(3×25s)、资源冲突守卫
+│   ├── http-bridge.ts  # /post /poll /ready /debug；isPageAlive 心跳（页面 poll 时间戳）
+│   ├── options.ts      # 选项解析 + project name 资源派生
+│   └── index.test.ts / pool.test.ts / bundler.test.ts
+└── headless.ts         # Linux headless（保留）
+```
+
+**vitest 升级检查**（升级 vitest 后只需两步，无手写列表）：
+
+1. 页面全局注入走官方 `setupCommonEnv`（`vitest/internal/browser`，start 时强制
+   `config.globals = true`）——与 `globals: true` 同一代码路径，名单零维护
+2. `WorkerStateLike` 有编译期契约（`keyof` ⊆ 官方 `WorkerGlobalState`，字段改名/删除
+   tsc 报错）。验证：scaffold 单测（bundler.test 覆盖打包）+ 验证项目真机冒烟
+
+**已知坑（勿重踩）**：
+
+- 模板字符串拼接 PowerShell 脚本时，注释会诱发 eslint --fix 重排成 `` `${+`...`}` ``
+  （一元加 → NaN 插值，脚本静默失败 → Zotero 残留）——用数组 join 拼接
+- python 字符串替换在 eslint 格式化后静默失败（改文件用 write 或行级匹配）；
+  `
+` 经工具层转义（用 `chr(92)+"n"`）
+- eslint --fix 会重排 if/import（替换前先看实际格式）；Windows 编辑器写 CRLF
+  （`core.autocrlf=input` 下 git diff 报假差异，提交前转 LF）
+- 改页面/协议代码后 dist 需 `pnpm build:tsdown` 重建（验证项目 symlink 吃 dist，
+  `dist/core/tester/page/*.ts` 是源码拷贝）
+- execSync 传嵌套引号的 powershell 命令被 cmd 吞掉（用 `-EncodedCommand`）；
+  git 把含 NUL 字节的文件当二进制（虚拟模块 id 用 ` ` 转义常量而非字面 NUL）
+
+### E. 真机验证环境
+
+- Zotero beta：`D:/Code/zotero/tools/zotero-beta-build/zotero.exe`（env `ZOTERO_PLUGIN_ZOTERO_BIN_PATH`）
+- 验证项目：`d:/Code/zotero/northword/zotero-format-metadata`（node_modules/zotero-plugin-scaffold
+  为 symlink → scaffold 根，dist 即时生效；vitest 5.0.0-beta.7）
+- 命令：`cd zotero-format-metadata && ZOTERO_PLUGIN_ZOTERO_BIN_PATH=... npx vitest run --config zotero.vitest.config.ts`
+- 已验证（2026-08）：顶层 pool 2 files 5 tests；`--project=z-a` 4/4、`z-b` 1/1、双跑 5/5；
+  全量 16 files / 107 passed；CLI junit 输出；watch 软停+接管重跑 ~15ms；类型化后 3 files 6 tests
+- 已知噪音：`close timed out after 10000ms`/`something prevents ... exiting`（vitest 对
+  custom pool teardown 的时序问题，退出码正确不阻塞）；CLIXML `Preparing modules` 已修
+  （killByProfile 脚本加 `$ProgressPreference='SilentlyContinue'`）
+- 事实：Zotero 首启自重启（`lastAppBuildId` 置空所致），spawn 的 PID 是瞬时的——
+  排查进程问题看命令行而非 PID
+
+### F. 遗留事项（未完成）
+
+- `close timed out after 10000ms` 警告（不阻塞；想消掉需研究 vitest Pool 对 custom
+  pool 的 teardown 时序）
+- vitest v5 正式发布后：peer 版本 `^5.0.0-beta.0` → `^5.0.0`，重新验证一次
+- CI/headless：`prepareHeadless`（Linux）需 Linux CI 真机验证（Windows 无法验证）
+- `vi.mock`：架构性不可用（v4/v5 均确认）。潜在路径：构建期接 `@vitest/mocker` 的
+  `hoistMocks` 转换 + import 重写到 mock 工厂产物（不牺牲特权页面）
+- `test.define`：v5 非 browser 下 serializedConfig 不携带（进 `test.defines` 而序列化
+  顶层 `defines`，为空；vite define 本就是构建期替换）——暂不支持，文档化限制
