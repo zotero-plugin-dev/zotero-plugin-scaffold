@@ -115,7 +115,7 @@ src/core/tester/
 1. ~~修复 projects + custom pool 的 rpc 消息丢失~~ → **已解决（提交 `5e3738e`，真根因是 File 任务 id 缺 project name，§4）**
 2. ~~清理调试日志~~ → **已清理**
 3. ~~提交多 project 改造~~ → **已提交并真机验证**（`5e3738e`）
-4. ~~阶段 3~~ → **已完成（提交 `996dd2e`）**：reporter/outputFile（`--reporter`/`--output-file`）、watch 重跑（stamp + context manifest；vitest 4 每次重跑重建 worker → 新 Zotero）、启动重试、exit() 定向杀进程、WS 探测（chrome:// 可用，未升级，见 §8）
+4. ~~阶段 3~~ → **已完成（提交 `996dd2e`）**：reporter/outputFile（`--reporter`/`--output-file`）、watch 重跑、启动重试、exit() 定向杀进程、WS 探测（chrome:// 可用，未升级，见 §8）。**watch 实例复用（提交 `8f66ce5`，见 §10）**
 5. `close timed out after 10000ms` 警告（退出码正确、进程干净，vitest custom pool 噪音，不阻塞；若想消掉可研究 vitest Pool 对 custom pool 的 teardown 时序）
 6. ~~阶段 4~~ → **已完成**（vitest 5.0.0-beta.7 全链路；vi.mock 确认 v4/v5 均不可用，架构性限制；见 §9）。待办：vitest v5 正式发布后 peer 版本从 `^5.0.0-beta.0` 改为 `^5.0.0`
 7. CI/headless：`prepareHeadless`（Linux）代码在，需 Linux CI 真机验证（本机 Windows 无法验证）
@@ -124,7 +124,7 @@ src/core/tester/
 ## 8. 阶段 3 实现备忘（提交 `996dd2e`）
 
 - **reporter/outputFile**：`TestConfig.reporter`/`outputFile`（可选）+ CLI `--reporter`/`--output-file` → 生成的 vitest 配置 `reporters`/`outputFile`；junit/json 免费获得
-- **watch 重跑机制**：vitest 4 在每次 run 结束后 stop pool worker（`queue` 空即 `runner.stop()`，custom pool 无跨 run 复用）→ 重跑=新 worker+新 Zotero+新页面。测试文件变更后：worker 的 `maybeRebuild`（run/collect 请求携带 `context.invalidates`，且 `hasRun` 已置位才重建——首个请求的 invalidates 是触发重启的过期值）→ `buildTesterPlugin` 全量重建，产物名带 stamp（`tests/<stamp>-<file>.js`，防页面模块缓存）→ run 请求 context 注入 `testerManifest`（覆盖 setup.js 内嵌清单）→ 页面 `importFile` 用新 URL。**页面免 reload**
+- **watch 重跑机制**：vitest 4/5 在每次 run 结束后 stop pool worker（`queue` 空即 `runner.stop()`）。**`8f66ce5` 起支持实例复用**：worker 软停（不杀 Zotero、不关 bridge，`liveInstances` 注册表按 profile 存）→ 下一个 worker `start()` 接管（`setHandler` 重指桥、模块级 stamp 重建产物）→ 页面免 reload 直接 import 新 URL（`context.testerManifest` 机制）。测试文件变更触发 `maybeRebuild`（仅 `hasRun` 已置位时）
 - **Zotero 自重启**：`setupProfile` 置空 `extensions.lastAppBuildId/lastAppVersion` 强制 Zotero 首启后自重启 → `ZoteroRunner.zotero.pid` 是瞬时进程，真正的实例是重启后的新 PID。`exit()` 按 profile 路径匹配命令行杀进程（Windows：PowerShell `-EncodedCommand` + `Get-CimInstance`；Linux/macOS：`pkill -9 -f <profile>`）+ 原 PID 兜底。不要用 `taskkill /im zotero.exe`（误杀并行 project 实例）
 - **启动重试**：worker `start()` 3 次 × `waitReady(25s)`（总预算 < vitest WORKER_START_TIMEOUT 90s），每次尝试新建 bridge+bundle+Zotero；强杀后 profile 锁未释放的场景实测触发过
 - **WS 探测结论**：chrome:// 页面 `new WebSocket("ws://127.0.0.1:port")` 可用、CSP 不拦（实测构造函数不抛、真实发起连接）。未升级：轮询 150ms 延迟可接受、验收不含此项、阶段 4 会再碰协议层
@@ -156,3 +156,14 @@ src/core/tester/
   默认可见
 - 坑：模板字符串内嵌反引号会终止字符串（TS 报 `';' expected`）；tsc 全量有 pre-existing 报错
   `test/e2e/fixtures/build.ts`（自引用包解析，非本改动引入）
+
+## 10. watch 实例复用备忘（提交 `8f66ce5`）
+
+- **动机**：vitest 每次 run 结束 stop worker（`queue` 空即 stop）→ 旧实现每次重跑冷启动 Zotero（~30s）。软停+接管让重跑 ~15ms
+- **机制**：
+  - 软停：页面回 `stopped` 时 worker **立即**软停（早于 vitest 的 `worker.stop()`，防竞态误杀）→ `liveInstances`（profileDir → {zotero, bridge}）→ `process.once("exit")` 兜底清理
+  - 接管：`start()` 查注册表 + `isZoteroRunningByProfile` 健康检查 → 复用 bridge（`setHandler`）+ 模块级 `buildStampCounter` 重建（**stamp 必须跨 worker 唯一**，否则页面模块缓存返回旧代码 → "No test suite found"）
+  - 冷启动兜底：接管失败时 `killZoteroByProfile`（树杀 `taskkill /f /t` + 孤儿 `-contentproc` 清扫，防 profile 锁残留）+ 1.5s 锁释放等待
+- **页面协议**：run/collect 串行化（`runChain`）+ generation 只保留最新——连续变更时 vitest cancel 旧 run，旧 run 的响应会被新 runner 误收（结果错配）；过期 run 排队期跳过、执行期丢弃响应
+- **已知 vitest 固有噪音**（非回归）：连续快速变更（间隔 < run 时长）→ cancel 时 `waitForStart` 不 resolve → 60s 后报 `Timeout waiting for worker to respond` → 下一轮自愈。旧实现同样存在
+- **验证**（vitest 5.0.0-beta.7 真机）：首次 4/4 → 软停 → 失败变更同实例重跑（1 failed | 3 passed）→ 恢复后 `reusing live Zotero instance`（4/4，~15ms）；Ctrl+C 后零残留；非 watch 硬停不变
