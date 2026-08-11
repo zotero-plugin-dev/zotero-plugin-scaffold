@@ -83,18 +83,9 @@ vitest zotero     # only the Zotero project
 | `args`                   | —                               | Extra Zotero command-line arguments                          |
 | `extraPrefs`             | —                               | Extra `prefs.js` entries                                     |
 
-::: warning Required project settings
-The Zotero project must set `isolate: false` and `fileParallelism: false`
-(vitest's defaults are the opposite). Files run serially in one Zotero
-instance — the pool reuses the same worker (`canReuse`) instead of booting
-Zotero per file. The pool validates these and throws a descriptive error.
+::: warning Required project settings The Zotero project must set `isolate: false` and `fileParallelism: false` (vitest's defaults are the opposite). Files run serially in one Zotero instance — the pool reuses the same worker (`canReuse`) instead of booting Zotero per file. The pool validates these and throws a descriptive error.
 
-When several Zotero projects run together (`vitest --project=a --project=b`),
-vitest's pool scheduler still boots one Zotero at a time: `fileParallelism:
-false` pins the group's `maxWorkers` to 1. Each project gets its own
-profile/data dir (derived from the project name) and tester plugin output, so
-parallel runs never collide.
-:::
+When several Zotero projects run together (`vitest --project=a --project=b`), vitest's pool scheduler still boots one Zotero at a time: `fileParallelism: false` pins the group's `maxWorkers` to 1. Each project gets its own profile/data dir (derived from the project name) and tester plugin output, so parallel runs never collide. :::
 
 ### Writing Test Cases
 
@@ -116,11 +107,7 @@ describe("Startup", () => {
 
 ### Running Tests via CLI
 
-::: info
-The CLI is a thin wrapper around the same `zoteroPool` implementation: it
-generates a temporary `vitest.config.ts` and spawns `vitest`, forwarding the
-exit code.
-:::
+::: info The CLI is a thin wrapper around the same `zoteroPool` implementation: it generates a temporary `vitest.config.ts` and spawns `vitest`, forwarding the exit code. :::
 
 Run the tests using:
 
@@ -147,9 +134,7 @@ Options:
   -h, --help           display help for command
 ```
 
-These map to the `test.reporter` / `test.outputFile` config options — both are
-passed through to vitest's `reporters` / `outputFile`, so `junit`/`json`
-reports come for free:
+These map to the `test.reporter` / `test.outputFile` config options — both are passed through to vitest's `reporters` / `outputFile`, so `junit`/`json` reports come for free:
 
 ```bash
 zotero-plugin test --no-watch --reporter junit --output-file test-results/junit.xml
@@ -185,11 +170,7 @@ Test files must have filenames ending with `.spec.js` or `.spec.ts` to be recogn
 
 ### Waiting for the Plugin to Be Ready
 
-The pool starts tests as soon as the test window has loaded (the ready
-handshake), which can be before your plugin finishes initializing. Use
-vitest's **`setupFiles`** to wait for your own readiness flag — setup files
-run before any test, are bundled into the test page like test files, and the
-wait shows up in the `setup` part of vitest's Duration line:
+The pool starts tests as soon as the test window has loaded (the ready handshake), which can be before your plugin finishes initializing. Use vitest's **`setupFiles`** to wait for your own readiness flag — setup files run before any test, are bundled into the test page like test files, and the wait shows up in the `setup` part of vitest's Duration line:
 
 ```ts
 // setup-plugin-ready.ts — reference it via `setupFiles` in the zotero project
@@ -219,50 +200,31 @@ export default defineConfig({
 });
 ```
 
-When using the CLI (`zotero-plugin test`), the legacy `test.waitForPlugin`
-flag is still honored: the CLI generates a setup file that polls your
-expression (e.g. `() => Zotero.MyPlugin.initialized`) before any test runs.
+When using the CLI (`zotero-plugin test`), the legacy `test.waitForPlugin` flag is still honored: the CLI generates a setup file that polls your expression (e.g. `() => Zotero.MyPlugin.initialized`) before any test runs.
 
 ## `vi` Support
 
 The full `vi` API is available inside Zotero tests, with two groups:
 
-**Working** (verified on real Zotero): `vi.fn` / `vi.spyOn` / `vi.mocked` /
-`vi.stubGlobal` / `vi.clearAllMocks` / `vi.resetAllMocks` /
-`vi.restoreAllMocks` / `vi.useFakeTimers` (with `advanceTimersByTime`,
-`setSystemTime`, ...) / `vi.setConfig` / `vi.stubEnv` / `vi.resetModules` /
-`vi.waitFor` / `vi.waitUntil`.
+**Working** (verified on real Zotero): `vi.fn` / `vi.spyOn` / `vi.mocked` / `vi.stubGlobal` / `vi.clearAllMocks` / `vi.resetAllMocks` / `vi.restoreAllMocks` / `vi.useFakeTimers` (with `advanceTimersByTime`, `setSystemTime`, ...) / `vi.setConfig` / `vi.stubEnv` / `vi.resetModules` / `vi.waitFor` / `vi.waitUntil`.
 
-**Not available** (architectural limitation): `vi.mock` / `vi.doMock` /
-`vi.unmock` / `vi.doUnmock` / `vi.importActual` / `vi.importMock` and
-`vi.hoisted`. Vitest's module mocker needs the Vite module pipeline to
-intercept imports; the test page loads pre-bundled ESM with no import hook,
-so `vi.mock()` throws `Vitest mocker was not initialized in this
-environment`. Use `vi.fn` / `vi.spyOn` or manual dependency injection
-instead.
+**Not available** (architectural limitation): `vi.mock` / `vi.doMock` / `vi.unmock` / `vi.doUnmock` / `vi.importActual` / `vi.importMock` and `vi.hoisted`. Vitest's module mocker needs the Vite module pipeline to intercept imports; the test page loads pre-bundled ESM with no import hook, so `vi.mock()` throws `Vitest mocker was not initialized in this environment`. Use `vi.fn` / `vi.spyOn` or manual dependency injection instead.
 
 ## Debugging
 
 - Set `ZOTERO_PLUGIN_LOG_LEVEL=DEBUG` (or `logLevel: "DEBUG"` in the
-  scaffold config) to see the pool's internals — bridge port, bundle stats,
-  Zotero launch, worker takeovers.
+  scaffold config) to see the pool's internals — bridge port, bundle stats, Zotero launch, worker takeovers.
 - Page errors (a failing test-window load, unhandled rejections) are
-  mirrored to the terminal as `[page-error]` / `[page-unhandledrejection]`
-  warnings, so a window that never handshakes is diagnosable without debug
-  mode.
+  mirrored to the terminal as `[page-error]` / `[page-unhandledrejection]` warnings, so a window that never handshakes is diagnosable without debug mode.
 
 ## Watch Mode
 
 In watch mode (`zotero-plugin test`, or `vitest --watch`), Scaffold:
 
 - **Keeps the same Zotero instance alive between reruns**: after each run the
-  worker soft-stops (Zotero and its test window stay running) and the next run
-  takes the instance over, so a file change re-runs in ~15ms instead of a
-  ~30s cold boot.
+  worker soft-stops (Zotero and its test window stay running) and the next run takes the instance over, so a file change re-runs in ~15ms instead of a ~30s cold boot.
 - **Rebuilds only the affected test files** when they change: the pool
-  rebundles just the files vitest is about to re-run (with a fresh artifact
-  stamp) and hands the page the new manifest, so the updated code is what
-  actually runs.
+  rebundles just the files vitest is about to re-run (with a fresh artifact stamp) and hands the page the new manifest, so the updated code is what actually runs.
 - Recompiles source code and reloads plugins when the source changes.
 
 ## Running Tests on CI
@@ -271,9 +233,7 @@ To run tests automatically on CI services like GitHub Actions, Scaffold provides
 
 By default, Scaffold enables headless mode on CI services. To enable it locally, pass `headless` as a CLI parameter or set `test.headless: true` in the configuration.
 
-::: warning
-Scaffold's built-in headless mode supports only Ubuntu 22.04 and 24.04. For other Linux distributions, manually configure a headless environment, set `test.headless` to `false`, and use tools like `xvfb-run npm run test`.
-:::
+::: warning Scaffold's built-in headless mode supports only Ubuntu 22.04 and 24.04. For other Linux distributions, manually configure a headless environment, set `test.headless` to `false`, and use tools like `xvfb-run npm run test`. :::
 
 For GitHub Actions, use the following workflow template:
 

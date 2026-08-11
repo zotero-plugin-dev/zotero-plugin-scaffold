@@ -370,6 +370,7 @@ export class ZoteroPoolWorker implements PoolWorker {
         testFiles: this.poolOptions.project.config.include,
         files,
         setupFiles: this.poolOptions.project.config.setupFiles,
+        waitForPlugin: this.options.waitForPlugin,
         stamp,
         mode,
       });

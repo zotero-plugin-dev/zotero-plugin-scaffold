@@ -14,14 +14,12 @@ export function generateVitestConfig(ctx: Context): string {
   const include = entries.map(entry =>
     `${entry.replace(/[\\/]+$/, "")}/**/*.{spec,test}.?(c|m)[jt]s?(x)`,
   );
-  // The legacy test.waitForPlugin flag becomes a vitest setupFile: the CLI
-  // writes .scaffold/setup-wait-plugin.js (see Test.run) that polls the
-  // expression before any test starts. The pool bundles setupFiles into the
-  // page like test files, and the wait shows up in vitest's "setup" duration.
+  // The legacy test.waitForPlugin flag is passed straight to the pool, which
+  // bakes it into the page and polls the expression before the run starts.
   const waitForPlugin = ctx.test.waitForPlugin?.trim();
-  const setupFiles = waitForPlugin && waitForPlugin !== "() => true"
+  const waitForPluginOpt = waitForPlugin && waitForPlugin !== "() => true"
     ? `,
-    setupFiles: [${JSON.stringify(join(process.cwd(), ".scaffold", "setup-wait-plugin.js"))}]`
+      waitForPlugin: ${JSON.stringify(waitForPlugin)}`
     : "";
 
   // The plugin's built source, as a cwd-relative path for the pool launcher.
@@ -49,11 +47,11 @@ export default defineConfig({
     fileParallelism: false,
     testTimeout: ${ctx.test.vitest.timeout},
     hookTimeout: ${ctx.test.vitest.timeout},
-    bail: ${ctx.test.abortOnFail ? 1 : 0}${reporter}${outputFile}${setupFiles},
+    bail: ${ctx.test.abortOnFail ? 1 : 0}${reporter}${outputFile},
     pool: zoteroPool({
       pluginDir: ${JSON.stringify(pluginDir)},
       pluginId: ${JSON.stringify(ctx.id)},
-      extraPrefs: ${JSON.stringify(ctx.test.prefs)},
+      extraPrefs: ${JSON.stringify(ctx.test.prefs)}${waitForPluginOpt},
     }),
   },
 });

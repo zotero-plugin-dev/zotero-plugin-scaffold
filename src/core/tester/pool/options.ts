@@ -23,6 +23,13 @@ export interface ZoteroPoolOptions {
   args?: string[];
   /** Extra preferences written to the profile's prefs.js. */
   extraPrefs?: Record<string, string | number | boolean>;
+  /**
+   * Function body (as a string) that returns whether the user plugin is
+   * ready, e.g. `() => Zotero.MyPlugin.initialized`. The page polls it
+   * (30s deadline) before the run starts — a replacement for the legacy
+   * mocha-era `test.waitForPlugin`.
+   */
+  waitForPlugin?: string;
 }
 
 export interface ResolvedZoteroPoolOptions {
@@ -34,6 +41,7 @@ export interface ResolvedZoteroPoolOptions {
   testerPluginId: string;
   args?: string[];
   extraPrefs: Record<string, string | number | boolean>;
+  waitForPlugin?: string;
 }
 
 export const TESTER_PLUGIN_ID = "zotero-plugin-tester@scaffold.local";
@@ -62,5 +70,6 @@ export function resolveOptions(
     testerPluginId: options.testerPluginId ?? TESTER_PLUGIN_ID,
     args: options.args,
     extraPrefs: options.extraPrefs ?? {},
+    waitForPlugin: options.waitForPlugin,
   };
 }

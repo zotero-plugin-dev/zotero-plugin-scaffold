@@ -10,6 +10,7 @@
 import { WorkerProtocol } from "./protocol.js";
 import { runMethod } from "./runner.js";
 import { HttpTransport } from "./transport.js";
+import { waitForPluginReady } from "./wait-plugin.js";
 
 // The test window is opened with ?port=<bridge-port> (see template/bootstrap.js).
 const port = new URLSearchParams(location.search).get("port") ?? "";
@@ -27,17 +28,42 @@ function dump(str: string): void {
   transport.debug(str).catch(() => {});
 }
 
-const protocol = new WorkerProtocol(transport, { runMethod }, dump);
-protocol.start();
+// Optional plugin-ready wait (zoteroPool({ waitForPlugin })): poll before the
+// worker handshake so the first test only runs once the plugin is up. Wrapped
+// in an async IIFE because the page is a module and lint bans top-level await.
+void (async () => {
+  if (waitForPluginReady) {
+    const deadline = Date.now() + 30000;
+    while (!waitForPluginReady()) {
+      if (Date.now() > deadline) {
+        throw new Error("Timed out waiting for the plugin (waitForPlugin)");
+      }
+      await new Promise(r => setTimeout(r, 100));
+    }
+  }
 
-// Expose the worker state under vitest's official global key so vi members
-// that read `getWorkerState()` work in the page: fake timers, setConfig,
-// stubEnv, resetModules. The state object is the same one the protocol
-// updates (ctx/config on start), so nothing else changes.
-Object.defineProperty(globalThis, "__vitest_worker__", {
-  value: protocol.workerState,
-  configurable: true,
-  writable: true,
-});
+  // Optional plugin-ready wait (zoteroPool({ waitForPlugin })): poll before
+  // the worker handshake so the first test only runs once the plugin is up.
+  if (waitForPluginReady) {
+    const deadline = Date.now() + 30000;
+    while (!waitForPluginReady()) {
+      if (Date.now() > deadline) {
+        throw new Error("Timed out waiting for the plugin (waitForPlugin)");
+      }
+      await new Promise(r => setTimeout(r, 100));
+    }
+  }
 
-dump(`setup loaded, polling http://127.0.0.1:${port}\n`);
+  const protocol = new WorkerProtocol(transport, { runMethod }, dump);
+  protocol.start();
+
+  // Expose the worker state under vitest's official global key so vi members
+  // that read `getWorkerState()` work in the page: fake timers, setConfig,
+  // stubEnv, resetModules. The state object is the same one the protocol
+  // updates (ctx/config on start), so nothing else changes.
+  Object.defineProperty(globalThis, "__vitest_worker__", {
+    value: protocol.workerState,
+    configurable: true,
+    writable: true,
+  });
+})();

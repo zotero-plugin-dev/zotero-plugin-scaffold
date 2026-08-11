@@ -48,6 +48,7 @@ const MODULE_RUNNER_STUB_ID = "\0vitest-stub:module-runner";
 // rolldown virtual module id for the baked test manifest (NUL prefix keeps it
 // out of the file system namespace)
 const TESTER_MANIFEST_ID = "\0tester-tests-manifest";
+const WAIT_PLUGIN_ID = "\0tester-wait-plugin";
 
 export interface BuildTesterPluginOptions {
   /** Output directory for the tester plugin (default: .scaffold/tester). */
@@ -89,6 +90,12 @@ export interface BuildTesterPluginOptions {
    * each collected file, so they must be part of the manifest too.
    */
   setupFiles?: string[];
+  /**
+   * Legacy plugin-ready expression (`() => Zotero.MyPlugin.initialized`).
+   * Baked into the page (wait-plugin virtual module); the page polls it
+   * before the run starts.
+   */
+  waitForPlugin?: string;
 }
 
 function resolveDeps(): Record<string, string> {
@@ -258,11 +265,19 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
               if (source.endsWith("tests-manifest.js") && importer?.startsWith(pageTmp)) {
                 return TESTER_MANIFEST_ID;
               }
+              if (source.endsWith("wait-plugin.js") && importer?.startsWith(pageTmp)) {
+                return WAIT_PLUGIN_ID;
+              }
               return null;
             },
             load(id) {
               if (id === TESTER_MANIFEST_ID) {
                 return `export default ${JSON.stringify(manifest)};`;
+              }
+              if (id === WAIT_PLUGIN_ID) {
+                // The page polls this before starting; null means "no wait".
+                const expr = options.waitForPlugin?.trim();
+                return `export const waitForPluginReady = ${expr ? `(${expr})` : "null"};`;
               }
               return null;
             },

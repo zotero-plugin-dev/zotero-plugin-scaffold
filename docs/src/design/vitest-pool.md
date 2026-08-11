@@ -90,7 +90,7 @@
 
 - **完整 vitest 体验**：reporter（default/verbose/dot/json/junit）、`outputFile`、`--project` 多项目、watch、退出码
 - **vi 可用面**（真机逐一验证）：`vi.fn`/`vi.spyOn`/`vi.isMockFunction`/`vi.mocked`/`vi.stubGlobal`/`vi.clearAllMocks`/`resetAllMocks`/`restoreAllMocks`/`vi.useFakeTimers` 全家/`vi.setConfig`/`vi.stubEnv`/`vi.resetModules`/`vi.waitFor`/`vi.waitUntil`
-  - fake timers 可用依赖页面发布官方 worker state（`globalThis.__vitest_worker__`）——页面用自建 `WorkerStateLike`（官方 `WorkerGlobalState` 子集）
+- fake timers 可用依赖页面发布官方 worker state（`globalThis.__vitest_worker__`）——页面用自建 `WorkerStateLike`（官方 `WorkerGlobalState` 子集）
 - **全局注入**：官方 `setupCommonEnv`（start 时强制 `config.globals = true`）——与 `globals: true` 同一代码路径，名单零维护
 - **页面错误上报**：`template/index.html` 内联脚本把 window error/unhandledrejection POST 到 bridge `/debug`（`logger.warn` 显示 `[page-error]`）
 - **日志分级**：`[zotero-pool]` 常规日志走 `logger.debug`（默认隐藏，`ZOTERO_PLUGIN_LOG_LEVEL=DEBUG` 或 config `logLevel` 开启）；启动重试/页面错误 `logger.warn` 默认可见
