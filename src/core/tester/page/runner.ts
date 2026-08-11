@@ -1,12 +1,3 @@
-/**
- * Minimal VitestRunner for the in-page test runner.
- *
- * The runner callbacks are patched exactly like vitest's `resolveTestRunner`
- * (packages/vitest/src/runtime/runners/index.ts): onCollectStart → rpc.onQueued,
- * onCollected → rpc.onCollected (with retry-condition sanitization), and
- * onTaskUpdate → rpc.onTaskUpdate. This lets vitest's server-side state build
- * the reported task tree natively — no duck-typed TestModule/TestCase.
- */
 import type {
   RunnerTestFile,
   SerializedConfig,
@@ -26,6 +17,16 @@ import manifest from "./tests-manifest.js";
 
 /** Fallback manifest baked into setup.js by the bundler (initial run). */
 const bakedManifest = manifest;
+
+/**
+ * Minimal VitestRunner for the in-page test runner.
+ *
+ * The runner callbacks are patched exactly like vitest's `resolveTestRunner`
+ * (packages/vitest/src/runtime/runners/index.ts): onCollectStart → rpc.onQueued,
+ * onCollected → rpc.onCollected (with retry-condition sanitization), and
+ * onTaskUpdate → rpc.onTaskUpdate. This lets vitest's server-side state build
+ * the reported task tree natively — no duck-typed TestModule/TestCase.
+ */
 
 export class ZoteroVitestRunner {
   config: Record<string, any>;

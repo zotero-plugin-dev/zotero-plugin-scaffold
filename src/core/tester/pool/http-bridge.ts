@@ -1,3 +1,10 @@
+import type { AddressInfo } from "node:net";
+import http from "node:http";
+import * as flatted from "flatted";
+import { logger } from "../../../utils/logger.js";
+import { findFreeTcpPort } from "../../../utils/zotero/remote-zotero.js";
+
+export class HttpBridge {
 /**
  * HTTP bridge between the vitest server (pool worker) and the Zotero test
  * window. Message framing:
@@ -7,13 +14,6 @@
  *   page → host: POST /debug  (page logs)
  */
 
-import type { AddressInfo } from "node:net";
-import http from "node:http";
-import * as flatted from "flatted";
-import { logger } from "../../../utils/logger.js";
-import { findFreeTcpPort } from "../../../utils/zotero/remote-zotero.js";
-
-export class HttpBridge {
   private server?: http.Server;
   private readonly downlink: string[] = [];
   private readyResolve?: () => void;

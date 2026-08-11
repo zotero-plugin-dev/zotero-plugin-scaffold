@@ -1,23 +1,3 @@
-/**
- * Worker protocol for the in-page test runner, mirroring vitest's official
- * `init()` from `vitest/worker` (message framing, not the node internals).
- *
- * Message flow:
- *   host → page: { __vitest_worker_request__: true, type: "start", ... } →
- *                page replies { type: "started", __vitest_worker_response__: true }
- *   host → page: { __vitest_worker_request__: true, type: "run"|"collect", context } →
- *                page runs and replies { type: "testfileFinished", error? }
- *   host → page: { __vitest_worker_request__: true, type: "stop" } →
- *                page replies { type: "stopped" }
- *   host → page: raw birpc messages (onCancel etc.) → forwarded to rpc callbacks
- *   page → host: raw birpc messages (onQueued/onCollected/onTaskUpdate) and
- *                the lifecycle replies above, all via the transport
- *
- * Imports of "flatted"/"@vitest/utils/error" are redirected to the runtime
- * chunk by the bundler, so the page and the test files share one instance of
- * every vitest module.
- */
-
 import type { WorkerRequest } from "vitest/node";
 import type { PageRpc } from "./rpc.js";
 import type { WorkerStateLike } from "./state.js";
@@ -41,6 +21,26 @@ export interface RunHandlers {
 }
 
 export class WorkerProtocol {
+/**
+ * Worker protocol for the in-page test runner, mirroring vitest's official
+ * `init()` from `vitest/worker` (message framing, not the node internals).
+ *
+ * Message flow:
+ *   host → page: { __vitest_worker_request__: true, type: "start", ... } →
+ *                page replies { type: "started", __vitest_worker_response__: true }
+ *   host → page: { __vitest_worker_request__: true, type: "run"|"collect", context } →
+ *                page runs and replies { type: "testfileFinished", error? }
+ *   host → page: { __vitest_worker_request__: true, type: "stop" } →
+ *                page replies { type: "stopped" }
+ *   host → page: raw birpc messages (onCancel etc.) → forwarded to rpc callbacks
+ *   page → host: raw birpc messages (onQueued/onCollected/onTaskUpdate) and
+ *                the lifecycle replies above, all via the transport
+ *
+ * Imports of "flatted"/"@vitest/utils/error" are redirected to the runtime
+ * chunk by the bundler, so the page and the test files share one instance of
+ * every vitest module.
+ */
+
   private readonly state: WorkerStateLike;
   private readonly rpc: PageRpc;
   private pollTimer: ReturnType<typeof setInterval> | undefined;

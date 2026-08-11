@@ -1,8 +1,3 @@
-/**
- * Pool worker: owns the HTTP bridge, the bundling step and the Zotero
- * process lifecycle. Implements vitest's `PoolWorker` interface.
- */
-
 import type { PoolOptions, PoolTask, PoolWorker, WorkerRequest } from "vitest/node";
 import type { RunContext } from "../page/types.js";
 import type { ZoteroPoolOptions } from "./options.js";
@@ -68,6 +63,11 @@ export function findResourceConflict(
 }
 
 export class ZoteroPoolWorker implements PoolWorker {
+/**
+ * Pool worker: owns the HTTP bridge, the bundling step and the Zotero
+ * process lifecycle. Implements vitest's `PoolWorker` interface.
+ */
+
   readonly name = "zotero";
   private readonly poolOptions: PoolOptions;
   private readonly options: ReturnType<typeof resolveOptions>;
