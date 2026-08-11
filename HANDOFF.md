@@ -77,8 +77,8 @@ vitest CLI → zoteroPool() → pool-worker（HTTP bridge + ZoteroRunner 生命�
 src/core/tester/
 ├── index.ts            # Test 类（CLI 薄封装：build → 生成配置 → spawn vitest）
 ├── cli-config.ts       # 临时 vitest.config 生成器（+ cli-config.test.ts）
-├── bundler.ts          # buildTesterPlugin：runtime chunk + page 源码(?raw) + 测试文件 + manifest（返回 manifest；产物名支持 stamp 前缀）
-├── test-bundler.ts     # findImpactedTests（watch 资产，已瘦身）
+├── bundler.ts          # buildTesterPlugin：runtime chunk + page 源码(?raw) + 测试文件 + manifest（返回 manifest；产物名支持 stamp 前缀；mode: full|tests-only；files: 按需打包）
+
 ├── template/           # 插件静态文件（manifest/bootstrap/index.html，__TESTER_PLUGIN_ID__ 占位）
 ├── page/               # 页面运行时（TS 源码 → rolldown → content/setup.js）
 │   ├── index.ts        # 入口：全局注入 + transport/protocol 组装
