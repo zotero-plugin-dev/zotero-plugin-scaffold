@@ -499,18 +499,24 @@ export function killZoteroByProfile(profilePath: string): void {
       // -EncodedCommand (UTF-16LE base64) avoids the nested-quote mangling
       // that execSync → cmd.exe would inflict on a plain -Command string.
       const escaped = profilePath.replaceAll("'", "''");
-      const script = `$ProgressPreference = 'SilentlyContinue'; `
-        + `$all = Get-CimInstance Win32_Process -Filter "Name='zotero.exe'"; `
-        + `$ids = @{}; `
-        + `$all | ForEach-Object { $ids[$_.ProcessId] = $true }; ${
-          // kill the profile's main process with its whole tree, plus
+      // Plain string segments (NOT one template literal): eslint --fix once
+      // re-flowed a comment inside `${ ... }` into a unary-plus template
+      // (`` ${+`...`} ``), which evaluated to NaN and broke the script —
+      // the error was swallowed and Zotero survived shutdown.
+      const script = [
+        "$ProgressPreference = 'SilentlyContinue'; ",
+        "$all = Get-CimInstance Win32_Process -Filter \"Name='zotero.exe'\"; ",
+        "$ids = @{}; ",
+        "$all | ForEach-Object { $ids[$_.ProcessId] = $true }; ",
+        // kill the profile's main process with its whole tree, plus
         // orphaned content processes whose main process is already gone
         // (their command line has no profile path, so the filter above
         // cannot see them — they hold profile locks and break the next boot)
-          +`$all | Where-Object { $_.CommandLine -like '*${escaped}*' } `
-        }| ForEach-Object { taskkill /f /t /pid $_.ProcessId 2>$null | Out-Null }; `
-        + `$all | Where-Object { $_.CommandLine -like '*-contentproc*' -and -not $ids[$_.ParentProcessId] } `
-        + `| ForEach-Object { taskkill /f /pid $_.ProcessId 2>$null | Out-Null };`;
+        `$all | Where-Object { $_.CommandLine -like '*${escaped}*' } `,
+        "| ForEach-Object { taskkill /f /t /pid $_.ProcessId 2>$null | Out-Null }; ",
+        "$all | Where-Object { $_.CommandLine -like '*-contentproc*' -and -not $ids[$_.ParentProcessId] } ",
+        "| ForEach-Object { taskkill /f /pid $_.ProcessId 2>$null | Out-Null };",
+      ].join("");
       const encoded = Buffer.from(script, "utf16le").toString("base64");
       execSync(`powershell -NoProfile -EncodedCommand ${encoded}`);
     }
