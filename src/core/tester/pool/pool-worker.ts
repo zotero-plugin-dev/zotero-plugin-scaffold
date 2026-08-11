@@ -201,7 +201,7 @@ export class ZoteroPoolWorker implements PoolWorker {
     // survives across watch runs).
     if (watch && this.hasRun && Array.isArray(invalidates) && invalidates.length > 0) {
       buildStampCounter += 1;
-      await this.buildBundle(buildStampCounter.toString(36));
+      await this.buildBundle(buildStampCounter.toString(36), undefined, "tests-only");
     }
     this.hasRun = true;
     // Always hand the current manifest to the page: after a rebuild it
@@ -231,13 +231,13 @@ export class ZoteroPoolWorker implements PoolWorker {
     // per-run context manifest makes it import the updated test code.
     const profileKey = resolve(this.options.profileDir);
     const live = liveInstances.get(profileKey);
-    if (live && live.zotero.isRunning()) {
+    if (live && live.bridge.isPageAlive(2000)) {
       liveInstances.delete(profileKey);
       this.zotero = live.zotero;
       this.bridge = live.bridge;
       this.bridge.setHandler(message => this.emit("message", message));
       buildStampCounter += 1;
-      await this.buildBundle(buildStampCounter.toString(36));
+      await this.buildBundle(buildStampCounter.toString(36), undefined, "tests-only");
       logger.debug(`[zotero-pool] reusing live Zotero instance (${profileKey})`);
       return;
     }
@@ -339,7 +339,11 @@ export class ZoteroPoolWorker implements PoolWorker {
    * Bundles the tester plugin (runtime chunk + page + test files + manifest).
    * Pass a stamp on watch rebuilds to cache-bust the test artifact URLs.
    */
-  private async buildBundle(stamp?: string, testerDir = join(process.cwd(), ".scaffold", "tester", this.projectSuffix)): Promise<void> {
+  private async buildBundle(
+    stamp?: string,
+    testerDir = join(process.cwd(), ".scaffold", "tester", this.projectSuffix),
+    mode: "full" | "tests-only" = "full",
+  ): Promise<void> {
     const key = resolve(testerDir);
     const chain = (bundleChains.get(key) ?? Promise.resolve()).then(async () => {
       this.testerManifest = await buildTesterPlugin({
@@ -348,6 +352,7 @@ export class ZoteroPoolWorker implements PoolWorker {
         testDir: process.cwd(),
         testFiles: this.poolOptions.project.config.include,
         stamp,
+        mode,
       });
     });
     bundleChains.set(key, chain.catch(() => {}));

@@ -68,6 +68,13 @@ export interface BuildTesterPluginOptions {
    * instead of hitting the module cache.
    */
   stamp?: string;
+  /**
+   * "tests-only" skips the static files, runtime chunk and page worker and
+   * rebuilds just the test artifacts. Safe because watch takeovers hand the
+   * manifest to the page via the run context, so setup.js need not change.
+   * Defaults to "full".
+   */
+  mode?: "full" | "tests-only";
 }
 
 function resolveDeps(): Record<string, string> {
@@ -143,18 +150,21 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
   const contentDir = join(outDir, "content");
   const chromeRef = options.chromeRef ?? "zotero-tester";
   const stamp = options.stamp ?? "";
+  const testsOnly = options.mode === "tests-only";
   await ensureDir(contentDir);
 
-  // ---- static plugin files (inlined via ?raw, no fs reads) ----
-  await writeFile(
-    join(outDir, "manifest.json"),
-    manifestRaw.replaceAll("__TESTER_PLUGIN_ID__", options.testerPluginId ?? TESTER_PLUGIN_ID),
-  );
-  await writeFile(join(contentDir, "index.html"), htmlRaw);
-  const bootstrap = bootstrapRaw
-    .replaceAll("__CHROME_REF__", chromeRef)
-    .replaceAll("__PORT__", String(options.port));
-  await writeFile(join(outDir, "bootstrap.js"), bootstrap);
+  if (!testsOnly) {
+    // ---- static plugin files (inlined via ?raw, no fs reads) ----
+    await writeFile(
+      join(outDir, "manifest.json"),
+      manifestRaw.replaceAll("__TESTER_PLUGIN_ID__", options.testerPluginId ?? TESTER_PLUGIN_ID),
+    );
+    await writeFile(join(contentDir, "index.html"), htmlRaw);
+    const bootstrap = bootstrapRaw
+      .replaceAll("__CHROME_REF__", chromeRef)
+      .replaceAll("__PORT__", String(options.port));
+    await writeFile(join(outDir, "bootstrap.js"), bootstrap);
+  }
 
   // ---- test file discovery ----
   const testDir = options.testDir ?? process.cwd();
@@ -176,83 +186,84 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
     manifest[file.split(sep).join("/")] = outName;
   }
 
+  if (!testsOnly) {
   // ---- bundle the vitest runtime ----
-  const deps = resolveDeps();
-  const runtimeEntry = join(outDir, ".tmp-runtime-entry.js");
-  await outputFile(runtimeEntry, RUNTIME_ENTRY);
-  const runtimeBuild = await rolldown({
-    input: runtimeEntry,
-    platform: "browser",
-    treeshake: false,
-    plugins: [createRuntimeResolvePlugin(deps)],
-  });
-  await runtimeBuild.write({
-    dir: contentDir,
-    format: "esm",
-    entryFileNames: "runtime.js",
-    sourcemap: true,
-  });
-  await rm(runtimeEntry, { force: true });
-
-  // ---- bundle the page worker (content/setup.js) ----
-  // The page sources are inlined into this module via ?raw (tsdown Raw
-  // plugin); materialize them in a temp dir so rolldown can bundle them.
-  // Lives under the OS temp dir (keyed by outDir) rather than inside outDir:
-  // on Windows rolldown can still hold handles when we try to remove it,
-  // and a failed rmdir inside outDir broke the next build.
-  const pageTmp = join(
-    tmpdir(),
-    `zotero-tester-page-${outDir.replace(/[\\/:]/g, "_")}`,
-  );
-  await ensureDir(pageTmp);
-  const pageFiles: Array<[string, string]> = [
-    ["index.ts", pageIndexRaw],
-    ["protocol.ts", pageProtocolRaw],
-    ["rpc.ts", pageRpcRaw],
-    ["runner.ts", pageRunnerRaw],
-    ["state.ts", pageStateRaw],
-    ["tests-manifest.ts", pageManifestRaw],
-    ["transport.ts", pageTransportRaw],
-  ];
-  for (const [name, source] of pageFiles) {
-    await writeFile(join(pageTmp, name), source);
-  }
-  try {
-    const pageBuild = await rolldown({
-      input: join(pageTmp, "index.ts"),
+    const deps = resolveDeps();
+    const runtimeEntry = join(outDir, ".tmp-runtime-entry.js");
+    await outputFile(runtimeEntry, RUNTIME_ENTRY);
+    const runtimeBuild = await rolldown({
+      input: runtimeEntry,
       platform: "browser",
       treeshake: false,
-      plugins: [
-        createRuntimeAliasPlugin("./runtime.js"),
-        {
-          name: "tester-page-manifest",
-          resolveId(source, importer) {
-            if (source.endsWith("tests-manifest.js") && importer?.startsWith(pageTmp)) {
-              return TESTER_MANIFEST_ID;
-            }
-            return null;
-          },
-          load(id) {
-            if (id === TESTER_MANIFEST_ID) {
-              return `export default ${JSON.stringify(manifest)};`;
-            }
-            return null;
-          },
-        },
-      ],
+      plugins: [createRuntimeResolvePlugin(deps)],
     });
-    await pageBuild.write({
+    await runtimeBuild.write({
       dir: contentDir,
       format: "esm",
-      entryFileNames: "setup.js",
+      entryFileNames: "runtime.js",
       sourcemap: true,
     });
-  }
-  finally {
-    await rm(pageTmp, { recursive: true, force: true }).catch(() => {});
-  }
+    await rm(runtimeEntry, { force: true });
 
-  // ---- bundle the test files ----
+    // ---- bundle the page worker (content/setup.js) ----
+    // The page sources are inlined into this module via ?raw (tsdown Raw
+    // plugin); materialize them in a temp dir so rolldown can bundle them.
+    // Lives under the OS temp dir (keyed by outDir) rather than inside outDir:
+    // on Windows rolldown can still hold handles when we try to remove it,
+    // and a failed rmdir inside outDir broke the next build.
+    const pageTmp = join(
+      tmpdir(),
+      `zotero-tester-page-${outDir.replace(/[\\/:]/g, "_")}`,
+    );
+    await ensureDir(pageTmp);
+    const pageFiles: Array<[string, string]> = [
+      ["index.ts", pageIndexRaw],
+      ["protocol.ts", pageProtocolRaw],
+      ["rpc.ts", pageRpcRaw],
+      ["runner.ts", pageRunnerRaw],
+      ["state.ts", pageStateRaw],
+      ["tests-manifest.ts", pageManifestRaw],
+      ["transport.ts", pageTransportRaw],
+    ];
+    for (const [name, source] of pageFiles) {
+      await writeFile(join(pageTmp, name), source);
+    }
+    try {
+      const pageBuild = await rolldown({
+        input: join(pageTmp, "index.ts"),
+        platform: "browser",
+        treeshake: false,
+        plugins: [
+          createRuntimeAliasPlugin("./runtime.js"),
+          {
+            name: "tester-page-manifest",
+            resolveId(source, importer) {
+              if (source.endsWith("tests-manifest.js") && importer?.startsWith(pageTmp)) {
+                return TESTER_MANIFEST_ID;
+              }
+              return null;
+            },
+            load(id) {
+              if (id === TESTER_MANIFEST_ID) {
+                return `export default ${JSON.stringify(manifest)};`;
+              }
+              return null;
+            },
+          },
+        ],
+      });
+      await pageBuild.write({
+        dir: contentDir,
+        format: "esm",
+        entryFileNames: "setup.js",
+        sourcemap: true,
+      });
+    }
+    finally {
+      await rm(pageTmp, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+  // ---- bundle the test files (the only step in tests-only mode) ----
   if (Object.keys(testInput).length > 0) {
     const testsBuild = await rolldown({
       input: testInput,

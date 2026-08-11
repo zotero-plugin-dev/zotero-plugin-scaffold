@@ -22,6 +22,8 @@ export class HttpBridge {
 
   /** Mutable so a watch-mode rerun worker can adopt a live bridge. */
   private onMessage: (message: unknown) => void;
+  /** Updated on every /poll — the page's heartbeat while it is alive. */
+  private lastPollAt = 0;
 
   constructor(onMessage: (message: unknown) => void) {
     this.onMessage = onMessage;
@@ -30,6 +32,15 @@ export class HttpBridge {
   /** Re-points incoming page messages at a different worker (watch takeover). */
   setHandler(onMessage: (message: unknown) => void): void {
     this.onMessage = onMessage;
+  }
+
+  /**
+   * True if the test window has polled within the given window. This is the
+   * cheapest liveness probe for a watch takeover — the page polls every
+   * 150ms, so a live page means a live Zotero, with no PowerShell roundtrip.
+   */
+  isPageAlive(timeoutMs: number): boolean {
+    return this.lastPollAt > 0 && Date.now() - this.lastPollAt < timeoutMs;
   }
 
   get port(): number {
@@ -111,6 +122,7 @@ export class HttpBridge {
       res.end("{}");
     }
     else if (req.method === "GET" && req.url === "/poll") {
+      this.lastPollAt = Date.now();
       const messages = this.downlink.splice(0);
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(messages));
