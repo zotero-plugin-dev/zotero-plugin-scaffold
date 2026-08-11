@@ -1,10 +1,11 @@
-import type { PoolOptions, PoolTask, PoolWorker, WorkerRequest } from "vitest/node";
-import type { RunContext } from "../page/types.js";
-import type { ZoteroPoolOptions } from "./options.js";
 /**
  * Pool worker: owns the HTTP bridge, the bundling step and the Zotero
  * process lifecycle. Implements vitest's `PoolWorker` interface.
  */
+
+import type { PoolOptions, PoolTask, PoolWorker, WorkerRequest } from "vitest/node";
+import type { RunContext } from "../page/types.js";
+import type { ZoteroPoolOptions } from "./options.js";
 import { join, resolve } from "node:path";
 import process from "node:process";
 import { delay } from "es-toolkit";

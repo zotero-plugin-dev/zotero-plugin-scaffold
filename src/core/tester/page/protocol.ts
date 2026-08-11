@@ -1,8 +1,3 @@
-import type { WorkerRequest } from "vitest/node";
-import type { PageRpc } from "./rpc.js";
-import type { WorkerStateLike } from "./state.js";
-import type { HttpTransport } from "./transport.js";
-import type { RunContext } from "./types.js";
 /**
  * Worker protocol for the in-page test runner, mirroring vitest's official
  * `init()` from `vitest/worker` (message framing, not the node internals).
@@ -22,6 +17,12 @@ import type { RunContext } from "./types.js";
  * chunk by the bundler, so the page and the test files share one instance of
  * every vitest module.
  */
+
+import type { WorkerRequest } from "vitest/node";
+import type { PageRpc } from "./rpc.js";
+import type { WorkerStateLike } from "./state.js";
+import type { HttpTransport } from "./transport.js";
+import type { RunContext } from "./types.js";
 import { parse as flattedParse, stringify as flattedStringify } from "flatted";
 import { processError, setupCommonEnv } from "vitest/internal/browser";
 import { createPageRpc, errorReplacer } from "./rpc.js";

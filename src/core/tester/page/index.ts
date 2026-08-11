@@ -1,15 +1,15 @@
 /**
  * In-page test runner entry (bundled to content/setup.js by the tester
  * bundler). Loaded from chrome://zotero-<tester>/content/index.html.
+ *
+ * Globals (describe/it/expect/vi/...) are injected by vitest's own
+ * setupCommonEnv() on the start request (see protocol.ts) — the same code
+ * path as `globals: true`, so no list is maintained here.
  */
 
 import { WorkerProtocol } from "./protocol.js";
 import { runMethod } from "./runner.js";
 import { HttpTransport } from "./transport.js";
-
-// Globals are injected by vitest's own setupCommonEnv() on the start request
-// (see protocol.ts) — the same code path as `globals: true`, so no list is
-// maintained here.
 
 // The test window is opened with ?port=<bridge-port> (see template/bootstrap.js).
 const port = new URLSearchParams(location.search).get("port") ?? "";

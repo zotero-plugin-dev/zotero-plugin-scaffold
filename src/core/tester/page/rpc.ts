@@ -1,5 +1,3 @@
-import type { WorkerStateLike } from "./state.js";
-import type { PageHostRpc } from "./types.js";
 /**
  * birpc client for the in-page worker, mirroring vitest's `createRuntimeRpc`
  * (packages/vitest/src/runtime/rpc.ts).
@@ -8,6 +6,9 @@ import type { PageHostRpc } from "./types.js";
  * flatted — JSON.stringify would throw on cyclic values. Note that flatted's
  * output is a JSON *array*, so both ends must flatted-parse it back.
  */
+
+import type { WorkerStateLike } from "./state.js";
+import type { PageHostRpc } from "./types.js";
 import { createBirpc } from "birpc";
 import { parse as flattedParse, stringify as flattedStringify } from "flatted";
 

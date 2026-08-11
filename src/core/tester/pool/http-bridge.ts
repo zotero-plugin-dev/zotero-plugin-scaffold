@@ -1,4 +1,3 @@
-import type { AddressInfo } from "node:net";
 /**
  * HTTP bridge between the vitest server (pool worker) and the Zotero test
  * window. Message framing:
@@ -7,6 +6,8 @@ import type { AddressInfo } from "node:net";
  *   page → host: POST /ready  (handshake: page is polling)
  *   page → host: POST /debug  (page logs)
  */
+
+import type { AddressInfo } from "node:net";
 import http from "node:http";
 import * as flatted from "flatted";
 import { logger } from "../../../utils/logger.js";

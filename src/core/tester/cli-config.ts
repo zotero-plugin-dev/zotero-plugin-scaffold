@@ -1,9 +1,10 @@
-import type { Context } from "../../types/index.js";
 /**
  * Generates the temporary vitest config that the `zotero-plugin test` CLI
  * delegates to. The config wires the zotero pool (same implementation the
  * user would configure manually — the CLI is a thin wrapper).
  */
+
+import type { Context } from "../../types/index.js";
 import { join, relative } from "node:path";
 import process from "node:process";
 import { toArray } from "../../utils/string.js";
