@@ -20,7 +20,17 @@ export class HttpBridge {
     this.readyResolve = resolve;
   });
 
-  constructor(private readonly onMessage: (message: unknown) => void) {}
+  /** Mutable so a watch-mode rerun worker can adopt a live bridge. */
+  private onMessage: (message: unknown) => void;
+
+  constructor(onMessage: (message: unknown) => void) {
+    this.onMessage = onMessage;
+  }
+
+  /** Re-points incoming page messages at a different worker (watch takeover). */
+  setHandler(onMessage: (message: unknown) => void): void {
+    this.onMessage = onMessage;
+  }
 
   get port(): number {
     return (this.server?.address() as AddressInfo).port;

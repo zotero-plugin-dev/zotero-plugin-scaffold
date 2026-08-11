@@ -9,7 +9,7 @@ import process from "node:process";
 import { delay } from "es-toolkit";
 import * as flatted from "flatted";
 import { logger } from "../../../utils/logger.js";
-import { ZoteroRunner } from "../../../utils/zotero-runner.js";
+import { isZoteroRunningByProfile, killZoteroByProfile, ZoteroRunner } from "../../../utils/zotero-runner.js";
 import { buildTesterPlugin } from "../bundler.js";
 import { HttpBridge } from "./http-bridge.js";
 import { resolveOptions } from "./options.js";
@@ -17,6 +17,41 @@ import { resolveOptions } from "./options.js";
 // Workers that are currently running (between start() and stop()). Used to
 // reject two zotero projects booting a Zotero against the same resources.
 const activeWorkers = new Set<ZoteroPoolWorker>();
+
+/** A soft-stopped (watch mode) instance, kept alive for the next rerun. */
+interface LiveInstance {
+  zotero: ZoteroRunner;
+  bridge: HttpBridge;
+}
+
+// Watch mode: vitest stops the pool worker after every run, but the Zotero
+// instance and its test window can survive. Keyed by resolved profile dir;
+// the next worker of the same project takes the instance over instead of
+// cold-booting Zotero (~30s) again.
+const liveInstances = new Map<string, LiveInstance>();
+
+let exitCleanupRegistered = false;
+function registerExitCleanup(): void {
+  if (exitCleanupRegistered) {
+    return;
+  }
+  exitCleanupRegistered = true;
+  process.once("exit", () => {
+    for (const { zotero } of liveInstances.values()) {
+      zotero.exit();
+    }
+    liveInstances.clear();
+  });
+}
+
+// Module-level so stamps stay unique across watch-rerun workers: every
+// takeover rebuilds with a fresh stamp and the page must import a URL it has
+// never loaded before (otherwise the module cache returns the old code).
+let buildStampCounter = 0;
+
+// buildTesterPlugin writes a shared .tmp-page dir inside outDir; serialize
+// builds per outDir so a takeover rebuild can never race another one.
+const bundleChains = new Map<string, Promise<void>>();
 
 export interface WorkerResources {
   profileDir: string;
@@ -40,7 +75,6 @@ export class ZoteroPoolWorker implements PoolWorker {
 
   /** Manifest of the latest bundle (source path → artifact), re-baked per build. */
   private testerManifest: Record<string, string> = {};
-  private buildStamp = 0;
   private hasRun = false;
   /** Messages queued while a watch rebuild is in flight. */
   private readonly sendQueue: WorkerRequest[] = [];
@@ -56,6 +90,16 @@ export class ZoteroPoolWorker implements PoolWorker {
 
   /** Derived from the project name; keeps per-project resources apart. */
   private readonly projectSuffix: string;
+
+  /**
+   * Watch mode lives on the global vitest config (project.config.watch is
+   * undefined); check both so soft-stop/takeover also work with CLI flags
+   * like --watch that never reach the project config.
+   */
+  private isWatchMode(): boolean {
+    return (this.poolOptions.project.vitest?.config as any)?.watch === true
+      || (this.poolOptions.project.config as any).watch === true;
+  }
 
   constructor(options: PoolOptions, poolOptions: ZoteroPoolOptions = {}) {
     this.poolOptions = options;
@@ -99,6 +143,13 @@ export class ZoteroPoolWorker implements PoolWorker {
   }
 
   private emit(event: string, arg: any): void {
+    // A "stopped" reply means vitest is tearing this worker down (its stop()
+    // call follows after the page handshake) — soft-stop immediately so the
+    // next watch-rerun worker can take the instance over before a cold boot
+    // could mistake it for a leftover and kill it.
+    if (event === "message" && arg?.type === "stopped" && arg.__vitest_worker_response__ && this.isWatchMode()) {
+      this.softStop();
+    }
     for (const cb of this.listeners.get(event) ?? []) {
       try {
         cb(arg);
@@ -143,14 +194,14 @@ export class ZoteroPoolWorker implements PoolWorker {
     }
     const context = message.context as any;
     const invalidates = context?.invalidates;
-    const watch = (this.poolOptions.project.config as any).watch === true;
+    const watch = this.isWatchMode();
     // The first run/collect of a freshly started worker carries the stale
     // invalidates that caused the restart — start() already bundled the
     // current contents, so only rebuild for later requests (a worker that
     // survives across watch runs).
     if (watch && this.hasRun && Array.isArray(invalidates) && invalidates.length > 0) {
-      this.buildStamp += 1;
-      await this.buildBundle(this.buildStamp.toString(36));
+      buildStampCounter += 1;
+      await this.buildBundle(buildStampCounter.toString(36));
     }
     this.hasRun = true;
     // Always hand the current manifest to the page: after a rebuild it
@@ -173,6 +224,35 @@ export class ZoteroPoolWorker implements PoolWorker {
       );
     }
     activeWorkers.add(this);
+
+    // Watch rerun: take over the soft-stopped Zotero instance (if its
+    // process is still alive) instead of cold-booting another one. The page
+    // keeps polling the same bridge; the fresh bundle (new stamp) plus the
+    // per-run context manifest makes it import the updated test code.
+    const profileKey = resolve(this.options.profileDir);
+    const live = liveInstances.get(profileKey);
+    if (live && isZoteroRunningByProfile(profileKey)) {
+      liveInstances.delete(profileKey);
+      this.zotero = live.zotero;
+      this.bridge = live.bridge;
+      this.bridge.setHandler(message => this.emit("message", message));
+      buildStampCounter += 1;
+      await this.buildBundle(buildStampCounter.toString(36));
+      logger.debug(`[zotero-pool] reusing live Zotero instance (${profileKey})`);
+      return;
+    }
+    // The recorded instance died while soft-stopped — drop it and boot fresh.
+    if (live) {
+      liveInstances.delete(profileKey);
+      live.bridge.stop();
+    }
+    // A cold boot must not race a leftover instance on the same profile
+    // (soft-stop takeover failed, or a force-killed session left a zombie):
+    // kill it and give the lock a moment to be released.
+    if (isZoteroRunningByProfile(profileKey)) {
+      killZoteroByProfile(profileKey);
+      await delay(1500);
+    }
 
     // Boot Zotero with retries: after a force kill (e.g. a previous watch
     // rerun) the profile lock may not be released yet and the test window
@@ -260,20 +340,46 @@ export class ZoteroPoolWorker implements PoolWorker {
    * Pass a stamp on watch rebuilds to cache-bust the test artifact URLs.
    */
   private async buildBundle(stamp?: string, testerDir = join(process.cwd(), ".scaffold", "tester", this.projectSuffix)): Promise<void> {
-    this.testerManifest = await buildTesterPlugin({
-      outDir: testerDir,
-      port: this.bridge?.port ?? 0,
-      testDir: process.cwd(),
-      testFiles: this.poolOptions.project.config.include,
-      stamp,
+    const key = resolve(testerDir);
+    const chain = (bundleChains.get(key) ?? Promise.resolve()).then(async () => {
+      this.testerManifest = await buildTesterPlugin({
+        outDir: testerDir,
+        port: this.bridge?.port ?? 0,
+        testDir: process.cwd(),
+        testFiles: this.poolOptions.project.config.include,
+        stamp,
+      });
     });
+    bundleChains.set(key, chain.catch(() => {}));
+    await chain;
   }
 
   async stop(): Promise<void> {
     activeWorkers.delete(this);
+    if (this.isWatchMode()) {
+      this.softStop();
+      return;
+    }
     this.zotero?.exit();
     this.zotero = undefined;
     this.bridge?.stop();
     this.bridge = undefined;
+  }
+
+  /**
+   * Keeps the Zotero instance and its test window alive for the next watch
+   * rerun. Idempotent: called both from the "stopped" reply (early, before
+   * vitest's worker.stop()) and from stop() itself.
+   */
+  private softStop(): void {
+    if (!this.zotero || !this.bridge) {
+      return;
+    }
+    const profileKey = resolve(this.options.profileDir);
+    liveInstances.set(profileKey, { zotero: this.zotero, bridge: this.bridge });
+    registerExitCleanup();
+    this.zotero = undefined;
+    this.bridge = undefined;
+    logger.debug(`[zotero-pool] watch mode: keeping Zotero alive for the next rerun`);
   }
 }

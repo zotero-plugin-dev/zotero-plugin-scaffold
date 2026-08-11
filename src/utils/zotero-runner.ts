@@ -421,7 +421,7 @@ export class ZoteroRunner {
     // so the spawned PID may already be gone. Kill every instance whose
     // command line uses our profile — an image-wide kill (taskkill /im
     // zotero.exe) would take down sibling instances of parallel projects.
-    killByProfile(resolve(this.options.profile.path));
+    killZoteroByProfile(resolve(this.options.profile.path));
     // Belt & suspenders: force-kill the original PID if it survived.
     if (pid && isPidAlive(pid)) {
       try {
@@ -461,9 +461,36 @@ function isPidAlive(pid: number): boolean {
 }
 
 /**
- * Kills every zotero process whose command line references the profile path.
+ * True if a zotero process whose command line references the profile path is
+ * still running. Used by the pool to decide whether a soft-stopped (watch
+ * mode) instance can be taken over by the next worker.
  */
-function killByProfile(profilePath: string): void {
+export function isZoteroRunningByProfile(profilePath: string): boolean {
+  try {
+    if (isWindows) {
+      const escaped = profilePath.replaceAll("'", "''");
+      const script = `$ProgressPreference = 'SilentlyContinue'; `
+        + `[bool](Get-CimInstance Win32_Process -Filter "Name='zotero.exe'" `
+        + `| Where-Object { $_.CommandLine -like '*${escaped}*' })`;
+      const encoded = Buffer.from(script, "utf16le").toString("base64");
+      const out = execSync(`powershell -NoProfile -EncodedCommand ${encoded}`, { encoding: "utf8" });
+      return out.trim().endsWith("True");
+    }
+    execSync(`pgrep -f "${profilePath}"`, { stdio: "ignore" });
+    return true;
+  }
+  catch {
+    return false;
+  }
+}
+
+/**
+ * Kills every zotero process whose command line references the profile path.
+ * Exported so the pool can clear leftovers before a cold boot (e.g. a
+ * soft-stopped instance whose takeover failed, or a force-killed watch
+ * session's zombie).
+ */
+export function killZoteroByProfile(profilePath: string): void {
   try {
     if (process.env.ZOTERO_PLUGIN_KILL_COMMAND) {
       execSync(process.env.ZOTERO_PLUGIN_KILL_COMMAND);
@@ -473,14 +500,24 @@ function killByProfile(profilePath: string): void {
       // that execSync → cmd.exe would inflict on a plain -Command string.
       const escaped = profilePath.replaceAll("'", "''");
       const script = `$ProgressPreference = 'SilentlyContinue'; `
-        + `Get-CimInstance Win32_Process -Filter "Name='zotero.exe'" `
-        + `| Where-Object { $_.CommandLine -like '*${escaped}*' } `
-        + `| ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
+        + `$all = Get-CimInstance Win32_Process -Filter "Name='zotero.exe'"; `
+        + `$ids = @{}; `
+        + `$all | ForEach-Object { $ids[$_.ProcessId] = $true }; ${
+          // kill the profile's main process with its whole tree, plus
+        // orphaned content processes whose main process is already gone
+        // (their command line has no profile path, so the filter above
+        // cannot see them — they hold profile locks and break the next boot)
+          +`$all | Where-Object { $_.CommandLine -like '*${escaped}*' } `
+        }| ForEach-Object { taskkill /f /t /pid $_.ProcessId 2>$null | Out-Null }; `
+        + `$all | Where-Object { $_.CommandLine -like '*-contentproc*' -and -not $ids[$_.ParentProcessId] } `
+        + `| ForEach-Object { taskkill /f /pid $_.ProcessId 2>$null | Out-Null };`;
       const encoded = Buffer.from(script, "utf16le").toString("base64");
       execSync(`powershell -NoProfile -EncodedCommand ${encoded}`);
     }
     else if (isMacOS || isLinux) {
       execSync(`pkill -9 -f "${profilePath}"`);
+      // Linux: content processes share the profile path in /proc cmdline
+      // (unlike Windows), so pkill -f already covers them.
     }
   }
   catch {

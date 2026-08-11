@@ -13,6 +13,7 @@
 import { readFileSync } from "node:fs";
 import { rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -196,7 +197,13 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
   // ---- bundle the page worker (content/setup.js) ----
   // The page sources are inlined into this module via ?raw (tsdown Raw
   // plugin); materialize them in a temp dir so rolldown can bundle them.
-  const pageTmp = join(outDir, ".tmp-page");
+  // Lives under the OS temp dir (keyed by outDir) rather than inside outDir:
+  // on Windows rolldown can still hold handles when we try to remove it,
+  // and a failed rmdir inside outDir broke the next build.
+  const pageTmp = join(
+    tmpdir(),
+    `zotero-tester-page-${outDir.replace(/[\\/:]/g, "_")}`,
+  );
   await ensureDir(pageTmp);
   const pageFiles: Array<[string, string]> = [
     ["index.ts", pageIndexRaw],
@@ -242,7 +249,7 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
     });
   }
   finally {
-    await rm(pageTmp, { recursive: true, force: true });
+    await rm(pageTmp, { recursive: true, force: true }).catch(() => {});
   }
 
   // ---- bundle the test files ----

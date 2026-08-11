@@ -35,6 +35,16 @@ export class WorkerProtocol {
   private readonly rpc: PageRpc;
   private pollTimer: ReturnType<typeof setInterval> | undefined;
   private polling = false;
+  /**
+   * Serializes run/collect handling: a watch rerun can arrive while the
+   * previous run is still executing (cancel race) and two concurrent
+   * startTests calls would corrupt the shared collector state. Only the
+   * latest request matters — vitest cancels its predecessor when a file
+   * changes, so a stale run's response would be misattributed to the new
+   * runner.
+   */
+  private runChain: Promise<void> = Promise.resolve();
+  private runGeneration = 0;
 
   constructor(
     private transport: HttpTransport,
@@ -134,19 +144,38 @@ export class WorkerProtocol {
       case "run":
       case "collect": {
         const isCollect = message.type === "collect";
-        this.state.ctx = { ...this.state.ctx, ...message.context };
+        // Snapshot the context for THIS run before queueing: a later request
+        // may overwrite state.ctx while this one is still queued.
+        const ctx = { ...this.state.ctx, ...message.context };
+        this.state.ctx = ctx;
         this.state.filepath = undefined;
-        try {
-          await this.handlers.runMethod(this.state.ctx, isCollect, this.state);
-          await this.post({ type: "testfileFinished", __vitest_worker_response__: true });
-        }
-        catch (error) {
-          await this.post({
-            type: "testfileFinished",
-            __vitest_worker_response__: true,
-            error: processError(error),
-          });
-        }
+        const generation = ++this.runGeneration;
+        const run = this.runChain.then(async () => {
+          // Superseded while queued — skip entirely.
+          if (generation !== this.runGeneration) {
+            return;
+          }
+          try {
+            await this.handlers.runMethod(ctx, isCollect, this.state);
+            // Superseded while running — drop the stale response so it is
+            // not misattributed to the newer runner.
+            if (generation !== this.runGeneration) {
+              return;
+            }
+            await this.post({ type: "testfileFinished", __vitest_worker_response__: true });
+          }
+          catch (error) {
+            if (generation !== this.runGeneration) {
+              return;
+            }
+            await this.post({
+              type: "testfileFinished",
+              __vitest_worker_response__: true,
+              error: processError(error),
+            });
+          }
+        });
+        this.runChain = run.catch(() => {});
         break;
       }
       case "stop": {
