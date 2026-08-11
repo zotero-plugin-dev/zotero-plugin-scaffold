@@ -19,7 +19,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { ensureDir, outputFile } from "fs-extra/esm";
 import { rolldown } from "rolldown";
-import { glob, globSync } from "tinyglobby";
+import { glob } from "tinyglobby";
 import { logger } from "../../utils/logger.js";
 import pageIndexRaw from "./page/index.ts?raw";
 import pageProtocolRaw from "./page/protocol.ts?raw";
@@ -37,7 +37,7 @@ const ROOT = fileURLToPath(new URL(".", import.meta.url));
 
 const RUNTIME_ENTRY = `
 export { describe, it, test, suite, beforeAll, afterAll, beforeEach, afterEach, onTestFinished, onTestFailed, aroundEach, aroundAll } from "vitest";
-export { startTests, collectTests, processError } from "vitest/internal/browser";
+export { startTests, collectTests, processError, setupCommonEnv } from "vitest/internal/browser";
 export { expect, vi, assert, should, chai, expectTypeOf, assertType, vitest } from "vitest";
 export { createBirpc } from "birpc";
 export { stringify, parse } from "flatted";
@@ -48,7 +48,6 @@ const MODULE_RUNNER_STUB_ID = "\0vitest-stub:module-runner";
 // rolldown virtual module id for the baked test manifest (NUL prefix keeps it
 // out of the file system namespace)
 const TESTER_MANIFEST_ID = "\0tester-tests-manifest";
-const GLOBAL_APIS_ID = "\0tester-global-apis";
 
 export interface BuildTesterPluginOptions {
   /** Output directory for the tester plugin (default: .scaffold/tester). */
@@ -154,59 +153,6 @@ function resolveDeps(): Record<string, string> {
   };
 }
 
-/**
- * Extracts vitest's own globals list (the `globalApis` constant behind
- * `globals: true`) from the installed vitest package. The page injects
- * exactly this list, so a vitest upgrade that adds/removes globals flows
- * through automatically instead of drifting from a hand-maintained list.
- * Falls back to the last known list with a warning if the shape changes.
- */
-const FALLBACK_GLOBAL_APIS = [
-  "suite",
-  "test",
-  "describe",
-  "it",
-  "chai",
-  "expect",
-  "assert",
-  "expectTypeOf",
-  "assertType",
-  "vitest",
-  "vi",
-  "beforeAll",
-  "afterAll",
-  "beforeEach",
-  "afterEach",
-  "onTestFinished",
-  "onTestFailed",
-  "aroundEach",
-  "aroundAll",
-];
-function resolveGlobalApis(deps: Record<string, string>): string[] {
-  try {
-    const constantsDir = dirname(deps.vitest);
-    const files = globSync("chunks/constants.*.js", { cwd: constantsDir, absolute: true });
-    for (const file of files) {
-      const source = readFileSync(file, "utf8");
-      const m = source.match(/const globalApis = (\[[\s\S]*?\]);/);
-      if (m) {
-        const parsed = JSON.parse(m[1]) as string[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    }
-  }
-  catch {
-    // fall through to the fallback
-  }
-  process.stdout.write(
-    `[zotero-pool] warning: could not extract vitest's globalApis, using a built-in fallback list
-`,
-  );
-  return FALLBACK_GLOBAL_APIS;
-}
-
 export async function buildTesterPlugin(options: BuildTesterPluginOptions): Promise<Record<string, string>> {
   const outDir = options.outDir;
   const contentDir = join(outDir, "content");
@@ -214,11 +160,6 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
   const stamp = options.stamp ?? "";
   const testsOnly = options.mode === "tests-only";
   await ensureDir(contentDir);
-
-  // Resolved once per build; the page bundle and the test bundles both need
-  // the dependency map, and the page needs vitest's globals list.
-  const deps = resolveDeps();
-  const globalApis = resolveGlobalApis(deps);
 
   if (!testsOnly) {
     // ---- static plugin files (inlined via ?raw, no fs reads) ----
@@ -255,6 +196,7 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
 
   if (!testsOnly) {
   // ---- bundle the vitest runtime ----
+    const deps = resolveDeps();
     const runtimeEntry = join(outDir, ".tmp-runtime-entry.js");
     await outputFile(runtimeEntry, RUNTIME_ENTRY);
     const runtimeBuild = await rolldown({
@@ -307,17 +249,11 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
               if (source.endsWith("tests-manifest.js") && importer?.startsWith(pageTmp)) {
                 return TESTER_MANIFEST_ID;
               }
-              if (source.endsWith("global-apis.js") && importer?.startsWith(pageTmp)) {
-                return GLOBAL_APIS_ID;
-              }
               return null;
             },
             load(id) {
               if (id === TESTER_MANIFEST_ID) {
                 return `export default ${JSON.stringify(manifest)};`;
-              }
-              if (id === GLOBAL_APIS_ID) {
-                return `export default ${JSON.stringify(globalApis)};`;
               }
               return null;
             },

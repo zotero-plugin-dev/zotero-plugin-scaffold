@@ -21,7 +21,7 @@ import type { HttpTransport } from "./transport.js";
  * every vitest module.
  */
 import { parse as flattedParse, stringify as flattedStringify } from "flatted";
-import { processError } from "vitest/internal/browser";
+import { processError, setupCommonEnv } from "vitest/internal/browser";
 import { createPageRpc, errorReplacer } from "./rpc.js";
 import { createWorkerState } from "./state.js";
 
@@ -137,6 +137,13 @@ export class WorkerProtocol {
       case "start": {
         this.state.ctx = message.context;
         this.state.config = message.context.config;
+        // Run vitest's own environment setup: injects the official globals
+        // (the same `globalApis` list behind `globals: true`) and the config
+        // defines. Legacy mocha-style test files rely on global describe/it,
+        // so force `globals: true` regardless of the user config. This goes
+        // through vitest's public entry — no hand-maintained list on our side.
+        (this.state.config as any).globals = true;
+        await setupCommonEnv(this.state.config);
         this.dump("started\n");
         await this.post({ type: "started", __vitest_worker_response__: true });
         break;

@@ -3,22 +3,13 @@
  * bundler). Loaded from chrome://zotero-<tester>/content/index.html.
  */
 
-// Expose the globals style (like vitest's `globals: true`). The list is not
-// maintained by hand: the bundler extracts vitest's own `globalApis` constant
-// (the same list behind `globals: true`) and injects it via a virtual module,
-// so a vitest upgrade that adds/removes globals flows through automatically.
-import * as vitest from "vitest";
-import globalApis from "./global-apis.js";
 import { WorkerProtocol } from "./protocol.js";
-
 import { runMethod } from "./runner.js";
 import { HttpTransport } from "./transport.js";
 
-for (const api of globalApis) {
-  if (api in vitest) {
-    (globalThis as any)[api] = (vitest as any)[api];
-  }
-}
+// Globals are injected by vitest's own setupCommonEnv() on the start request
+// (see protocol.ts) — the same code path as `globals: true`, so no list is
+// maintained here.
 
 declare const document: any;
 declare const location: any;
