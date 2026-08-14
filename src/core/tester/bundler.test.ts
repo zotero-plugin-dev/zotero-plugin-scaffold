@@ -85,4 +85,18 @@ describe("buildTesterPlugin", () => {
     expect(tests).toContain("abc-sample.spec.js");
     expect(Object.values(manifest)).toContain("tests/abc-sample.spec.js");
   });
+
+  it("bakes the waitForPlugin polling block exactly once into setup.js", async () => {
+    // Regression: page/index.ts once duplicated the whole polling loop, which
+    // made the page wait up to 2x30s before the first test.
+    await buildTesterPlugin({
+      outDir,
+      port: 12345,
+      testDir,
+      testFiles: [],
+      waitForPlugin: "() => Zotero.MyPlugin.initialized",
+    });
+    const setup = await readFile(join(outDir, "content", "setup.js"), "utf8");
+    expect(setup.match(/Timed out waiting for the plugin/g) ?? []).toHaveLength(1);
+  });
 });

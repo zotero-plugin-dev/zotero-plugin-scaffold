@@ -30,6 +30,9 @@ describe("generateVitestConfig", () => {
     expect(config).toContain("fileParallelism: false");
     expect(config).toContain("pluginId: \"my-plugin@example.com\"");
     expect(config).toContain("pluginDir: \"dist/addon\"");
+    // the CLI wipes these dirs before the run — the pool must use them too
+    expect(config).toContain("profileDir: \".scaffold/tester-profile\"");
+    expect(config).toContain("dataDir: \".scaffold/tester-data\"");
   });
 
   it("maps abortOnFail to bail and the timeout", () => {

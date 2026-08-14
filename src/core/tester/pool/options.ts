@@ -2,6 +2,7 @@
  * Options for the Zotero test pool.
  */
 import process from "node:process";
+import { TESTER_DATA_DIR, TESTER_PROFILE_DIR } from "../../../constant.js";
 
 export interface ZoteroPoolOptions {
   /** Path to the Zotero executable. Defaults to `ZOTERO_PLUGIN_ZOTERO_BIN_PATH`. */
@@ -63,8 +64,11 @@ export function resolveOptions(
   const suffix = projectName ? `-${projectName}` : "";
   return {
     zoteroBin: bin,
-    profileDir: options.profileDir ?? `.scaffold/tester-profile${suffix}`,
-    dataDir: options.dataDir ?? `.scaffold/tester-data${suffix}`,
+    // Single source of truth with the `zotero-plugin test` CLI (constant.ts):
+    // the CLI wipes these dirs before each run, so a mismatch would leave
+    // stale profiles behind.
+    profileDir: options.profileDir ?? `${TESTER_PROFILE_DIR}${suffix}`,
+    dataDir: options.dataDir ?? `${TESTER_DATA_DIR}${suffix}`,
     pluginDir: options.pluginDir,
     pluginId: options.pluginId,
     testerPluginId: options.testerPluginId ?? TESTER_PLUGIN_ID,

@@ -51,7 +51,10 @@ export class HttpBridge {
   async start(): Promise<void> {
     const port = await findFreeTcpPort();
     this.server = http.createServer(this.handleRequest.bind(this));
-    await new Promise<void>(resolve => this.server!.listen(port, resolve));
+    // Explicitly bind loopback: the page always connects to 127.0.0.1, and
+    // an all-interfaces bind would expose the unauthenticated bridge to the
+    // local network.
+    await new Promise<void>(resolve => this.server!.listen(port, "127.0.0.1", resolve));
   }
 
   /** Waits until the test window has loaded and started polling. */

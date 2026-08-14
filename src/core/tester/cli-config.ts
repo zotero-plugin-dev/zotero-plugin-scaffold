@@ -1,6 +1,7 @@
 import type { Context } from "../../types/index.js";
 import { join, relative } from "node:path";
 import process from "node:process";
+import { TESTER_DATA_DIR, TESTER_PROFILE_DIR } from "../../constant.js";
 import { toArray } from "../../utils/string.js";
 
 /**
@@ -45,15 +46,19 @@ export default defineConfig({
     // pool worker is reused (canReuse) instead of booting Zotero per file.
     isolate: false,
     fileParallelism: false,
-    // rolldown's Rust callback threads keep the process alive after the run
-    // (vitest 5 beta + rolldown behavior; they are not released by close()).
-    // Shrink the teardown timeout so the CLI exits ~1s after tests instead
-    // of waiting out the default 10s.
+    // rolldown 1.1.3 releases its Rust threads via build.close(); this is a
+    // belt-and-suspenders cap so a stale vitest/rolldown behavior cannot
+    // hold the CLI open for the default 10s teardown window.
     teardownTimeout: 1000,
     testTimeout: ${ctx.test.vitest.timeout},
     hookTimeout: ${ctx.test.vitest.timeout},
     bail: ${ctx.test.abortOnFail ? 1 : 0}${reporter}${outputFile},
     pool: zoteroPool({
+      // The CLI wiped these dirs before this run (see Test.run), so the pool
+      // must use exactly the same ones — a mismatch would silently reuse
+      // stale profiles.
+      profileDir: ${JSON.stringify(TESTER_PROFILE_DIR)},
+      dataDir: ${JSON.stringify(TESTER_DATA_DIR)},
       pluginDir: ${JSON.stringify(pluginDir)},
       pluginId: ${JSON.stringify(ctx.id)},
       extraPrefs: ${JSON.stringify(ctx.test.prefs)}${waitForPluginOpt},

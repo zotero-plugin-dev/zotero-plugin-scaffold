@@ -48,6 +48,10 @@ export type { FileSpecification, RunnerTestFile, SerializedConfig, TaskEventPack
 /**
  * The host-side rpc methods the page calls (a subset of vitest's
  * `createMethodsRPC`). The page's birpc proxy is typed by this interface.
+ *
+ * Snapshot RPCs (`read/save/removeSnapshotFile`) are intentionally NOT wired:
+ * `toMatchSnapshot` is unsupported in the pool (no snapshot environment in
+ * the chrome:// page) — see docs/src/design/vitest-pool.md §3.
  */
 export interface PageHostRpc {
   onQueued: (file: RunnerTestFile) => unknown;

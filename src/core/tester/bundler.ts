@@ -99,46 +99,8 @@ export interface BuildTesterPluginOptions {
 }
 
 function resolveDeps(): Record<string, string> {
-  // Resolve the ESM entry of each package by reading its exports map.
-  // require.resolve() would return vitest's CJS entry (dist/index.cjs),
-  // which throws when required.
-  const req = createRequire(join(ROOT, "package.json"));
-  const resolve = (id: string): string => {
-    const pkgDir = dirname(req.resolve(`${id}/package.json`));
-    const pkg = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8")) as {
-      exports?: Record<string, unknown> | string;
-      module?: string;
-      main?: string;
-    };
-    // exports["."] may be nested: { import: { default }, require: { default } }
-    const pick = (t: unknown): string | undefined => {
-      if (typeof t === "string") {
-        return t;
-      }
-      if (t && typeof t === "object") {
-        const o = t as Record<string, unknown>;
-        for (const key of ["import", "default", "require", "browser"]) {
-          const v = pick(o[key]);
-          if (v) {
-            return v;
-          }
-        }
-      }
-      return undefined;
-    };
-    const exportsMap = typeof pkg.exports === "string" ? undefined : pkg.exports;
-    const rel = pick(exportsMap?.["."]) ?? pkg.module ?? pkg.main;
-    if (!rel) {
-      throw new Error(`Cannot resolve ESM entry for ${id}`);
-    }
-    return join(pkgDir, rel);
-  };
-  // vitest 5 merged @vitest/runner and @vitest/utils into the main package;
-  // the in-page runtime entry lives behind the ./internal/browser export.
-  const vitestDir = dirname(req.resolve("vitest/package.json"));
-  const vitestPkg = JSON.parse(readFileSync(join(vitestDir, "package.json"), "utf8")) as {
-    exports?: Record<string, unknown>;
-  };
+  // exports["."] may be nested: { import: { default }, require: { default } }.
+  // Picks the first resolvable entry in priority order.
   const pickEntry = (t: unknown): string | undefined => {
     if (typeof t === "string") {
       return t;
@@ -153,6 +115,31 @@ function resolveDeps(): Record<string, string> {
       }
     }
     return undefined;
+  };
+
+  // Resolve the ESM entry of each package by reading its exports map.
+  // require.resolve() would return vitest's CJS entry (dist/index.cjs),
+  // which throws when required.
+  const req = createRequire(join(ROOT, "package.json"));
+  const resolve = (id: string): string => {
+    const pkgDir = dirname(req.resolve(`${id}/package.json`));
+    const pkg = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8")) as {
+      exports?: Record<string, unknown> | string;
+      module?: string;
+      main?: string;
+    };
+    const exportsMap = typeof pkg.exports === "string" ? undefined : pkg.exports;
+    const rel = pickEntry(exportsMap?.["."]) ?? pkg.module ?? pkg.main;
+    if (!rel) {
+      throw new Error(`Cannot resolve ESM entry for ${id}`);
+    }
+    return join(pkgDir, rel);
+  };
+  // vitest 5 merged @vitest/runner and @vitest/utils into the main package;
+  // the in-page runtime entry lives behind the ./internal/browser export.
+  const vitestDir = dirname(req.resolve("vitest/package.json"));
+  const vitestPkg = JSON.parse(readFileSync(join(vitestDir, "package.json"), "utf8")) as {
+    exports?: Record<string, unknown>;
   };
   const browserRel = pickEntry(vitestPkg.exports?.["./internal/browser"]);
   if (!browserRel) {
@@ -193,7 +180,6 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
     ?? await glob(options.testFiles ?? ["**/*.{test,spec}.?(c|m)[jt]s?(x)"], { cwd: testDir, absolute: true });
   const sep = String.fromCharCode(92); // backslash, built at runtime to dodge escaping
   const manifest: Record<string, string> = {};
-  void manifest;
   const testInput: Record<string, string> = {};
   const inputFiles = [...testFiles, ...(options.setupFiles ?? [])];
   for (const file of inputFiles) {
@@ -211,7 +197,7 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
   const testFilesCount = testFiles.length;
 
   if (!testsOnly) {
-  // ---- bundle the vitest runtime ----
+    // ---- bundle the vitest runtime ----
     const deps = resolveDeps();
     const runtimeEntry = join(outDir, ".tmp-runtime-entry.js");
     await outputFile(runtimeEntry, RUNTIME_ENTRY);

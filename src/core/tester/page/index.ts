@@ -28,31 +28,27 @@ function dump(str: string): void {
   transport.debug(str).catch(() => {});
 }
 
-// Optional plugin-ready wait (zoteroPool({ waitForPlugin })): poll before the
-// worker handshake so the first test only runs once the plugin is up. Wrapped
-// in an async IIFE because the page is a module and lint bans top-level await.
-void (async () => {
-  if (waitForPluginReady) {
-    const deadline = Date.now() + 30000;
-    while (!waitForPluginReady()) {
-      if (Date.now() > deadline) {
-        throw new Error("Timed out waiting for the plugin (waitForPlugin)");
-      }
-      await new Promise(r => setTimeout(r, 100));
-    }
+/**
+ * Optional plugin-ready wait (zoteroPool({ waitForPlugin })): polls before the
+ * worker handshake so the first test only runs once the plugin is up.
+ */
+async function waitForPlugin(): Promise<void> {
+  if (!waitForPluginReady) {
+    return;
   }
+  const deadline = Date.now() + 30000;
+  while (!waitForPluginReady()) {
+    if (Date.now() > deadline) {
+      throw new Error("Timed out waiting for the plugin (waitForPlugin)");
+    }
+    await new Promise(r => setTimeout(r, 100));
+  }
+}
 
-  // Optional plugin-ready wait (zoteroPool({ waitForPlugin })): poll before
-  // the worker handshake so the first test only runs once the plugin is up.
-  if (waitForPluginReady) {
-    const deadline = Date.now() + 30000;
-    while (!waitForPluginReady()) {
-      if (Date.now() > deadline) {
-        throw new Error("Timed out waiting for the plugin (waitForPlugin)");
-      }
-      await new Promise(r => setTimeout(r, 100));
-    }
-  }
+// Wrapped in an async IIFE because the page is a module and lint bans
+// top-level await.
+void (async () => {
+  await waitForPlugin();
 
   const protocol = new WorkerProtocol(transport, { runMethod }, dump);
   protocol.start();

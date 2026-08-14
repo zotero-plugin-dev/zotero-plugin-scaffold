@@ -30,9 +30,8 @@ export default defineConfig({
   outputOptions: {
     chunkFileNames: "shared/scaffold-[name]-[hash].mjs",
   },
-  copy: [
-    { from: "src/core/tester/template", to: "dist/core/tester" },
-    { from: "src/core/tester/page", to: "dist/core/tester" },
-  ],
+  // NOTE: no copy of template/page to dist — the bundler inlines them via
+  // ?raw at build time (see src/core/tester/bundler.ts), so the published
+  // package needs only the compiled chunks.
   plugins: [Raw()],
 });

@@ -28,8 +28,17 @@ const bakedManifest = manifest;
  * the reported task tree natively — no duck-typed TestModule/TestCase.
  */
 
+/**
+ * The config subset the in-page runner exposes to @vitest/runner. Most fields
+ * mirror SerializedConfig; `diffOptions` is a runtime-only field of vitest's
+ * resolved config that the runner reads defensively.
+ */
+export type RunnerConfig = Partial<SerializedConfig> & {
+  diffOptions?: unknown;
+};
+
 export class ZoteroVitestRunner {
-  config: Record<string, any>;
+  config: RunnerConfig;
   pool = "zotero";
   viteEnvironment = "node";
   // reporting callbacks (patched by patchRunner, called by @vitest/runner)
@@ -155,12 +164,15 @@ export async function runMethod(
   const runner = new ZoteroVitestRunner(state.config, context.testerManifest);
   patchRunner(runner, state);
   const files: FileSpecification[] = context.files;
+  // The runner duck-types vitest's VitestRunner (we mirror the callbacks it
+  // invokes, not its full interface), so cast through unknown.
+  const asVitestRunner = runner as unknown as Parameters<typeof startTests>[1];
   if (isCollect) {
-    const collected = await collectTests(files, runner as never);
+    const collected = await collectTests(files, asVitestRunner);
     await runner.onCollected?.(collected);
   }
   else {
-    await startTests(files, runner as never);
+    await startTests(files, asVitestRunner);
   }
 }
 

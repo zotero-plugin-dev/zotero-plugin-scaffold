@@ -1,3 +1,4 @@
+import type { ContextRPC } from "vitest";
 import type { WorkerRequest } from "vitest/node";
 import type { PageRpc } from "./rpc.js";
 import type { WorkerStateLike } from "./state.js";
@@ -144,7 +145,7 @@ export class WorkerProtocol {
   private async handleRequest(message: WorkerRequest): Promise<void> {
     switch (message.type) {
       case "start": {
-        this.state.ctx = message.context as never;
+        this.state.ctx = message.context as unknown as ContextRPC;
         this.state.config = message.context.config;
         // Run vitest's own environment setup: injects the official globals
         // (the same `globalApis` list behind `globals: true`) and the config
@@ -163,7 +164,7 @@ export class WorkerProtocol {
         // Snapshot the context for THIS run before queueing: a later request
         // may overwrite state.ctx while this one is still queued.
         const ctx = { ...this.state.ctx, ...message.context } as RunContext;
-        this.state.ctx = ctx as never;
+        this.state.ctx = ctx as unknown as ContextRPC;
         this.state.filepath = undefined;
         const generation = ++this.runGeneration;
         const run = this.runChain.then(async () => {

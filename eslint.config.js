@@ -2,7 +2,7 @@
 import antfu from "@antfu/eslint-config";
 
 export default antfu({
-  ignores: ["prototype/**", "src/core/tester/template/**"],
+  ignores: ["src/core/tester/template/**"],
   javascript: true,
   typescript: {
     overrides: {

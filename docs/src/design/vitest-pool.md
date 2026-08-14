@@ -99,7 +99,7 @@
 
 - **`vi.mock`/`doMock`/`unmock`/`doUnmock`/`importActual`/`importMock`/`hoisted` 不可用**：mocker 拦截器（`@vitest/mocker/browser`）依赖 vite 模块管线，rolldown 打包 + 原生 ESM 页面无 import 拦截钩子（v4/v5 均实测确认）。潜在路径：构建期接 `hoistMocks` 转换 + import 重写到 mock 工厂产物（见附录 E）
 - **`test.define` 不生效**：v5 非 browser 下 serializedConfig 不携带（进 `test.defines` 而序列化顶层 `defines`，为空；vite define 本就是构建期替换）
-- **snapshot**：`read/save/removeSnapshotFile` 随 pool 通道可用，未真机验证
+- **snapshot 不可用**：页面侧的 `PageHostRpc` 未接线 `read/save/removeSnapshotFile`（vitest browser 协议的 snapshot 读写走 RPC，池没有实现），`toMatchSnapshot` 在页面内不会工作。需要时请在测试里显式断言，或后续补上 snapshot RPC + snapshotEnvironment
 
 ## 4. 附录
 
@@ -118,15 +118,15 @@
 
 ### B. RPC 方法表（复刻自 `packages/browser/src/types.ts`）
 
-| 方向      | 方法                           | 时机                      |
-| --------- | ------------------------------ | ------------------------- |
-| 页面→宿主 | `onQueued(file)`               | 文件排队                  |
-| 页面→宿主 | `onCollected(files)`           | 收集完成                  |
-| 页面→宿主 | `onTaskUpdate(packs, events)`  | 每测试完成 / 生命周期事件 |
-| 页面→宿主 | `sendLog(log)`                 | console 输出              |
-| 页面→宿主 | `onUnhandledError(error)`      | 页面错误                  |
-| 页面→宿主 | `read/save/removeSnapshotFile` | snapshot 读写             |
-| 宿主→页面 | `onCancel(reason)`             | bail / 中断               |
+| 方向      | 方法                           | 时机                      | 池内状态                          |
+| --------- | ------------------------------ | ------------------------- | --------------------------------- |
+| 页面→宿主 | `onQueued(file)`               | 文件排队                  | ✅ 已实现                         |
+| 页面→宿主 | `onCollected(files)`           | 收集完成                  | ✅ 已实现                         |
+| 页面→宿主 | `onTaskUpdate(packs, events)`  | 每测试完成 / 生命周期事件 | ✅ 已实现                         |
+| 页面→宿主 | `sendLog(log)`                 | console 输出              | ❌ 未接线                         |
+| 页面→宿主 | `onUnhandledError(error)`      | 页面错误                  | ❌ 未接线（经 `/debug` 通道上报） |
+| 页面→宿主 | `read/save/removeSnapshotFile` | snapshot 读写             | ❌ 未接线（snapshot 不可用）      |
+| 宿主→页面 | `onCancel(reason)`             | bail / 中断               | ✅ 已实现                         |
 
 ### C. 代码地图与维护
 
