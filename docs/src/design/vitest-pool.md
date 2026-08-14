@@ -92,7 +92,7 @@
 - **vi 可用面**（真机逐一验证）：`vi.fn`/`vi.spyOn`/`vi.isMockFunction`/`vi.mocked`/`vi.stubGlobal`/`vi.clearAllMocks`/`resetAllMocks`/`restoreAllMocks`/`vi.useFakeTimers` 全家/`vi.setConfig`/`vi.stubEnv`/`vi.resetModules`/`vi.waitFor`/`vi.waitUntil`
 - fake timers 可用依赖页面发布官方 worker state（`globalThis.__vitest_worker__`）——页面用自建 `WorkerStateLike`（官方 `WorkerGlobalState` 子集）
 - **全局注入**：官方 `setupCommonEnv`（start 时强制 `config.globals = true`）——与 `globals: true` 同一代码路径，名单零维护
-- **页面错误上报**：`template/index.html` 内联脚本把 window error/unhandledrejection POST 到 bridge `/debug`（`logger.warn` 显示 `[page-error]`）
+- **页面错误上报**：`template/index.html` 内联脚本把 window error/unhandledrejection POST 到 bridge `/debug`（`logger.warn` 显示 `[page-error]`）——只管 setup.js/runtime.js 加载失败的 boot 窗口；运行期未捕获错误改走 `onUnhandledError` RPC（真正 fail 运行）
 - **日志分级**：`[zotero-pool]` 常规日志走 `logger.debug`（默认隐藏，`ZOTERO_PLUGIN_LOG_LEVEL=DEBUG` 或 config `logLevel` 开启）；启动重试/页面错误 `logger.warn` 默认可见
 
 ### 限制（架构性，非 bug）
@@ -118,15 +118,17 @@
 
 ### B. RPC 方法表（复刻自 `packages/browser/src/types.ts`）
 
-| 方向      | 方法                           | 时机                      | 池内状态                          |
-| --------- | ------------------------------ | ------------------------- | --------------------------------- |
-| 页面→宿主 | `onQueued(file)`               | 文件排队                  | ✅ 已实现                         |
-| 页面→宿主 | `onCollected(files)`           | 收集完成                  | ✅ 已实现                         |
-| 页面→宿主 | `onTaskUpdate(packs, events)`  | 每测试完成 / 生命周期事件 | ✅ 已实现                         |
-| 页面→宿主 | `sendLog(log)`                 | console 输出              | ❌ 未接线                         |
-| 页面→宿主 | `onUnhandledError(error)`      | 页面错误                  | ❌ 未接线（经 `/debug` 通道上报） |
-| 页面→宿主 | `read/save/removeSnapshotFile` | snapshot 读写             | ❌ 未接线（snapshot 不可用）      |
-| 宿主→页面 | `onCancel(reason)`             | bail / 中断               | ✅ 已实现                         |
+| 方向      | 方法                                  | 时机                      | 池内状态                                                                  |
+| --------- | ------------------------------------- | ------------------------- | ------------------------------------------------------------------------- |
+| 页面→宿主 | `onQueued(file)`                      | 文件排队                  | ✅ 已实现                                                                 |
+| 页面→宿主 | `onCollected(files)`                  | 收集完成                  | ✅ 已实现                                                                 |
+| 页面→宿主 | `onTaskUpdate(packs, events)`         | 每测试完成 / 生命周期事件 | ✅ 已实现                                                                 |
+| 页面→宿主 | `sendLog`（v5 名 `onUserConsoleLog`） | console 输出              | ✅ 已实现（页面 console spy，尊重 `disableConsoleIntercept`）             |
+| 页面→宿主 | `onUnhandledError(error, type)`       | 页面未捕获错误            | ✅ 已实现（window error/unhandledrejection 监听；握手前的错误缓存后补发） |
+| 页面→宿主 | `read/save/removeSnapshotFile`        | snapshot 读写             | ❌ 未接线（snapshot 不可用）                                              |
+| 宿主→页面 | `onCancel(reason)`                    | bail / 中断               | ✅ 已实现                                                                 |
+
+注：v5 浏览器会话协议里这些方法带 `method`（"run"/"collect"）前缀；本池走 worker 协议（`createMethodsRPC`），不带前缀、console 名为 `onUserConsoleLog`，实现时勿照 v5 浏览器签名抄。页面侧 console spy / error catcher 复刻自 `@vitest/browser` 的 tester bundle（手写 wrapper，非 node:console 的 `createCustomConsole`）。
 
 ### C. 代码地图与维护
 
@@ -138,10 +140,13 @@ src/core/tester/
 │                       #   （返回 manifest；产物名 stamp 前缀；mode: full|tests-only；files: 按需打包）
 ├── template/           # 插件静态文件（manifest/bootstrap/index.html，__TESTER_PLUGIN_ID__ 占位）
 ├── page/               # 页面运行时（TS 源码 → rolldown → content/setup.js）
-│   ├── index.ts        # 入口：组装 transport/protocol；globals 由 setupCommonEnv 注入（见 protocol.ts）
-│   ├── protocol.ts     # 协议状态机（start/run/collect/stop + rpc 分流）；start 时调官方 setupCommonEnv
+│   ├── index.ts        # 入口：组装 transport/protocol；注册 error-catcher；globals 由 setupCommonEnv 注入（见 protocol.ts）
+│   ├── protocol.ts     # 协议状态机（start/run/collect/stop + rpc 分流）；start 时装 console spy + flush 错误缓冲
 │   ├── rpc.ts          # birpc 客户端 + flatted 序列化（PageHostRpc 泛型）
-│   ├── runner.ts       # ZoteroVitestRunner（name 透传 config.name；manifest 优先取 context.testerManifest）
+│   ├── runner.ts       # ZoteroVitestRunner（name 透传 config.name；manifest 优先取 context.testerManifest；
+│   │                   #   生命周期回调维护 state.current 供日志/错误归属）
+│   ├── console.ts      # console spy（复刻 @vitest/browser tester；输出经 onUserConsoleLog 上报）
+│   ├── error-catcher.ts # window error/unhandledrejection → onUnhandledError（+ 单测）
 │   ├── transport.ts    # Zotero.HTTP.request 客户端（/post /poll /ready /debug）
 │   ├── state.ts        # WorkerStateLike（官方 WorkerGlobalState 子集，编译期契约校验）
 │   ├── types.ts        # 页面消息契约（RunContext/PageCtx/PageHostRpc）

@@ -6,6 +6,8 @@ import type { HttpTransport } from "./transport.js";
 import type { RunContext } from "./types.js";
 import { parse as flattedParse, stringify as flattedStringify } from "flatted";
 import { processError, setupCommonEnv } from "vitest/internal/browser";
+import { setupConsoleLogSpy } from "./console.js";
+import { flushUnhandledErrors } from "./error-catcher.js";
 import { createPageRpc, errorReplacer } from "./rpc.js";
 import { createWorkerState } from "./state.js";
 
@@ -154,6 +156,14 @@ export class WorkerProtocol {
         // through vitest's public entry — no hand-maintained list on our side.
         (this.state.config as { globals?: boolean }).globals = true;
         await setupCommonEnv(this.state.config);
+        // The host listens for rpc messages from the handshake on — install
+        // the console spy (output attribution) and flush any unhandled page
+        // errors raised before start. The spy needs the config for
+        // disableConsoleIntercept/printConsoleTrace.
+        if (!this.state.config.disableConsoleIntercept) {
+          setupConsoleLogSpy(this.state);
+        }
+        flushUnhandledErrors();
         this.dump("started\n");
         await this.post({ type: "started", __vitest_worker_response__: true });
         break;

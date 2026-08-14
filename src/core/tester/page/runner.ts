@@ -45,6 +45,12 @@ export class ZoteroVitestRunner {
   onTaskUpdate?: (tasks: TaskResultPack[], events: TaskEventPack[]) => unknown;
   onCollectStart?: (file: RunnerTestFile) => unknown;
   onCollected?: (files: RunnerTestFile[]) => unknown;
+  // lifecycle callbacks (patched by patchRunner; keep state.current in sync)
+  onBeforeRunSuite?: (suite: unknown) => unknown;
+  onBeforeRunTask?: (test: unknown) => unknown;
+  onAfterRunTask?: (test: unknown) => unknown;
+  onAfterRunSuite?: (suite: unknown) => unknown;
+  onAfterRunFiles?: (files: RunnerTestFile[]) => unknown;
   private readonly importDurations = new Map<string, { start: number; end: number }>();
   /**
    * Source path → bundled artifact. The run request carries the current
@@ -121,8 +127,31 @@ export function patchRunner(runner: ZoteroVitestRunner, state: WorkerStateLike):
 
   const originalOnCollectStart = runner.onCollectStart;
   runner.onCollectStart = async (file: RunnerTestFile) => {
+    state.current = file;
+    state.filepath = file.filepath;
     await state.rpc.onQueued(file);
     await originalOnCollectStart?.call(runner, file);
+  };
+
+  // Keep state.current in sync with the task being executed, mirroring the
+  // base TestRunner's lifecycle. The console spy and the error catcher
+  // attribute output/errors to state.current.id / state.filepath.
+  runner.onBeforeRunSuite = (suite) => {
+    state.current = suite as never;
+  };
+  runner.onBeforeRunTask = (test) => {
+    state.current = test as never;
+  };
+  runner.onAfterRunTask = (test) => {
+    const t = test as { suite?: unknown; file?: unknown };
+    state.current = (t.suite ?? t.file) as never;
+  };
+  runner.onAfterRunSuite = (suite) => {
+    const s = suite as { suite?: unknown; file?: unknown };
+    state.current = (s.suite ?? s.file) as never;
+  };
+  runner.onAfterRunFiles = () => {
+    state.current = undefined;
   };
 
   const originalOnCollected = runner.onCollected;

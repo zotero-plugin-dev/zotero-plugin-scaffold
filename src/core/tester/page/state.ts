@@ -28,7 +28,10 @@ export interface WorkerStateLike {
   onFilterStackTrace: (stack: string) => string;
   metaEnv: Record<string, unknown>;
   filepath?: string;
-  current?: { type: string; name: string };
+  // The runner's lifecycle callbacks keep this in sync with the task being
+  // executed (mirroring the base TestRunner); console logs and unhandled
+  // errors are attributed via `current.id`/`filepath`.
+  current?: { type: string; name: string; id?: string; suite?: unknown; file?: unknown };
 }
 
 // Compile-time contract with vitest: every key this state publishes must

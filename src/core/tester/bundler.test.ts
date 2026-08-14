@@ -61,6 +61,15 @@ describe("buildTesterPlugin", () => {
     expect(setup).not.toMatch(/from "vitest"|from "birpc"|from "flatted"/);
   });
 
+  it("exports format from the runtime chunk (console spy dependency)", async () => {
+    // Regression: the page's console.ts imports { format } from
+    // vitest/internal/browser, redirected to runtime.js — if the chunk does
+    // not re-export it, the page fails on load with a SyntaxError.
+    await buildTesterPlugin({ outDir, port: 12345, testDir, testFiles: [] });
+    const runtime = await readFile(join(outDir, "content", "runtime.js"), "utf8");
+    expect(runtime).toContain("format");
+  });
+
   it("bundles test files importing the shared runtime chunk", async () => {
     await writeFile(
       join(testDir, "sample.spec.mjs"),

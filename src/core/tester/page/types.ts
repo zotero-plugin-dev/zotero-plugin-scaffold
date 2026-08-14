@@ -10,6 +10,7 @@ import type {
   SerializedConfig,
   RunnerTaskEventPack as TaskEventPack,
   RunnerTaskResultPack as TaskResultPack,
+  UserConsoleLog,
 } from "vitest";
 import type { FileSpecification } from "vitest/internal/browser";
 
@@ -43,7 +44,7 @@ export interface PageCtx {
   testerManifest?: Record<string, string>;
 }
 
-export type { FileSpecification, RunnerTestFile, SerializedConfig, TaskEventPack, TaskResultPack };
+export type { FileSpecification, RunnerTestFile, SerializedConfig, TaskEventPack, TaskResultPack, UserConsoleLog };
 
 /**
  * The host-side rpc methods the page calls (a subset of vitest's
@@ -54,9 +55,15 @@ export type { FileSpecification, RunnerTestFile, SerializedConfig, TaskEventPack
  * the chrome:// page) — see docs/src/design/vitest-pool.md §3.
  */
 export interface PageHostRpc {
-  onQueued: (file: RunnerTestFile) => unknown;
-  onCollected: (files: RunnerTestFile[]) => unknown;
-  onTaskUpdate: (packs: TaskResultPack[], events: TaskEventPack[]) => unknown;
+  // birpc request calls resolve with the host's response; typing them as
+  // promises keeps `.catch()` usable on the page side.
+  onQueued: (file: RunnerTestFile) => Promise<unknown>;
+  onCollected: (files: RunnerTestFile[]) => Promise<unknown>;
+  onTaskUpdate: (packs: TaskResultPack[], events: TaskEventPack[]) => Promise<unknown>;
+  /** Unhandled page errors (window "error"/"unhandledrejection"). */
+  onUnhandledError: (error: unknown, type: string) => Promise<unknown>;
+  /** Console output intercepted by the page's console spy (see console.ts). */
+  onUserConsoleLog: (log: UserConsoleLog) => Promise<unknown>;
   /** Host → page cancel notification (birpc event, no response). */
   onCancel: (reason: unknown) => unknown;
 }

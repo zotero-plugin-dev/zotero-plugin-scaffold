@@ -7,6 +7,7 @@
  * path as `globals: true`, so no list is maintained here.
  */
 
+import { registerUnexpectedErrors } from "./error-catcher.js";
 import { WorkerProtocol } from "./protocol.js";
 import { runMethod } from "./runner.js";
 import { HttpTransport } from "./transport.js";
@@ -51,6 +52,10 @@ void (async () => {
   await waitForPlugin();
 
   const protocol = new WorkerProtocol(transport, { runMethod }, dump);
+  // Unhandled page errors fail the run via rpc (window listeners). The
+  // template's inline /debug catcher still covers the boot window before
+  // this module runs (setup.js/runtime.js load failures).
+  registerUnexpectedErrors(protocol.workerState);
   protocol.start();
 
   // Expose the worker state under vitest's official global key so vi members

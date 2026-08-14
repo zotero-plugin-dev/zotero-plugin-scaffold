@@ -21,6 +21,8 @@ import { ensureDir, outputFile } from "fs-extra/esm";
 import { rolldown } from "rolldown";
 import { glob } from "tinyglobby";
 import { logger } from "../../utils/logger.js";
+import pageConsoleRaw from "./page/console.ts?raw";
+import pageErrorCatcherRaw from "./page/error-catcher.ts?raw";
 import pageIndexRaw from "./page/index.ts?raw";
 import pageProtocolRaw from "./page/protocol.ts?raw";
 import pageRpcRaw from "./page/rpc.ts?raw";
@@ -37,7 +39,7 @@ const ROOT = fileURLToPath(new URL(".", import.meta.url));
 
 const RUNTIME_ENTRY = `
 export { describe, it, test, suite, beforeAll, afterAll, beforeEach, afterEach, onTestFinished, onTestFailed, aroundEach, aroundAll } from "vitest";
-export { startTests, collectTests, processError, setupCommonEnv } from "vitest/internal/browser";
+export { startTests, collectTests, processError, setupCommonEnv, format } from "vitest/internal/browser";
 export { expect, vi, assert, should, chai, expectTypeOf, assertType, vitest } from "vitest";
 export { createBirpc } from "birpc";
 export { stringify, parse } from "flatted";
@@ -241,6 +243,8 @@ export async function buildTesterPlugin(options: BuildTesterPluginOptions): Prom
       ["state.ts", pageStateRaw],
       ["tests-manifest.ts", pageManifestRaw],
       ["transport.ts", pageTransportRaw],
+      ["console.ts", pageConsoleRaw],
+      ["error-catcher.ts", pageErrorCatcherRaw],
     ];
     for (const [name, source] of pageFiles) {
       await writeFile(join(pageTmp, name), source);
