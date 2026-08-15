@@ -10,6 +10,7 @@
  */
 import type { Context } from "../../types/index.js";
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 import { emptyDir, outputFile } from "fs-extra/esm";
@@ -56,9 +57,12 @@ export default class Test extends Base {
     await outputFile(configPath, generateVitestConfig(this.ctx));
     logger.debug(`Generated vitest config at ${configPath}`);
 
+    // The pool bundles the test files right after vitest starts (inside the
+    // child process); this hook is the CLI-level "about to bundle" point.
+    await this.ctx.hooks.callHook("test:bundleTests", this.ctx);
+
     // Delegate to the project's vitest; the pool owns the Zotero lifecycle.
     const vitestCli = join(process.cwd(), "node_modules", "vitest", "vitest.mjs");
-    const { existsSync } = await import("node:fs");
     if (!existsSync(vitestCli)) {
       logger.error(
         "vitest not found in this project. Install it with "
@@ -69,6 +73,12 @@ export default class Test extends Base {
 
     const args = this.ctx.test.watch ? [] : ["run"];
     args.push("--config", configPath);
+
+    // Tests are about to run: the pool boots Zotero and executes the files
+    // inside the vitest child process. (spawnSync blocks the event loop, so
+    // any async work a test:run hook starts must complete before vitest
+    // spawns.)
+    await this.ctx.hooks.callHook("test:run", this.ctx);
 
     const result = spawnSync(process.execPath, [vitestCli, ...args], {
       stdio: "inherit",

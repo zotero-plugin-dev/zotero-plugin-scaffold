@@ -103,8 +103,6 @@ export class ZoteroPoolWorker implements PoolWorker {
    * like --watch that never reach the project config.
    */
   private isWatchMode(): boolean {
-    // Watch mode lives on the global vitest config; project.config.watch is
-    // undefined at runtime (and absent from its type).
     return this.poolOptions.project.vitest?.config.watch === true;
   }
 
@@ -189,13 +187,36 @@ export class ZoteroPoolWorker implements PoolWorker {
     this.draining = true;
     try {
       while (this.sendQueue.length > 0) {
-        const message = this.sendQueue.shift()!;
-        await this.maybeRebuild(message);
-        this.bridge?.send(message);
+        await this.forward(this.sendQueue.shift()!);
       }
     }
     finally {
       this.draining = false;
+    }
+  }
+
+  /**
+   * Forwards one queued request after (re)building the bundle if needed. A
+   * failed rebuild (e.g. a syntax error in a changed test file) must not
+   * silently drop the request: it was already removed from the queue, so
+   * without a reply vitest waits for a worker response until its timeout.
+   * Reply with testfileFinished + error so the rerun fails loudly instead
+   * of hanging.
+   */
+  private async forward(message: WorkerRequest): Promise<void> {
+    try {
+      await this.maybeRebuild(message);
+      this.bridge?.send(message);
+    }
+    catch (error) {
+      logger.error(`[zotero-pool] test bundle rebuild failed: ${error}`);
+      if (message.type === "run" || message.type === "collect") {
+        this.emit("message", {
+          type: "testfileFinished",
+          __vitest_worker_response__: true,
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
     }
   }
 
@@ -282,10 +303,7 @@ export class ZoteroPoolWorker implements PoolWorker {
         return;
       }
       catch (error) {
-        this.zotero?.exit();
-        this.zotero = undefined;
-        this.bridge?.stop();
-        this.bridge = undefined;
+        this.clearInstance();
         if (attempt >= maxAttempts) {
           throw error;
         }
@@ -295,6 +313,14 @@ export class ZoteroPoolWorker implements PoolWorker {
         await delay(2000);
       }
     }
+  }
+
+  /** Drops the current Zotero instance and bridge (idempotent). */
+  private clearInstance(): void {
+    this.zotero?.exit();
+    this.zotero = undefined;
+    this.bridge?.stop();
+    this.bridge = undefined;
   }
 
   /** One launch attempt: HTTP bridge → bundle → Zotero → wait for the page. */
@@ -385,10 +411,7 @@ export class ZoteroPoolWorker implements PoolWorker {
       this.softStop();
       return;
     }
-    this.zotero?.exit();
-    this.zotero = undefined;
-    this.bridge?.stop();
-    this.bridge = undefined;
+    this.clearInstance();
   }
 
   /**

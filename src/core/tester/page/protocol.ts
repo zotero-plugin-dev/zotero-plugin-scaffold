@@ -79,20 +79,15 @@ export class WorkerProtocol {
   }
 
   private async post(message: unknown): Promise<void> {
-    try {
-      // birpc messages arrive already flatted-serialized (rpc.ts's serialize
-      // option); re-serializing a string would wrap it in an array
-      // (flatted.stringify("…") → ["…"]). Pass strings through verbatim;
-      // protocol messages (started/testfileFinished/…) are objects and need
-      // serializing here.
-      const body = typeof message === "string"
-        ? message
-        : flattedStringify(message, errorReplacer);
-      await this.transport.post(body);
-    }
-    catch (e) {
-      this.dump(`post error: ${e}\n`);
-    }
+    // birpc messages arrive already flatted-serialized (rpc.ts's serialize
+    // option); re-serializing a string would wrap it in an array
+    // (flatted.stringify("…") → ["…"]). Pass strings through verbatim;
+    // protocol messages (started/testfileFinished/…) are objects and need
+    // serializing here.
+    const body = typeof message === "string"
+      ? message
+      : flattedStringify(message, errorReplacer);
+    await this.transport.post(body).catch(e => this.dump(`post error: ${e}\n`));
   }
 
   /** Starts polling and performs the ready handshake. */
@@ -106,18 +101,12 @@ export class WorkerProtocol {
       return;
     }
     this.polling = true;
-    try {
-      const messages = await this.transport.poll();
-      for (const raw of messages) {
-        this.dispatch(raw);
-      }
+    // The host is not reachable while Zotero boots — poll() rejects then.
+    const messages = await this.transport.poll().catch(() => [] as string[]);
+    for (const raw of messages) {
+      this.dispatch(raw);
     }
-    catch {
-      // host not reachable yet (Zotero booting)
-    }
-    finally {
-      this.polling = false;
-    }
+    this.polling = false;
   }
 
   private dispatch(raw: string): void {

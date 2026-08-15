@@ -38,7 +38,7 @@ describe("buildTesterPlugin", () => {
     expect(content).toContain("tests");
 
     const tests = await readdir(join(outDir, "content", "tests"));
-    expect(tests).toContain("sample.spec.js");
+    expect(tests.some(name => /^sample\.spec-[0-9a-f]{8}\.js$/.test(name))).toBe(true);
 
     const manifest = JSON.parse(
       await readFile(join(outDir, "manifest.json"), "utf8"),
@@ -77,7 +77,9 @@ describe("buildTesterPlugin", () => {
       + "describe(\"x\", () => { it(\"y\", () => { expect(1).toBe(1); }); });\n",
     );
     await buildTesterPlugin({ outDir, port: 12345, testDir, testFiles: ["**/*.spec.mjs"] });
-    const testBundle = await readFile(join(outDir, "content", "tests", "sample.spec.js"), "utf8");
+    const artifact = (await readdir(join(outDir, "content", "tests")))
+      .find(name => /^sample\.spec-[0-9a-f]{8}\.js$/.test(name))!;
+    const testBundle = await readFile(join(outDir, "content", "tests", artifact), "utf8");
     expect(testBundle).toContain("from \"../runtime.js\"");
   });
 
@@ -91,8 +93,37 @@ describe("buildTesterPlugin", () => {
       stamp: "abc",
     });
     const tests = await readdir(join(outDir, "content", "tests"));
-    expect(tests).toContain("abc-sample.spec.js");
-    expect(Object.values(manifest)).toContain("tests/abc-sample.spec.js");
+    expect(tests.some(name => /^abc-sample\.spec-[0-9a-f]{8}\.js$/.test(name))).toBe(true);
+    expect(Object.values(manifest).some(value => /^tests\/abc-sample\.spec-[0-9a-f]{8}\.js$/.test(value))).toBe(true);
+  });
+
+  it("keeps flattened artifact names unique so no test file is dropped", async () => {
+    // Regression: src/a_b.test.ts and src/a/b.test.ts (and x.spec.ts vs
+    // x.spec.mts) used to flatten to the same artifact name, so the later
+    // entry overwrote the earlier one and one test file silently vanished.
+    await writeFile(join(testDir, "a_b.spec.mjs"), "export const one = 1;\n");
+    const { mkdir } = await import("node:fs/promises");
+    await mkdir(join(testDir, "a"), { recursive: true });
+    await writeFile(join(testDir, "a", "b.spec.mjs"), "export const two = 2;\n");
+
+    const manifest = await buildTesterPlugin({
+      outDir,
+      port: 12345,
+      testDir,
+      testFiles: ["**/*.spec.mjs"],
+    });
+
+    // sample.spec.mjs (from beforeEach) plus the two colliding files: all
+    // three must be bundled, and the two that used to flatten to the same
+    // name (`a_b.spec.mjs` vs `a/b.spec.mjs`) must stay distinct.
+    const values = Object.values(manifest);
+    expect(values).toHaveLength(3);
+    expect(new Set(values).size).toBe(3);
+    const flattened = values.filter(value => /\/a_b\.spec-[0-9a-f]{8}\.js$/.test(value));
+    expect(flattened).toHaveLength(2);
+    const artifacts = (await readdir(join(outDir, "content", "tests")))
+      .filter(name => name.endsWith(".js"));
+    expect(artifacts).toHaveLength(3);
   });
 
   it("bakes the waitForPlugin polling block exactly once into setup.js", async () => {

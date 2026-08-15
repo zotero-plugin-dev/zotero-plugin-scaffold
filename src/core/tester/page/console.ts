@@ -71,13 +71,18 @@ export function setupConsoleLogSpy(state: WorkerStateLike): void {
     return;
   }
   installed = true;
-  const { log, info, error, dir, dirxml, trace, time, timeEnd, timeLog, warn, debug, count, countReset } = consoleRef;
+  // Snapshot the custom-method originals at install time: nested wrappers or
+  // later patches cannot recurse through this one.
+  const { dir, dirxml, trace, time, timeEnd, timeLog, count, countReset } = consoleRef;
 
-  consoleRef.log = stdout(state, log);
-  consoleRef.debug = stdout(state, debug);
-  consoleRef.info = stdout(state, info);
-  consoleRef.error = stderr(state, error);
-  consoleRef.warn = stderr(state, warn);
+  // The simple pass-through methods only differ by their stream.
+  for (const method of ["log", "debug", "info"] as const) {
+    consoleRef[method] = stdout(state, consoleRef[method]);
+  }
+  for (const method of ["error", "warn"] as const) {
+    consoleRef[method] = stderr(state, consoleRef[method]);
+  }
+
   consoleRef.dir = (item: unknown, options?: unknown) => {
     dir(item, options);
     sendLog(state, "stdout", format([item], { multiline: true }));

@@ -76,64 +76,83 @@ export class HttpBridge {
     this.server = undefined;
   }
 
-  private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
-    if (req.method === "POST" && req.url === "/post") {
-      let body = "";
-      req.on("data", chunk => (body += chunk));
-      req.on("end", () => {
-        try {
-          const message = flatted.parse(body);
-          this.onMessage(message);
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end("{}");
-        }
-        catch (e) {
-          logger.error(`[zotero-pool] /post parse error: ${e}`);
-          res.writeHead(400);
-          res.end(String(e));
-        }
-      });
+  // ---- request handling ----
+
+  private async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    const { method = "", url = "" } = req;
+    if (method === "POST" && url === "/post") {
+      await this.receivePost(req, res);
+      return;
     }
-    else if (req.method === "POST" && req.url === "/debug") {
-      let body = "";
-      req.on("data", chunk => (body += chunk));
-      req.on("end", () => {
-        try {
-          const { message } = JSON.parse(body) as { message?: string };
-          if (message) {
-            // page errors are the only signal when the test window fails to
-            // come up — surface them at warn level; everything else is debug
-            const text = String(message);
-            if (text.includes("[page-error]") || text.includes("[page-unhandledrejection]")) {
-              logger.warn(text);
-            }
-            else {
-              logger.debug(text);
-            }
-          }
-        }
-        catch {
-          // ignore malformed debug messages
-        }
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end("{}");
-      });
+    if (method === "POST" && url === "/debug") {
+      await this.receiveDebug(req, res);
+      return;
     }
-    else if (req.method === "POST" && req.url === "/ready") {
+    if (method === "POST" && url === "/ready") {
       this.readyResolve?.();
       this.readyResolve = undefined;
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end("{}");
+      this.ok(res);
+      return;
     }
-    else if (req.method === "GET" && req.url === "/poll") {
+    if (method === "GET" && url === "/poll") {
       this.lastPollAt = Date.now();
       const messages = this.downlink.splice(0);
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify(messages));
+      return;
     }
-    else {
-      res.writeHead(404);
-      res.end();
+    res.writeHead(404);
+    res.end();
+  }
+
+  private async readBody(req: http.IncomingMessage): Promise<string> {
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
     }
+    return body;
+  }
+
+  /** POST /post: parse the flatted message and forward it to the worker. */
+  private async receivePost(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    const body = await this.readBody(req);
+    try {
+      this.onMessage(flatted.parse(body));
+    }
+    catch (e) {
+      logger.error(`[zotero-pool] /post parse error: ${e}`);
+      res.writeHead(400);
+      res.end(String(e));
+      return;
+    }
+    this.ok(res);
+  }
+
+  /** POST /debug: page logs mirrored to the host for headless debugging. */
+  private async receiveDebug(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    const body = await this.readBody(req);
+    try {
+      const { message } = JSON.parse(body) as { message?: string };
+      if (message) {
+        // page errors are the only signal when the test window fails to
+        // come up — surface them at warn level; everything else is debug
+        const text = String(message);
+        if (text.includes("[page-error]") || text.includes("[page-unhandledrejection]")) {
+          logger.warn(text);
+        }
+        else {
+          logger.debug(text);
+        }
+      }
+    }
+    catch {
+      // ignore malformed debug messages
+    }
+    this.ok(res);
+  }
+
+  private ok(res: http.ServerResponse): void {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end("{}");
   }
 }
