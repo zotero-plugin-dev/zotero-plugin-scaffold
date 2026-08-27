@@ -1,4 +1,3 @@
-import type { Buffer } from "node:buffer";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { RecursivePickOptional, RecursiveRequired } from "../types/utils.js";
 import { execSync, spawn } from "node:child_process";
@@ -86,38 +85,6 @@ const default_options = {
     list: [],
   },
 } satisfies DefaultZoteroRunnerOptions;
-
-export interface LineSplitter {
-  push: (chunk: Buffer | string) => void;
-  flush: () => void;
-}
-
-/**
- * Splits chunked stdout/stderr data into lines, buffering partial lines
- * until the next chunk. Call `flush()` on process close to emit the
- * trailing line without a newline.
- *
- * 按行切分 stdout/stderr 数据块：残留半行缓存到下一个 chunk，
- * 进程 `close` 时调用 `flush()` 输出末尾无换行的行。
- */
-export function createLineSplitter(onLine: (line: string) => void): LineSplitter {
-  let buf = "";
-  return {
-    push: (chunk: Buffer | string) => {
-      buf += chunk.toString("utf8");
-      const parts = buf.split(/\r?\n/);
-      buf = parts.pop()!; // 末段无换行，缓存
-      for (const line of parts)
-        onLine(line);
-    },
-    flush: () => {
-      if (buf) {
-        onLine(buf);
-        buf = "";
-      }
-    },
-  };
-}
 
 /**
  * Resolve Zotero debug-related launch arguments, de-duplicated against
@@ -336,19 +303,20 @@ export class ZoteroRunner {
     if (logEnabled) {
       logger.info(`Zotero output logs: ${resolve(outPath)} / ${resolve(errPath)}`);
     }
-    // Sync writes so that the trailing lines survive process.exit() in
+    // Sync writes so that the trailing data survives process.exit() in
     // Serve.onZoteroExit, which fires right after the `close` event.
-    const writeLine = (fd: number | null) => (line: string) => {
-      if (fd !== null)
-        writeSync(fd, `${line}\n`);
-    };
-    const stdoutSplitter = createLineSplitter(writeLine(outFd));
-    const stderrSplitter = createLineSplitter(writeLine(errFd));
-    this.zotero.stdout?.on("data", data => stdoutSplitter.push(data));
-    this.zotero.stderr?.on("data", data => stderrSplitter.push(data));
+    // Chunks are written verbatim, without line splitting: Node delivers
+    // whole Buffers, and byte-level passthrough avoids UTF-8 decoding issues
+    // when a multi-byte character spans a chunk boundary.
+    this.zotero.stdout?.on("data", (data) => {
+      if (outFd !== null)
+        writeSync(outFd, data);
+    });
+    this.zotero.stderr?.on("data", (data) => {
+      if (errFd !== null)
+        writeSync(errFd, data);
+    });
     this.zotero.on("close", () => {
-      stdoutSplitter.flush();
-      stderrSplitter.flush();
       if (outFd !== null)
         closeSync(outFd);
       if (errFd !== null)
