@@ -23,7 +23,7 @@ export default class Serve extends Base {
     const {
       devtools,
       debugOutputWindow,
-      zoteroLog,
+      debugOutputFile,
       startArgs,
       prefs,
       createProfileIfMissing,
@@ -37,7 +37,7 @@ export default class Serve extends Base {
         devtools,
         args: startArgs,
         debugOutputWindow,
-        log: zoteroLog,
+        debugOutputFile,
       },
       profile: {
         path: this.profilePath,

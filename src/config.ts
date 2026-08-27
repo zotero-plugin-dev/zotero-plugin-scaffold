@@ -134,7 +134,7 @@ const defaultConfig = {
     devtools: true,
     startArgs: [],
     debugOutputWindow: false,
-    zoteroLog: true,
+    debugOutputFile: true,
     prefs: {},
     asProxy: false,
     prebuild: true,

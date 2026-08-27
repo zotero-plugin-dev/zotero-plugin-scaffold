@@ -426,14 +426,14 @@ export interface ServerConfig {
    * (appends `-ZoteroDebug`).
    *
    * This only controls the window. Debug output is always recorded when
-   * {@link ServerConfig.zoteroLog} is enabled: scaffold then appends
+   * {@link ServerConfig.debugOutputFile} is enabled: scaffold then appends
    * `-ZoteroDebugText`, so `Zotero.debug()` / `dump()` output goes to stdout
    * and is captured into the log file regardless of this option.
    *
    * 是否在启动时打开 Zotero 的 Debug Output 窗口（追加 `-ZoteroDebug`）。
    *
-   * 此项仅控制窗口。调试输出在 `zoteroLog` 启用时被记录到日志文件
-   * （见 {@link ServerConfig.zoteroLog}）：此时脚手架追加 `-ZoteroDebugText`，
+   * 此项仅控制窗口。调试输出在 `debugOutputFile` 启用时被记录到日志文件
+   * （见 {@link ServerConfig.debugOutputFile}）：此时脚手架追加 `-ZoteroDebugText`，
    * `Zotero.debug()` / `dump()` 输出进 stdout 并被捕获到日志文件，与本选项无关。
    *
    * @default false
@@ -441,24 +441,22 @@ export interface ServerConfig {
   debugOutputWindow: boolean;
 
   /**
-   * Whether to write the Zotero process stdout/stderr to log files.
+   * Whether to record the Zotero process debug output (stdout/stderr) to
+   * log files under `.scaffold/logs/`.
    *
    * - stdout → `.scaffold/logs/zotero-<starttime>.log`
    * - stderr → `.scaffold/logs/zotero-<starttime>-stderr.log`
    *
-   * Log files are numbered by the launch time; files older than 7 days are
-   * removed automatically on startup.
    *
-   * 是否把 Zotero 进程的 stdout/stderr 写入日志文件。
+   * 是否把 Zotero 进程的调试输出（stdout/stderr）写入 `.scaffold/logs/` 下的日志文件。
    *
    * - stdout → `.scaffold/logs/zotero-<启动时间>.log`
    * - stderr → `.scaffold/logs/zotero-<启动时间>-stderr.log`
    *
-   * 日志文件以启动时间编号，启动时自动删除 7 天前的旧文件。
    *
    * @default true
    */
-  zoteroLog: boolean;
+  debugOutputFile: boolean;
 
   /**
    * The default preferences for the dev server.

@@ -41,14 +41,14 @@ interface BinaryOptions {
    */
   debugOutputWindow?: boolean;
   /**
-   * Whether to write the Zotero process stdout/stderr to log files.
+   * Whether to record the Zotero process stdout/stderr to log files.
    *
    * - false: disabled (default);
    * - true: stdout → `.scaffold/logs/zotero-<start-time>.log`, stderr →
    *   `.scaffold/logs/zotero-<start-time>-stderr.log`; files older than
    *   7 days are removed automatically on startup.
    */
-  log?: boolean;
+  debugOutputFile?: boolean;
 }
 
 interface PluginsOptions {
@@ -70,7 +70,7 @@ const default_options = {
     args: [],
     devtools: true,
     debugOutputWindow: false,
-    log: false,
+    debugOutputFile: false,
   },
   profile: {
     path: "./.scaffold/profile",
@@ -195,7 +195,7 @@ export class ZoteroRunner {
       args.push("-ZoteroDebug");
     }
     // `-ZoteroDebugText` (forceDebugLog=1) makes `Zotero.debug()` / `dump()` output go to stdout.
-    if (this.options.binary.log) {
+    if (this.options.binary.debugOutputFile) {
       args.push("-ZoteroDebugText");
     }
     if (this.options.binary.args) {
@@ -222,7 +222,7 @@ export class ZoteroRunner {
     this.zotero = spawn(this.options.binary.path, args, { env });
     logger.debug(`Zotero started, pid: ${this.zotero.pid}`);
 
-    if (this.options.binary.log) {
+    if (this.options.binary.debugOutputFile) {
       ensureDirSync(ZOTERO_LOG_DIR);
       void cleanupOldLogs(ZOTERO_LOG_DIR);
 
