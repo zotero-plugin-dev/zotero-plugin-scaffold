@@ -6,6 +6,10 @@ export const DEFAULT_DATA_DIR = "";
 // Builder
 export const DEFAULT_DIST_TEMP_DIR = "addon";
 
+// Zotero logs
+export const ZOTERO_LOG_DIR = `.scaffold/logs`;
+export const ZOTERO_LOG_RETENTION_DAYS = 7;
+
 // Testser
 export const TESTER_BASE_PATH = `.scaffold/test`;
 export const TESTER_PROFILE_DIR = `.scaffold/test/profile`;

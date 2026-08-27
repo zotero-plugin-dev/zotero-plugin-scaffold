@@ -8,6 +8,7 @@ import process from "node:process";
 import { delay, toMerged } from "es-toolkit";
 import { ensureDir, ensureDirSync, outputFile, outputJSON, pathExists, readJSON, remove } from "fs-extra/esm";
 import { isLinux, isMacOS, isWindows } from "std-env";
+import { ZOTERO_LOG_DIR, ZOTERO_LOG_RETENTION_DAYS } from "../constant.js";
 import { logger } from "./logger.js";
 import { PrefsManager } from "./prefs-manager.js";
 import { isRunning } from "./process.js";
@@ -34,24 +35,21 @@ interface BinaryOptions {
   args?: string[];
   devtools?: boolean;
   /**
-   * 是否打开 Zotero 的 Debug Output 窗口（追加 `-ZoteroDebug`）。
-   * 仅控制窗口；调试输出记录（-ZoteroDebugText）与日志文件始终开启，与窗口无关。
+   * Whether to open the Zotero Debug Output window on startup (`-ZoteroDebug`).
+   * This only controls the window; debug output recording (`-ZoteroDebugText`)
+   * and the log files are always enabled, independent of this option.
    */
   debugOutputWindow?: boolean;
   /**
-   * 是否把 Zotero 进程的 stdout/stderr 写入日志文件。
+   * Whether to write the Zotero process stdout/stderr to log files.
    *
-   * - false：关闭（默认）；
-   * - true：stdout 写 `.scaffold/logs/zotero-<启动时间>.log`，
-   *   stderr 写 `.scaffold/logs/zotero-<启动时间>-stderr.log`，
-   *   启动时自动删除 7 天前的旧日志文件。
+   * - false: disabled (default);
+   * - true: stdout → `.scaffold/logs/zotero-<start-time>.log`, stderr →
+   *   `.scaffold/logs/zotero-<start-time>-stderr.log`; files older than
+   *   7 days are removed automatically on startup.
    */
   log?: boolean;
 }
-
-/** Zotero 日志文件目录与保留策略（固定值，不作为配置项） */
-const ZOTERO_LOG_DIR = ".scaffold/logs";
-const ZOTERO_LOG_RETENTION_DAYS = 7;
 
 interface PluginsOptions {
   asProxy?: boolean;
@@ -118,7 +116,7 @@ export async function cleanupOldLogs(dir: string, retentionDays: number): Promis
           await unlink(join(dir, name));
       }
       catch {
-        // 文件可能在读取后被删除
+        // The file may be gone by now (removed concurrently)
       }
     }));
 }
@@ -284,7 +282,8 @@ export class ZoteroRunner {
     // writes still land until close), so the data handlers need no checks.
     if (this.options.binary.log) {
       ensureDirSync(ZOTERO_LOG_DIR);
-      // 后台清理旧日志，不阻塞 Zotero 启动（fire-and-forget，无需 await）
+      // Clean up stale logs in the background; must not block Zotero startup
+      // (fire-and-forget, no need to await).
       void cleanupOldLogs(ZOTERO_LOG_DIR, ZOTERO_LOG_RETENTION_DAYS);
 
       const time = dateFormat("YYYYmmdd-HHMMSS", new Date());
