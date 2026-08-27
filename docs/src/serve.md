@@ -46,12 +46,12 @@ export default defineConfig({
 
 ## Debug Output
 
-Scaffold always appends `-ZoteroDebugText` to the Zotero startup arguments, so `Zotero.debug()` / `dump()` output goes to stdout. The process stdout/stderr are captured and written to log files, numbered by the launch time:
+Scaffold always appends `-ZoteroDebugText` to the Zotero startup arguments, so `Zotero.debug()` / `dump()` output goes to stdout. The process stdout/stderr are captured and written to log files under `.scaffold/logs/`, numbered by the launch time:
 
 - stdout → `.scaffold/logs/zotero-<starttime>.log`
 - stderr → `.scaffold/logs/zotero-<starttime>-stderr.log`
 
-Old log files are removed automatically when the dev server starts: files older than `server.logRetentionDays` (default `7`) days in `server.logDir` (default `.scaffold/logs`) are deleted.
+On startup the exact file paths are printed to the serve console (so you can `tail -f` them for real-time output). Files older than 7 days are removed automatically.
 
 ```ts twoslash
 import { defineConfig } from "zotero-plugin-scaffold";
@@ -59,10 +59,8 @@ import { defineConfig } from "zotero-plugin-scaffold";
 export default defineConfig({
   server: {
     // Debug output is recorded to .scaffold/logs/zotero-<starttime>.log by default.
-    // Keep this true unless you want to disable file logging:
+    // Set this to false to disable file logging:
     zoteroLog: true,
-    logDir: ".scaffold/logs",
-    logRetentionDays: 7,
     // Open the Zotero Debug Output window in addition to file logging:
     debugOutputWindow: false,
   },

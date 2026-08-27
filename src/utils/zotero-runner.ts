@@ -37,12 +37,16 @@ interface BinaryOptions {
    * 是否把 Zotero 进程的 stdout/stderr 写入日志文件。
    *
    * - false：关闭（默认）；
-   * - { dir, retentionDays }：stdout 写 `<dir>/zotero-<启动时间>.log`，
-   *   stderr 写 `<dir>/zotero-<启动时间>-stderr.log`；
-   *   启动时自动删除超过 retentionDays 天的旧日志文件。
+   * - true：stdout 写 `.scaffold/logs/zotero-<启动时间>.log`，
+   *   stderr 写 `.scaffold/logs/zotero-<启动时间>-stderr.log`，
+   *   启动时自动删除 7 天前的旧日志文件。
    */
-  log?: false | { dir: string; retentionDays: number };
+  log?: boolean;
 }
+
+/** Zotero 日志文件目录与保留策略（固定值，不作为配置项） */
+const ZOTERO_LOG_DIR = ".scaffold/logs";
+const ZOTERO_LOG_RETENTION_DAYS = 7;
 
 interface PluginsOptions {
   asProxy?: boolean;
@@ -283,21 +287,22 @@ export class ZoteroRunner {
     // `toolkit.startup.recent_crashes` (avoiding safe mode on Ctrl-C).
     //
     // When `binary.log` is enabled, the streams are written line by line to
-    // `<logDir>/zotero-<starttime>.log` (stdout) and
-    // `<logDir>/zotero-<starttime>-stderr.log` (stderr), numbered by launch
-    // time, with old files cleaned up on startup.
-    const logOptions = this.options.binary.log;
-    if (logOptions) {
-      ensureDirSync(logOptions.dir);
-      cleanupOldLogs(logOptions.dir, logOptions.retentionDays);
+    // `.scaffold/logs/zotero-<starttime>.log` (stdout) and
+    // `.scaffold/logs/zotero-<starttime>-stderr.log` (stderr), numbered by
+    // launch time, with old files cleaned up on startup.
+    const logEnabled = this.options.binary.log;
+    if (logEnabled) {
+      ensureDirSync(ZOTERO_LOG_DIR);
+      cleanupOldLogs(ZOTERO_LOG_DIR, ZOTERO_LOG_RETENTION_DAYS);
     }
     const time = dateFormat("YYYYmmdd-HHMMSS", new Date());
-    const outFd = logOptions
-      ? openSync(join(logOptions.dir, `zotero-${time}.log`), "a")
-      : null;
-    const errFd = logOptions
-      ? openSync(join(logOptions.dir, `zotero-${time}-stderr.log`), "a")
-      : null;
+    const outPath = join(ZOTERO_LOG_DIR, `zotero-${time}.log`);
+    const errPath = join(ZOTERO_LOG_DIR, `zotero-${time}-stderr.log`);
+    const outFd = logEnabled ? openSync(outPath, "a") : null;
+    const errFd = logEnabled ? openSync(errPath, "a") : null;
+    if (logEnabled) {
+      logger.info(`Zotero output logs: ${resolve(outPath)} / ${resolve(errPath)}`);
+    }
     // Sync writes so that the trailing lines survive process.exit() in
     // Serve.onZoteroExit, which fires right after the `close` event.
     const writeLine = (fd: number | null) => (line: string) => {

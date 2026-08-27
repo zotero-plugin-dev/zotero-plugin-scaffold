@@ -48,8 +48,6 @@ export default class Serve extends Base {
       devtools,
       debugOutputWindow,
       zoteroLog,
-      logDir,
-      logRetentionDays,
       startArgs,
       prefs,
       createProfileIfMissing,
@@ -62,9 +60,7 @@ export default class Serve extends Base {
         path: this.zoteroBinPath,
         devtools,
         args: resolveDebugArgs(startArgs, debugOutputWindow),
-        log: zoteroLog
-          ? { dir: logDir, retentionDays: logRetentionDays }
-          : false,
+        log: zoteroLog,
       },
       profile: {
         path: this.profilePath,

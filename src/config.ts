@@ -135,8 +135,6 @@ const defaultConfig = {
     startArgs: [],
     debugOutputWindow: false,
     zoteroLog: true,
-    logDir: ".scaffold/logs",
-    logRetentionDays: 7,
     prefs: {},
     asProxy: false,
     prebuild: true,

@@ -443,41 +443,22 @@ export interface ServerConfig {
   /**
    * Whether to write the Zotero process stdout/stderr to log files.
    *
-   * - stdout → `<logDir>/zotero-<starttime>.log`
-   * - stderr → `<logDir>/zotero-<starttime>-stderr.log`
+   * - stdout → `.scaffold/logs/zotero-<starttime>.log`
+   * - stderr → `.scaffold/logs/zotero-<starttime>-stderr.log`
    *
-   * Log files are numbered by the launch time and old files older than
-   * `logRetentionDays` days are removed automatically on startup.
+   * Log files are numbered by the launch time; files older than 7 days are
+   * removed automatically on startup.
    *
    * 是否把 Zotero 进程的 stdout/stderr 写入日志文件。
    *
-   * - stdout → `<logDir>/zotero-<启动时间>.log`
-   * - stderr → `<logDir>/zotero-<启动时间>-stderr.log`
+   * - stdout → `.scaffold/logs/zotero-<启动时间>.log`
+   * - stderr → `.scaffold/logs/zotero-<启动时间>-stderr.log`
    *
-   * 日志文件以启动时间编号，启动时自动删除超过 `logRetentionDays` 天的旧文件。
+   * 日志文件以启动时间编号，启动时自动删除 7 天前的旧文件。
    *
    * @default true
    */
   zoteroLog: boolean;
-
-  /**
-   * The directory of the Zotero log files.
-   *
-   * 日志文件的存放目录。
-   *
-   * @default ".scaffold/logs"
-   */
-  logDir: string;
-
-  /**
-   * The retention days of the Zotero log files; files older than this are
-   * removed automatically when the dev server starts.
-   *
-   * 日志文件的保留天数，超过该天数的旧文件在开发服务器启动时自动删除。
-   *
-   * @default 7
-   */
-  logRetentionDays: number;
 
   /**
    * The default preferences for the dev server.
