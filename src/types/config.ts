@@ -422,35 +422,62 @@ export interface ServerConfig {
   startArgs: string[];
 
   /**
-   * Zotero debug output mode.
+   * Whether to open the Zotero Debug Output window on startup
+   * (appends `-ZoteroDebug`).
    *
-   * - "window"  ：append `-ZoteroDebug`, opens the Debug Output window on startup (`Zotero.debug` logs visible)
-   * - "console" ：append `-ZoteroDebugText`, `dump()` output goes to stdout; also enables output forwarding
-   * - false     ：no debug argument is appended (default)
+   * This only controls the window. Debug output itself is always recorded
+   * to the log file (see {@link ServerConfig.zoteroLog}): scaffold always
+   * appends `-ZoteroDebugText`, so `Zotero.debug()` / `dump()` output goes
+   * to stdout and is captured into the log file regardless of this option.
    *
-   * Zotero 调试输出方式。
+   * 是否在启动时打开 Zotero 的 Debug Output 窗口（追加 `-ZoteroDebug`）。
    *
-   * - "window"  ：追加 `-ZoteroDebug`，启动时打开 Debug Output 窗口（`Zotero.debug` 日志可见）
-   * - "console" ：追加 `-ZoteroDebugText`，`dump()` 输出到 stdout；并自动开启输出转发（功能二）
-   * - false     ：不追加任何调试参数（默认）
+   * 此项仅控制窗口。调试输出本身始终被记录到日志文件（见 {@link ServerConfig.zoteroLog}）：
+   * 脚手架始终追加 `-ZoteroDebugText`，因此 `Zotero.debug()` / `dump()` 输出
+   * 恒进 stdout 并被捕获到日志文件，与本选项无关。
    *
    * @default false
    */
-  debugOutput: "window" | "console" | false;
+  debugOutputWindow: boolean;
 
   /**
-   * Whether to forward Zotero's stdout/stderr to the scaffold log.
+   * Whether to write the Zotero process stdout/stderr to log files.
    *
-   * Default false; automatically true when `debugOutput === "console"`,
-   * can also be enabled independently.
+   * - stdout → `<logDir>/zotero-<starttime>.log`
+   * - stderr → `<logDir>/zotero-<starttime>-stderr.log`
    *
-   * 是否把 Zotero 进程的 stdout/stderr 转发到 scaffold 日志。
+   * Log files are numbered by the launch time and old files older than
+   * `logRetentionDays` days are removed automatically on startup.
    *
-   * 默认 false；`debugOutput === "console"` 时自动为 true，也可单独开启。
+   * 是否把 Zotero 进程的 stdout/stderr 写入日志文件。
    *
-   * @default false
+   * - stdout → `<logDir>/zotero-<启动时间>.log`
+   * - stderr → `<logDir>/zotero-<启动时间>-stderr.log`
+   *
+   * 日志文件以启动时间编号，启动时自动删除超过 `logRetentionDays` 天的旧文件。
+   *
+   * @default true
    */
-  forwardOutput: boolean;
+  zoteroLog: boolean;
+
+  /**
+   * The directory of the Zotero log files.
+   *
+   * 日志文件的存放目录。
+   *
+   * @default ".scaffold/logs"
+   */
+  logDir: string;
+
+  /**
+   * The retention days of the Zotero log files; files older than this are
+   * removed automatically when the dev server starts.
+   *
+   * 日志文件的保留天数，超过该天数的旧文件在开发服务器启动时自动删除。
+   *
+   * @default 7
+   */
+  logRetentionDays: number;
 
   /**
    * The default preferences for the dev server.

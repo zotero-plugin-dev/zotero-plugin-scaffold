@@ -1,4 +1,3 @@
-import type { ServerConfig } from "../types/config.js";
 import type { Context } from "../types/index.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -9,19 +8,25 @@ import { Base } from "./base.js";
 import Build from "./builder/index.js";
 
 /**
- * Map `debugOutput` to Zotero command line arguments, de-duplicated
- * against arguments already written in `startArgs`.
+ * Resolve Zotero debug-related launch arguments, de-duplicated against
+ * arguments already written in `startArgs`:
+ *
+ * - `debugOutputWindow` appends `-ZoteroDebug` (opens the Debug Output window,
+ *   `forceDebugLog = 2`);
+ * - `-ZoteroDebugText` (`forceDebugLog = 1`) is always appended so that
+ *   `Zotero.debug()` / `dump()` output goes to stdout, where the runner
+ *   captures it into the log file.
  *
  * @see docs/src/design/zotero-output-debug-config.md §5
  */
 export function resolveDebugArgs(
   startArgs: string[],
-  debugOutput: ServerConfig["debugOutput"],
+  debugOutputWindow: boolean,
 ): string[] {
   const args = [...startArgs];
-  if (debugOutput === "window" && !args.includes("-ZoteroDebug"))
+  if (debugOutputWindow && !args.includes("-ZoteroDebug"))
     args.push("-ZoteroDebug");
-  if (debugOutput === "console" && !args.includes("-ZoteroDebugText"))
+  if (!args.includes("-ZoteroDebugText"))
     args.push("-ZoteroDebugText");
   return args;
 }
@@ -41,8 +46,10 @@ export default class Serve extends Base {
   async run(): Promise<void> {
     const {
       devtools,
-      debugOutput,
-      forwardOutput,
+      debugOutputWindow,
+      zoteroLog,
+      logDir,
+      logRetentionDays,
       startArgs,
       prefs,
       createProfileIfMissing,
@@ -54,9 +61,10 @@ export default class Serve extends Base {
       binary: {
         path: this.zoteroBinPath,
         devtools,
-        args: resolveDebugArgs(startArgs, debugOutput),
-        // `debugOutput === "console"` implies output forwarding (功能二)
-        forwardOutput: debugOutput === "console" ? true : forwardOutput,
+        args: resolveDebugArgs(startArgs, debugOutputWindow),
+        log: zoteroLog
+          ? { dir: logDir, retentionDays: logRetentionDays }
+          : false,
       },
       profile: {
         path: this.profilePath,

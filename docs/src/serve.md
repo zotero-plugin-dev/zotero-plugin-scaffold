@@ -46,28 +46,32 @@ export default defineConfig({
 
 ## Debug Output
 
-Control Zotero's own debug output with the `server.debugOutput` option. This lets you see plugin logs (`Zotero.debug()` / `dump()`) directly in the terminal, without manually writing Zotero's command line flags or opening the Debug Output window.
+Scaffold always appends `-ZoteroDebugText` to the Zotero startup arguments, so `Zotero.debug()` / `dump()` output goes to stdout. The process stdout/stderr are captured and written to log files, numbered by the launch time:
+
+- stdout → `.scaffold/logs/zotero-<starttime>.log`
+- stderr → `.scaffold/logs/zotero-<starttime>-stderr.log`
+
+Old log files are removed automatically when the dev server starts: files older than `server.logRetentionDays` (default `7`) days in `server.logDir` (default `.scaffold/logs`) are deleted.
 
 ```ts twoslash
 import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
 export default defineConfig({
   server: {
-    debugOutput: "console",
+    // Debug output is recorded to .scaffold/logs/zotero-<starttime>.log by default.
+    // Keep this true unless you want to disable file logging:
+    zoteroLog: true,
+    logDir: ".scaffold/logs",
+    logRetentionDays: 7,
+    // Open the Zotero Debug Output window in addition to file logging:
+    debugOutputWindow: false,
   },
 });
 ```
 
-| `server.debugOutput` | Appended startArgs | Output forwarding   | Effect                                                     |
-| -------------------- | ------------------ | ------------------- | ---------------------------------------------------------- |
-| `false`（default）   | none               | per `forwardOutput` | Quiet start                                                |
-| `"window"`           | `-ZoteroDebug`     | per `forwardOutput` | Opens the Debug Output window on startup                   |
-| `"console"`          | `-ZoteroDebugText` | auto `true`         | `dump()` / `Zotero.debug` logs go straight to the terminal |
-
-- `server.forwardOutput` forwards Zotero's stdout/stderr to the scaffold log (stdout as `[zotero]`, stderr as `[zotero:stderr]`). It defaults to `false`, and is automatically enabled when `debugOutput` is `"console"`.
-- stdout/stderr are always consumed by Scaffold even when forwarding is off, to prevent the pipe buffer from filling up and blocking Zotero.
-- `debugOutput` does not duplicate flags already written in `server.startArgs`.
-- Known limitation on Windows: Zotero writes to the console in the system code page, so non-ASCII output may appear garbled (utf8 passthrough). The main `-ZoteroDebugText` log content is English, so the practical impact is small.
+- `server.debugOutputWindow` only controls whether the Zotero Debug Output window is opened (appends `-ZoteroDebug`). Debug output recording is independent of it.
+- `server.zoteroLog: false` disables file logging; stdout/stderr are still consumed (to prevent the pipe buffer from filling up and blocking Zotero) but discarded.
+- Known limitation on Windows: Zotero writes to the console in the system code page, so non-ASCII output may appear garbled (utf8 passthrough). The main debug log content is English, so the practical impact is small.
 
 ## Hot Reloading and Proxy File
 

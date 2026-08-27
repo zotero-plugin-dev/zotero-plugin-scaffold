@@ -133,8 +133,10 @@ const defaultConfig = {
   server: {
     devtools: true,
     startArgs: [],
-    debugOutput: false,
-    forwardOutput: false,
+    debugOutputWindow: false,
+    zoteroLog: true,
+    logDir: ".scaffold/logs",
+    logRetentionDays: 7,
     prefs: {},
     asProxy: false,
     prebuild: true,

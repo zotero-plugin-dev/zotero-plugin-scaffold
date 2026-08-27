@@ -2,14 +2,16 @@ import type { Buffer } from "node:buffer";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { RecursivePickOptional, RecursiveRequired } from "../types/utils.js";
 import { execSync, spawn } from "node:child_process";
+import { closeSync, openSync, readdirSync, statSync, unlinkSync, writeSync } from "node:fs";
 import { join, resolve } from "node:path";
 import process from "node:process";
 import { delay, toMerged } from "es-toolkit";
-import { ensureDir, outputFile, outputJSON, pathExists, readJSON, remove } from "fs-extra/esm";
+import { ensureDir, ensureDirSync, outputFile, outputJSON, pathExists, readJSON, remove } from "fs-extra/esm";
 import { isLinux, isMacOS, isWindows } from "std-env";
 import { logger } from "./logger.js";
 import { PrefsManager } from "./prefs-manager.js";
 import { isRunning } from "./process.js";
+import { dateFormat } from "./string.js";
 import { prefs as defaultPrefs } from "./zotero/preference.js";
 import { findFreeTcpPort, RemoteFirefox } from "./zotero/remote-zotero.js";
 
@@ -31,8 +33,15 @@ interface BinaryOptions {
   path: string;
   args?: string[];
   devtools?: boolean;
-  /** 是否把 Zotero 的 stdout/stderr 转发到 scaffold 日志（默认 false；debugOutput === "console" 时自动开启） */
-  forwardOutput?: boolean;
+  /**
+   * 是否把 Zotero 进程的 stdout/stderr 写入日志文件。
+   *
+   * - false：关闭（默认）；
+   * - { dir, retentionDays }：stdout 写 `<dir>/zotero-<启动时间>.log`，
+   *   stderr 写 `<dir>/zotero-<启动时间>-stderr.log`；
+   *   启动时自动删除超过 retentionDays 天的旧日志文件。
+   */
+  log?: false | { dir: string; retentionDays: number };
 }
 
 interface PluginsOptions {
@@ -53,7 +62,7 @@ const default_options = {
     // path: "",
     args: [],
     devtools: true,
-    forwardOutput: false,
+    log: false,
   },
   profile: {
     path: "./.scaffold/profile",
@@ -98,6 +107,38 @@ export function createLineSplitter(onLine: (line: string) => void): LineSplitter
       }
     },
   };
+}
+
+/**
+ * Remove Zotero log files (matching `zotero-*.log`) in `dir` that are
+ * older than `retentionDays`. Only files matching the scaffold naming are
+ * touched; missing directories and vanished files are ignored.
+ *
+ * 删除 `dir` 中超过 `retentionDays` 天的 Zotero 日志文件（匹配 `zotero-*.log`）。
+ * 仅清理脚手架命名的文件；目录不存在、文件已消失等情况静默忽略。
+ */
+export function cleanupOldLogs(dir: string, retentionDays: number): void {
+  if (retentionDays <= 0)
+    return;
+  const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  }
+  catch {
+    return;
+  }
+  for (const name of names) {
+    if (!name.startsWith("zotero-") || !name.endsWith(".log"))
+      continue;
+    try {
+      if (statSync(join(dir, name)).mtimeMs < cutoff)
+        unlinkSync(join(dir, name));
+    }
+    catch {
+      // 文件可能在读取后被删除
+    }
+  }
 }
 
 export class ZoteroRunner {
@@ -229,33 +270,51 @@ export class ZoteroRunner {
     this.zotero = spawn(this.options.binary.path, args, { env });
     logger.debug(`Zotero started, pid: ${this.zotero.pid}`);
 
-    // Handle Zotero log, necessary on macOS.
+    // Capture Zotero output.
     //
-    // - stdout/stderr are always consumed so that the pipe buffer (default ~64KB)
-    //   never fills up and blocks Zotero (stderr was previously unconsumed,
-    //   which could hang Zotero when XPCOM error stacks flooded it).
-    // - When `binary.forwardOutput` is enabled, each line is forwarded to the
-    //   scaffold log: stdout as debug `[zotero]`, stderr as warn
-    //   `[zotero:stderr]`.
+    // stdout/stderr are always consumed so that the pipe buffer (default ~64KB)
+    // never fills up and blocks Zotero (stderr was previously unconsumed,
+    // which could hang Zotero when XPCOM error stacks flooded it).
     //
-    // Debug argument facts (from `app/assets/commandLineHandler.js`):
-    // - `-ZoteroDebug` → `CommandLineOptions.forceDebugLog = 2` (Debug Output window)
-    // - `-ZoteroDebugText` → `forceDebugLog = 1` (text console, `dump()` output)
-    // Both clear `toolkit.startup.recent_crashes` (avoiding safe mode on Ctrl-C).
-    const forwardOutput = this.options.binary.forwardOutput;
-    const stdoutSplitter = createLineSplitter((line) => {
-      if (forwardOutput)
-        logger.debug(`[zotero] ${line}`);
-    });
-    const stderrSplitter = createLineSplitter((line) => {
-      if (forwardOutput)
-        logger.warn(`[zotero:stderr] ${line}`);
-    });
+    // Debug output is always recorded: Serve appends `-ZoteroDebugText`, so
+    // `Zotero.debug()` / `dump()` go to stdout (forceDebugLog=1, from
+    // `app/assets/commandLineHandler.js`); `-ZoteroDebug` (forceDebugLog=2)
+    // instead opens the Debug Output window. Both clear
+    // `toolkit.startup.recent_crashes` (avoiding safe mode on Ctrl-C).
+    //
+    // When `binary.log` is enabled, the streams are written line by line to
+    // `<logDir>/zotero-<starttime>.log` (stdout) and
+    // `<logDir>/zotero-<starttime>-stderr.log` (stderr), numbered by launch
+    // time, with old files cleaned up on startup.
+    const logOptions = this.options.binary.log;
+    if (logOptions) {
+      ensureDirSync(logOptions.dir);
+      cleanupOldLogs(logOptions.dir, logOptions.retentionDays);
+    }
+    const time = dateFormat("YYYYmmdd-HHMMSS", new Date());
+    const outFd = logOptions
+      ? openSync(join(logOptions.dir, `zotero-${time}.log`), "a")
+      : null;
+    const errFd = logOptions
+      ? openSync(join(logOptions.dir, `zotero-${time}-stderr.log`), "a")
+      : null;
+    // Sync writes so that the trailing lines survive process.exit() in
+    // Serve.onZoteroExit, which fires right after the `close` event.
+    const writeLine = (fd: number | null) => (line: string) => {
+      if (fd !== null)
+        writeSync(fd, `${line}\n`);
+    };
+    const stdoutSplitter = createLineSplitter(writeLine(outFd));
+    const stderrSplitter = createLineSplitter(writeLine(errFd));
     this.zotero.stdout?.on("data", data => stdoutSplitter.push(data));
     this.zotero.stderr?.on("data", data => stderrSplitter.push(data));
     this.zotero.on("close", () => {
       stdoutSplitter.flush();
       stderrSplitter.flush();
+      if (outFd !== null)
+        closeSync(outFd);
+      if (errFd !== null)
+        closeSync(errFd);
     });
 
     logger.debug("Connecting to the remote Firefox debugger...");
