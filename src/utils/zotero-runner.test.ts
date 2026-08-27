@@ -35,7 +35,7 @@ describe("cleanupOldLogs", () => {
     utimesSync(oldOut, oldTime, oldTime);
     utimesSync(oldErr, oldTime, oldTime);
 
-    await cleanupOldLogs(dir, 7);
+    await cleanupOldLogs(dir);
 
     expect(existsSync(oldOut)).toBe(false);
     expect(existsSync(oldErr)).toBe(false);
@@ -43,21 +43,9 @@ describe("cleanupOldLogs", () => {
     expect(existsSync(unrelated)).toBe(true);
   });
 
-  it("keeps files older than one day when retention is 0", async () => {
-    const dir = makeTempLogDir();
-    const oldOut = join(dir, "zotero-20240101-000000.log");
-    writeFileSync(oldOut, "old");
-    const oldTime = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    utimesSync(oldOut, oldTime, oldTime);
-
-    await cleanupOldLogs(dir, 0);
-
-    expect(existsSync(oldOut)).toBe(true);
-  });
-
   it("ignores a missing directory", async () => {
     const dir = join(tmpdir(), "zps-logs-missing", String(Date.now()));
-    await expect(cleanupOldLogs(dir, 7)).resolves.toBeUndefined();
+    await expect(cleanupOldLogs(dir)).resolves.toBeUndefined();
   });
 
   it("does not touch files outside the zotero-*.log glob", async () => {
@@ -65,7 +53,7 @@ describe("cleanupOldLogs", () => {
     const notZotero = join(dir, "scaffold.log");
     writeFileSync(notZotero, "x");
 
-    await cleanupOldLogs(dir, 1);
+    await cleanupOldLogs(dir);
 
     expect(existsSync(notZotero)).toBe(true);
     expect(readdirSync(dir)).toEqual(["scaffold.log"]);

@@ -425,16 +425,16 @@ export interface ServerConfig {
    * Whether to open the Zotero Debug Output window on startup
    * (appends `-ZoteroDebug`).
    *
-   * This only controls the window. Debug output itself is always recorded
-   * to the log file (see {@link ServerConfig.zoteroLog}): scaffold always
-   * appends `-ZoteroDebugText`, so `Zotero.debug()` / `dump()` output goes
-   * to stdout and is captured into the log file regardless of this option.
+   * This only controls the window. Debug output is always recorded when
+   * {@link ServerConfig.zoteroLog} is enabled: scaffold then appends
+   * `-ZoteroDebugText`, so `Zotero.debug()` / `dump()` output goes to stdout
+   * and is captured into the log file regardless of this option.
    *
    * 是否在启动时打开 Zotero 的 Debug Output 窗口（追加 `-ZoteroDebug`）。
    *
-   * 此项仅控制窗口。调试输出本身始终被记录到日志文件（见 {@link ServerConfig.zoteroLog}）：
-   * 脚手架始终追加 `-ZoteroDebugText`，因此 `Zotero.debug()` / `dump()` 输出
-   * 恒进 stdout 并被捕获到日志文件，与本选项无关。
+   * 此项仅控制窗口。调试输出在 `zoteroLog` 启用时被记录到日志文件
+   * （见 {@link ServerConfig.zoteroLog}）：此时脚手架追加 `-ZoteroDebugText`，
+   * `Zotero.debug()` / `dump()` 输出进 stdout 并被捕获到日志文件，与本选项无关。
    *
    * @default false
    */

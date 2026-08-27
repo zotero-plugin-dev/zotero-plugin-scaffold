@@ -46,7 +46,7 @@ export default defineConfig({
 
 ## Debug Output
 
-Scaffold always appends `-ZoteroDebugText` to the Zotero startup arguments, so `Zotero.debug()` / `dump()` output goes to stdout. The process stdout/stderr are captured and written to log files under `.scaffold/logs/`, numbered by the launch time:
+When `server.zoteroLog` is enabled (default), Scaffold appends `-ZoteroDebugText` to the Zotero startup arguments, so `Zotero.debug()` / `dump()` output goes to stdout. The process stdout/stderr are captured and written to log files under `.scaffold/logs/`, numbered by the launch time:
 
 - stdout → `.scaffold/logs/zotero-<starttime>.log`
 - stderr → `.scaffold/logs/zotero-<starttime>-stderr.log`

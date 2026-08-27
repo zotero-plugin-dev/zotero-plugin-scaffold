@@ -8,7 +8,7 @@ import process from "node:process";
 import { delay, toMerged } from "es-toolkit";
 import { ensureDir, ensureDirSync, outputFile, outputJSON, pathExists, readJSON, remove } from "fs-extra/esm";
 import { isLinux, isMacOS, isWindows } from "std-env";
-import { ZOTERO_LOG_DIR, ZOTERO_LOG_RETENTION_DAYS } from "../constant.js";
+import { ZOTERO_LOG_DIR } from "../constant.js";
 import { logger } from "./logger.js";
 import { PrefsManager } from "./prefs-manager.js";
 import { isRunning } from "./process.js";
@@ -84,42 +84,6 @@ const default_options = {
     list: [],
   },
 } satisfies DefaultZoteroRunnerOptions;
-
-/**
- * Remove Zotero log files (matching `zotero-*.log`) in `dir` that are
- * older than `retentionDays`. Only files matching the scaffold naming are
- * touched; missing directories and vanished files are ignored.
- *
- * Runs asynchronously so that it never blocks the Zotero startup; the
- * caller should not await it (the cleanup is best-effort housekeeping).
- *
- * 删除 `dir` 中超过 `retentionDays` 天的 Zotero 日志文件（匹配 `zotero-*.log`）。
- * 仅清理脚手架命名的文件；目录不存在、文件已消失等情况静默忽略。
- * 异步执行，不阻塞 Zotero 启动；调用方无需 await（尽力而为的清理）。
- */
-export async function cleanupOldLogs(dir: string, retentionDays: number): Promise<void> {
-  if (retentionDays <= 0)
-    return;
-  const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
-  let names: string[];
-  try {
-    names = await readdir(dir);
-  }
-  catch {
-    return;
-  }
-  await Promise.all(names
-    .filter(name => name.startsWith("zotero-") && name.endsWith(".log"))
-    .map(async (name) => {
-      try {
-        if ((await stat(join(dir, name))).mtimeMs < cutoff)
-          await unlink(join(dir, name));
-      }
-      catch {
-        // The file may be gone by now (removed concurrently)
-      }
-    }));
-}
 
 export class ZoteroRunner {
   private options: InternalZoteroRunnerOptions;
@@ -226,17 +190,14 @@ export class ZoteroRunner {
     if (this.options.binary.devtools) {
       args.push("--jsdebugger");
     }
-    // Debug arguments: `-ZoteroDebugText` is always appended so that
-    // `Zotero.debug()` / `dump()` output goes to stdout (forceDebugLog=1),
-    // where it is captured into the log file; `-ZoteroDebug` (forceDebugLog=2)
-    // opens the Debug Output window when requested. Both flags clear
-    // `toolkit.startup.recent_crashes` (avoiding safe mode on Ctrl-C).
-    // Duplicates with user-written startArgs are harmless: `handleFlag()`
-    // in commandLineHandler.js takes effect on the first match.
+    // `-ZoteroDebug` (forceDebugLog=2) opens the Debug Output window when requested
     if (this.options.binary.debugOutputWindow) {
       args.push("-ZoteroDebug");
     }
-    args.push("-ZoteroDebugText");
+    // `-ZoteroDebugText` (forceDebugLog=1) makes `Zotero.debug()` / `dump()` output go to stdout.
+    if (this.options.binary.log) {
+      args.push("-ZoteroDebugText");
+    }
     if (this.options.binary.args) {
       args = [...args, ...this.options.binary.args];
     }
@@ -261,30 +222,9 @@ export class ZoteroRunner {
     this.zotero = spawn(this.options.binary.path, args, { env });
     logger.debug(`Zotero started, pid: ${this.zotero.pid}`);
 
-    // Capture Zotero output.
-    //
-    // stdout/stderr are always consumed so that the pipe buffer (default ~64KB)
-    // never fills up and blocks Zotero (stderr was previously unconsumed,
-    // which could hang Zotero when XPCOM error stacks flooded it).
-    //
-    // Debug output is always recorded: Serve appends `-ZoteroDebugText`, so
-    // `Zotero.debug()` / `dump()` go to stdout (forceDebugLog=1, from
-    // `app/assets/commandLineHandler.js`); `-ZoteroDebug` (forceDebugLog=2)
-    // instead opens the Debug Output window. Both clear
-    // `toolkit.startup.recent_crashes` (avoiding safe mode on Ctrl-C).
-    //
-    // When `binary.log` is enabled, the streams are written verbatim to
-    // `.scaffold/logs/zotero-<starttime>.log` (stdout) and
-    // `.scaffold/logs/zotero-<starttime>-stderr.log` (stderr), numbered by
-    // launch time, with old files cleaned up on startup. The decision is made
-    // once here at startup: `openSync` guarantees the files exist and the fds
-    // stay valid for writing (POSIX: even if the file is unlinked meanwhile,
-    // writes still land until close), so the data handlers need no checks.
     if (this.options.binary.log) {
       ensureDirSync(ZOTERO_LOG_DIR);
-      // Clean up stale logs in the background; must not block Zotero startup
-      // (fire-and-forget, no need to await).
-      void cleanupOldLogs(ZOTERO_LOG_DIR, ZOTERO_LOG_RETENTION_DAYS);
+      void cleanupOldLogs(ZOTERO_LOG_DIR);
 
       const time = dateFormat("YYYYmmdd-HHMMSS", new Date());
       const outPath = join(ZOTERO_LOG_DIR, `zotero-${time}.log`);
@@ -292,7 +232,7 @@ export class ZoteroRunner {
       const outFd = openSync(outPath, "a");
       const errFd = openSync(errPath, "a");
 
-      logger.info(`Zotero output logs: ${resolve(outPath)} / ${resolve(errPath)}`);
+      logger.debug(`Zotero output logs: ${resolve(outPath)} / ${resolve(errPath)}`);
 
       // Sync writes so that the trailing data survives process.exit() in
       // Serve.onZoteroExit, which fires right after the `close` event.
@@ -497,4 +437,32 @@ export function killZotero(): void {
   else {
     logger.fail("No Zotero instance is currently running.");
   }
+}
+
+/**
+ * Remove Zotero log files (matching `zotero-*.log`) in `dir` that are
+ * older than 7 days (fixed, not configurable). Only files matching the
+ * scaffold naming are touched; missing directories and vanished files are
+ * ignored.
+ */
+export async function cleanupOldLogs(dir: string): Promise<void> {
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  }
+  catch {
+    return;
+  }
+  await Promise.all(names
+    .filter(name => name.startsWith("zotero-") && name.endsWith(".log"))
+    .map(async (name) => {
+      try {
+        if ((await stat(join(dir, name))).mtimeMs < cutoff)
+          await unlink(join(dir, name));
+      }
+      catch {
+        // The file may be gone by now (removed concurrently)
+      }
+    }));
 }
