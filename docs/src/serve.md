@@ -44,6 +44,31 @@ export default defineConfig({
 - `--purgecaches` and `--no-remote` are always included in the Zotero startup arguments, regardless of the `server.startArgs` configuration.
 - If `devtools` is set to `true`, the `--jsdebugger` argument is appended, enabling the Firefox developer tools.
 
+## Debug Output
+
+Control Zotero's own debug output with the `server.debugOutput` option. This lets you see plugin logs (`Zotero.debug()` / `dump()`) directly in the terminal, without manually writing Zotero's command line flags or opening the Debug Output window.
+
+```ts twoslash
+import { defineConfig } from "zotero-plugin-scaffold";
+// ---cut---
+export default defineConfig({
+  server: {
+    debugOutput: "console",
+  },
+});
+```
+
+| `server.debugOutput` | Appended startArgs | Output forwarding   | Effect                                                     |
+| -------------------- | ------------------ | ------------------- | ---------------------------------------------------------- |
+| `false`（default）   | none               | per `forwardOutput` | Quiet start                                                |
+| `"window"`           | `-ZoteroDebug`     | per `forwardOutput` | Opens the Debug Output window on startup                   |
+| `"console"`          | `-ZoteroDebugText` | auto `true`         | `dump()` / `Zotero.debug` logs go straight to the terminal |
+
+- `server.forwardOutput` forwards Zotero's stdout/stderr to the scaffold log (stdout as `[zotero]`, stderr as `[zotero:stderr]`). It defaults to `false`, and is automatically enabled when `debugOutput` is `"console"`.
+- stdout/stderr are always consumed by Scaffold even when forwarding is off, to prevent the pipe buffer from filling up and blocking Zotero.
+- `debugOutput` does not duplicate flags already written in `server.startArgs`.
+- Known limitation on Windows: Zotero writes to the console in the system code page, so non-ASCII output may appear garbled (utf8 passthrough). The main `-ZoteroDebugText` log content is English, so the practical impact is small.
+
 ## Hot Reloading and Proxy File
 
 The Zotero team's [plugin development guide](https://www.zotero.org/support/dev/client_coding/plugin_development) describes using Proxy File for loading plugins from source. While this method works for older versions of Zotero (e.g., Zotero 6), it **does not support plugin reloading**.

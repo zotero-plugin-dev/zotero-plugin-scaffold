@@ -1,3 +1,4 @@
+import type { ServerConfig } from "../types/config.js";
 import type { Context } from "../types/index.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -6,6 +7,24 @@ import { watch } from "../utils/watcher.js";
 import { ZoteroRunner } from "../utils/zotero-runner.js";
 import { Base } from "./base.js";
 import Build from "./builder/index.js";
+
+/**
+ * Map `debugOutput` to Zotero command line arguments, de-duplicated
+ * against arguments already written in `startArgs`.
+ *
+ * @see docs/src/design/zotero-output-debug-config.md §5
+ */
+export function resolveDebugArgs(
+  startArgs: string[],
+  debugOutput: ServerConfig["debugOutput"],
+): string[] {
+  const args = [...startArgs];
+  if (debugOutput === "window" && !args.includes("-ZoteroDebug"))
+    args.push("-ZoteroDebug");
+  if (debugOutput === "console" && !args.includes("-ZoteroDebugText"))
+    args.push("-ZoteroDebugText");
+  return args;
+}
 
 export default class Serve extends Base {
   private builder: Build;
@@ -20,32 +39,45 @@ export default class Serve extends Base {
   }
 
   async run(): Promise<void> {
+    const {
+      devtools,
+      debugOutput,
+      forwardOutput,
+      startArgs,
+      prefs,
+      createProfileIfMissing,
+      asProxy,
+      prebuild,
+    } = this.ctx.server;
+
     this.runner = new ZoteroRunner({
       binary: {
         path: this.zoteroBinPath,
-        devtools: this.ctx.server.devtools,
-        args: this.ctx.server.startArgs,
+        devtools,
+        args: resolveDebugArgs(startArgs, debugOutput),
+        // `debugOutput === "console"` implies output forwarding (功能二)
+        forwardOutput: debugOutput === "console" ? true : forwardOutput,
       },
       profile: {
         path: this.profilePath,
         dataDir: this.dataDir,
         // keepChanges: this.ctx.server.keepProfileChanges,
-        createIfMissing: this.ctx.server.createProfileIfMissing,
-        customPrefs: this.ctx.server.prefs,
+        createIfMissing: createProfileIfMissing,
+        customPrefs: prefs,
       },
       plugins: {
         list: [{
           id: this.ctx.id,
           sourceDir: join(this.ctx.dist, "addon"),
         }],
-        asProxy: this.ctx.server.asProxy,
+        asProxy,
       },
     });
 
     await this.ctx.hooks.callHook("serve:init", this.ctx);
 
     // prebuild
-    if (this.ctx.server.prebuild) {
+    if (prebuild) {
       await this.builder.run();
       await this.ctx.hooks.callHook("serve:prebuild", this.ctx);
     }

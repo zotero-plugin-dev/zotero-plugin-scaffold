@@ -1,3 +1,4 @@
+import type { Buffer } from "node:buffer";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { RecursivePickOptional, RecursiveRequired } from "../types/utils.js";
 import { execSync, spawn } from "node:child_process";
@@ -30,6 +31,8 @@ interface BinaryOptions {
   path: string;
   args?: string[];
   devtools?: boolean;
+  /** 是否把 Zotero 的 stdout/stderr 转发到 scaffold 日志（默认 false；debugOutput === "console" 时自动开启） */
+  forwardOutput?: boolean;
 }
 
 interface PluginsOptions {
@@ -50,6 +53,7 @@ const default_options = {
     // path: "",
     args: [],
     devtools: true,
+    forwardOutput: false,
   },
   profile: {
     path: "./.scaffold/profile",
@@ -63,6 +67,38 @@ const default_options = {
     list: [],
   },
 } satisfies DefaultZoteroRunnerOptions;
+
+export interface LineSplitter {
+  push: (chunk: Buffer | string) => void;
+  flush: () => void;
+}
+
+/**
+ * Splits chunked stdout/stderr data into lines, buffering partial lines
+ * until the next chunk. Call `flush()` on process close to emit the
+ * trailing line without a newline.
+ *
+ * 按行切分 stdout/stderr 数据块：残留半行缓存到下一个 chunk，
+ * 进程 `close` 时调用 `flush()` 输出末尾无换行的行。
+ */
+export function createLineSplitter(onLine: (line: string) => void): LineSplitter {
+  let buf = "";
+  return {
+    push: (chunk: Buffer | string) => {
+      buf += chunk.toString("utf8");
+      const parts = buf.split(/\r?\n/);
+      buf = parts.pop()!; // 末段无换行，缓存
+      for (const line of parts)
+        onLine(line);
+    },
+    flush: () => {
+      if (buf) {
+        onLine(buf);
+        buf = "";
+      }
+    },
+  };
+}
 
 export class ZoteroRunner {
   private options: InternalZoteroRunnerOptions;
@@ -193,8 +229,34 @@ export class ZoteroRunner {
     this.zotero = spawn(this.options.binary.path, args, { env });
     logger.debug(`Zotero started, pid: ${this.zotero.pid}`);
 
-    // Handle Zotero log, necessary on macOS
-    this.zotero.stdout?.on("data", (_data) => {});
+    // Handle Zotero log, necessary on macOS.
+    //
+    // - stdout/stderr are always consumed so that the pipe buffer (default ~64KB)
+    //   never fills up and blocks Zotero (stderr was previously unconsumed,
+    //   which could hang Zotero when XPCOM error stacks flooded it).
+    // - When `binary.forwardOutput` is enabled, each line is forwarded to the
+    //   scaffold log: stdout as debug `[zotero]`, stderr as warn
+    //   `[zotero:stderr]`.
+    //
+    // Debug argument facts (from `app/assets/commandLineHandler.js`):
+    // - `-ZoteroDebug` → `CommandLineOptions.forceDebugLog = 2` (Debug Output window)
+    // - `-ZoteroDebugText` → `forceDebugLog = 1` (text console, `dump()` output)
+    // Both clear `toolkit.startup.recent_crashes` (avoiding safe mode on Ctrl-C).
+    const forwardOutput = this.options.binary.forwardOutput;
+    const stdoutSplitter = createLineSplitter((line) => {
+      if (forwardOutput)
+        logger.debug(`[zotero] ${line}`);
+    });
+    const stderrSplitter = createLineSplitter((line) => {
+      if (forwardOutput)
+        logger.warn(`[zotero:stderr] ${line}`);
+    });
+    this.zotero.stdout?.on("data", data => stdoutSplitter.push(data));
+    this.zotero.stderr?.on("data", data => stderrSplitter.push(data));
+    this.zotero.on("close", () => {
+      stdoutSplitter.flush();
+      stderrSplitter.flush();
+    });
 
     logger.debug("Connecting to the remote Firefox debugger...");
     await this.remoteFirefox.connect(remotePort);

@@ -420,6 +420,38 @@ export interface ServerConfig {
    * @default []
    */
   startArgs: string[];
+
+  /**
+   * Zotero debug output mode.
+   *
+   * - "window"  ：append `-ZoteroDebug`, opens the Debug Output window on startup (`Zotero.debug` logs visible)
+   * - "console" ：append `-ZoteroDebugText`, `dump()` output goes to stdout; also enables output forwarding
+   * - false     ：no debug argument is appended (default)
+   *
+   * Zotero 调试输出方式。
+   *
+   * - "window"  ：追加 `-ZoteroDebug`，启动时打开 Debug Output 窗口（`Zotero.debug` 日志可见）
+   * - "console" ：追加 `-ZoteroDebugText`，`dump()` 输出到 stdout；并自动开启输出转发（功能二）
+   * - false     ：不追加任何调试参数（默认）
+   *
+   * @default false
+   */
+  debugOutput: "window" | "console" | false;
+
+  /**
+   * Whether to forward Zotero's stdout/stderr to the scaffold log.
+   *
+   * Default false; automatically true when `debugOutput === "console"`,
+   * can also be enabled independently.
+   *
+   * 是否把 Zotero 进程的 stdout/stderr 转发到 scaffold 日志。
+   *
+   * 默认 false；`debugOutput === "console"` 时自动为 true，也可单独开启。
+   *
+   * @default false
+   */
+  forwardOutput: boolean;
+
   /**
    * The default preferences for the dev server.
    * These preferences will be set before Zotero starts.
