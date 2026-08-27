@@ -1,7 +1,8 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { RecursivePickOptional, RecursiveRequired } from "../types/utils.js";
 import { execSync, spawn } from "node:child_process";
-import { closeSync, openSync, readdirSync, statSync, unlinkSync, writeSync } from "node:fs";
+import { closeSync, openSync, writeSync } from "node:fs";
+import { readdir, stat, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import process from "node:process";
 import { delay, toMerged } from "es-toolkit";
@@ -91,31 +92,35 @@ const default_options = {
  * older than `retentionDays`. Only files matching the scaffold naming are
  * touched; missing directories and vanished files are ignored.
  *
+ * Runs asynchronously so that it never blocks the Zotero startup; the
+ * caller should not await it (the cleanup is best-effort housekeeping).
+ *
  * 删除 `dir` 中超过 `retentionDays` 天的 Zotero 日志文件（匹配 `zotero-*.log`）。
  * 仅清理脚手架命名的文件；目录不存在、文件已消失等情况静默忽略。
+ * 异步执行，不阻塞 Zotero 启动；调用方无需 await（尽力而为的清理）。
  */
-export function cleanupOldLogs(dir: string, retentionDays: number): void {
+export async function cleanupOldLogs(dir: string, retentionDays: number): Promise<void> {
   if (retentionDays <= 0)
     return;
   const cutoff = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
   let names: string[];
   try {
-    names = readdirSync(dir);
+    names = await readdir(dir);
   }
   catch {
     return;
   }
-  for (const name of names) {
-    if (!name.startsWith("zotero-") || !name.endsWith(".log"))
-      continue;
-    try {
-      if (statSync(join(dir, name)).mtimeMs < cutoff)
-        unlinkSync(join(dir, name));
-    }
-    catch {
-      // 文件可能在读取后被删除
-    }
-  }
+  await Promise.all(names
+    .filter(name => name.startsWith("zotero-") && name.endsWith(".log"))
+    .map(async (name) => {
+      try {
+        if ((await stat(join(dir, name))).mtimeMs < cutoff)
+          await unlink(join(dir, name));
+      }
+      catch {
+        // 文件可能在读取后被删除
+      }
+    }));
 }
 
 export class ZoteroRunner {
@@ -279,7 +284,8 @@ export class ZoteroRunner {
     // writes still land until close), so the data handlers need no checks.
     if (this.options.binary.log) {
       ensureDirSync(ZOTERO_LOG_DIR);
-      cleanupOldLogs(ZOTERO_LOG_DIR, ZOTERO_LOG_RETENTION_DAYS);
+      // 后台清理旧日志，不阻塞 Zotero 启动（fire-and-forget，无需 await）
+      void cleanupOldLogs(ZOTERO_LOG_DIR, ZOTERO_LOG_RETENTION_DAYS);
 
       const time = dateFormat("YYYYmmdd-HHMMSS", new Date());
       const outPath = join(ZOTERO_LOG_DIR, `zotero-${time}.log`);
