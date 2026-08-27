@@ -8,7 +8,7 @@ build
 .npmrc
 
 # design drafts
-**/design/
+docs/**/design/
 
 # vitepress
 **/.vitepress/dist
@@ -20,3 +20,4 @@ test/e2e/fixtures/.scaffold
 test/e2e/fixtures/typings
 test/e2e/fixtures/.gitignore
 !test/e2e/snap/dist
+**/.scaffold
