@@ -286,42 +286,43 @@ export class ZoteroRunner {
     // instead opens the Debug Output window. Both clear
     // `toolkit.startup.recent_crashes` (avoiding safe mode on Ctrl-C).
     //
-    // When `binary.log` is enabled, the streams are written line by line to
+    // When `binary.log` is enabled, the streams are written verbatim to
     // `.scaffold/logs/zotero-<starttime>.log` (stdout) and
     // `.scaffold/logs/zotero-<starttime>-stderr.log` (stderr), numbered by
-    // launch time, with old files cleaned up on startup.
-    const logEnabled = this.options.binary.log;
-    if (logEnabled) {
+    // launch time, with old files cleaned up on startup. The decision is made
+    // once here at startup: `openSync` guarantees the files exist and the fds
+    // stay valid for writing (POSIX: even if the file is unlinked meanwhile,
+    // writes still land until close), so the data handlers need no checks.
+    if (this.options.binary.log) {
       ensureDirSync(ZOTERO_LOG_DIR);
       cleanupOldLogs(ZOTERO_LOG_DIR, ZOTERO_LOG_RETENTION_DAYS);
-    }
-    const time = dateFormat("YYYYmmdd-HHMMSS", new Date());
-    const outPath = join(ZOTERO_LOG_DIR, `zotero-${time}.log`);
-    const errPath = join(ZOTERO_LOG_DIR, `zotero-${time}-stderr.log`);
-    const outFd = logEnabled ? openSync(outPath, "a") : null;
-    const errFd = logEnabled ? openSync(errPath, "a") : null;
-    if (logEnabled) {
+
+      const time = dateFormat("YYYYmmdd-HHMMSS", new Date());
+      const outPath = join(ZOTERO_LOG_DIR, `zotero-${time}.log`);
+      const errPath = join(ZOTERO_LOG_DIR, `zotero-${time}-stderr.log`);
+      const outFd = openSync(outPath, "a");
+      const errFd = openSync(errPath, "a");
+
       logger.info(`Zotero output logs: ${resolve(outPath)} / ${resolve(errPath)}`);
-    }
-    // Sync writes so that the trailing data survives process.exit() in
-    // Serve.onZoteroExit, which fires right after the `close` event.
-    // Chunks are written verbatim, without line splitting: Node delivers
-    // whole Buffers, and byte-level passthrough avoids UTF-8 decoding issues
-    // when a multi-byte character spans a chunk boundary.
-    this.zotero.stdout?.on("data", (data) => {
-      if (outFd !== null)
-        writeSync(outFd, data);
-    });
-    this.zotero.stderr?.on("data", (data) => {
-      if (errFd !== null)
-        writeSync(errFd, data);
-    });
-    this.zotero.on("close", () => {
-      if (outFd !== null)
+
+      // Sync writes so that the trailing data survives process.exit() in
+      // Serve.onZoteroExit, which fires right after the `close` event.
+      // Chunks are written verbatim, without line splitting: Node delivers
+      // whole Buffers, and byte-level passthrough avoids UTF-8 decoding
+      // issues when a multi-byte character spans a chunk boundary.
+      this.zotero.stdout?.on("data", data => writeSync(outFd, data));
+      this.zotero.stderr?.on("data", data => writeSync(errFd, data));
+      this.zotero.on("close", () => {
         closeSync(outFd);
-      if (errFd !== null)
         closeSync(errFd);
-    });
+      });
+    }
+    else {
+      // Always consume stdout/stderr (even when logging is off) to avoid
+      // blocking Zotero on a full pipe buffer.
+      this.zotero.stdout?.on("data", () => {});
+      this.zotero.stderr?.on("data", () => {});
+    }
 
     logger.debug("Connecting to the remote Firefox debugger...");
     await this.remoteFirefox.connect(remotePort);
