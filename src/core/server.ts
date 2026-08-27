@@ -7,30 +7,6 @@ import { ZoteroRunner } from "../utils/zotero-runner.js";
 import { Base } from "./base.js";
 import Build from "./builder/index.js";
 
-/**
- * Resolve Zotero debug-related launch arguments, de-duplicated against
- * arguments already written in `startArgs`:
- *
- * - `debugOutputWindow` appends `-ZoteroDebug` (opens the Debug Output window,
- *   `forceDebugLog = 2`);
- * - `-ZoteroDebugText` (`forceDebugLog = 1`) is always appended so that
- *   `Zotero.debug()` / `dump()` output goes to stdout, where the runner
- *   captures it into the log file.
- *
- * @see docs/src/design/zotero-output-debug-config.md §5
- */
-export function resolveDebugArgs(
-  startArgs: string[],
-  debugOutputWindow: boolean,
-): string[] {
-  const args = [...startArgs];
-  if (debugOutputWindow && !args.includes("-ZoteroDebug"))
-    args.push("-ZoteroDebug");
-  if (!args.includes("-ZoteroDebugText"))
-    args.push("-ZoteroDebugText");
-  return args;
-}
-
 export default class Serve extends Base {
   private builder: Build;
   private runner?: ZoteroRunner;
@@ -59,7 +35,8 @@ export default class Serve extends Base {
       binary: {
         path: this.zoteroBinPath,
         devtools,
-        args: resolveDebugArgs(startArgs, debugOutputWindow),
+        args: startArgs,
+        debugOutputWindow,
         log: zoteroLog,
       },
       profile: {

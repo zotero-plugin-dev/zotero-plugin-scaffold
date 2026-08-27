@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanupOldLogs, createLineSplitter } from "./zotero-runner.js";
+import { cleanupOldLogs, createLineSplitter, resolveDebugArgs } from "./zotero-runner.js";
 
 describe("createLineSplitter", () => {
   it("splits full lines in a single chunk", () => {
@@ -70,6 +70,29 @@ describe("createLineSplitter", () => {
     expect(onLine).toHaveBeenCalledTimes(2);
     expect(onLine).toHaveBeenNthCalledWith(1, "line1");
     expect(onLine).toHaveBeenNthCalledWith(2, "line2");
+  });
+});
+
+describe("resolveDebugArgs", () => {
+  it("always appends -ZoteroDebugText to capture debug output", () => {
+    expect(resolveDebugArgs([], false)).toEqual(["-ZoteroDebugText"]);
+  });
+
+  it("appends -ZoteroDebug only when debugOutputWindow is enabled", () => {
+    expect(resolveDebugArgs([], true))
+      .toEqual(["-ZoteroDebug", "-ZoteroDebugText"]);
+  });
+
+  it("keeps user startArgs untouched", () => {
+    expect(resolveDebugArgs(["--foo"], false))
+      .toEqual(["--foo", "-ZoteroDebugText"]);
+  });
+
+  it("does not duplicate manually written debug args", () => {
+    expect(resolveDebugArgs(["-ZoteroDebugText"], true))
+      .toEqual(["-ZoteroDebugText", "-ZoteroDebug"]);
+    expect(resolveDebugArgs(["-ZoteroDebug", "-ZoteroDebugText"], true))
+      .toEqual(["-ZoteroDebug", "-ZoteroDebugText"]);
   });
 });
 

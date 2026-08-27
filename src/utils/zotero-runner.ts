@@ -34,6 +34,11 @@ interface BinaryOptions {
   args?: string[];
   devtools?: boolean;
   /**
+   * 是否打开 Zotero 的 Debug Output 窗口（追加 `-ZoteroDebug`）。
+   * 仅控制窗口；调试输出记录（-ZoteroDebugText）与日志文件始终开启，与窗口无关。
+   */
+  debugOutputWindow?: boolean;
+  /**
    * 是否把 Zotero 进程的 stdout/stderr 写入日志文件。
    *
    * - false：关闭（默认）；
@@ -66,6 +71,7 @@ const default_options = {
     // path: "",
     args: [],
     devtools: true,
+    debugOutputWindow: false,
     log: false,
   },
   profile: {
@@ -111,6 +117,30 @@ export function createLineSplitter(onLine: (line: string) => void): LineSplitter
       }
     },
   };
+}
+
+/**
+ * Resolve Zotero debug-related launch arguments, de-duplicated against
+ * arguments already present in `baseArgs`:
+ *
+ * - `debugOutputWindow` appends `-ZoteroDebug` (opens the Debug Output window,
+ *   `CommandLineOptions.forceDebugLog = 2`);
+ * - `-ZoteroDebugText` (`forceDebugLog = 1`) is always appended so that
+ *   `Zotero.debug()` / `dump()` output goes to stdout, where it is captured
+ *   into the log file. Both flags clear `toolkit.startup.recent_crashes`
+ *   (avoiding safe mode on Ctrl-C).
+ *
+ * 解析 Zotero 调试相关启动参数，与 `baseArgs` 中已有的参数去重。
+ *
+ * @see docs/src/design/zotero-output-debug-config.md §5
+ */
+export function resolveDebugArgs(baseArgs: string[], debugOutputWindow: boolean): string[] {
+  const args = [...baseArgs];
+  if (debugOutputWindow && !args.includes("-ZoteroDebug"))
+    args.push("-ZoteroDebug");
+  if (!args.includes("-ZoteroDebugText"))
+    args.push("-ZoteroDebugText");
+  return args;
 }
 
 /**
@@ -253,6 +283,9 @@ export class ZoteroRunner {
     if (this.options.binary.args) {
       args = [...args, ...this.options.binary.args];
     }
+    // Debug arguments: always record text output (`-ZoteroDebugText`), and
+    // open the Debug Output window when requested (`-ZoteroDebug`).
+    args = resolveDebugArgs(args, this.options.binary.debugOutputWindow);
 
     // support for starting the remote debugger server
     const remotePort = await findFreeTcpPort();
