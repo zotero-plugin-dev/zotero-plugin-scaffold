@@ -2,30 +2,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanupOldLogs, resolveDebugArgs } from "./zotero-runner.js";
-
-describe("resolveDebugArgs", () => {
-  it("always appends -ZoteroDebugText to capture debug output", () => {
-    expect(resolveDebugArgs([], false)).toEqual(["-ZoteroDebugText"]);
-  });
-
-  it("appends -ZoteroDebug only when debugOutputWindow is enabled", () => {
-    expect(resolveDebugArgs([], true))
-      .toEqual(["-ZoteroDebug", "-ZoteroDebugText"]);
-  });
-
-  it("keeps user startArgs untouched", () => {
-    expect(resolveDebugArgs(["--foo"], false))
-      .toEqual(["--foo", "-ZoteroDebugText"]);
-  });
-
-  it("does not duplicate manually written debug args", () => {
-    expect(resolveDebugArgs(["-ZoteroDebugText"], true))
-      .toEqual(["-ZoteroDebugText", "-ZoteroDebug"]);
-    expect(resolveDebugArgs(["-ZoteroDebug", "-ZoteroDebugText"], true))
-      .toEqual(["-ZoteroDebug", "-ZoteroDebugText"]);
-  });
-});
+import { cleanupOldLogs } from "./zotero-runner.js";
 
 const tempDirs: string[] = [];
 

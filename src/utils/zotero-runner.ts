@@ -87,30 +87,6 @@ const default_options = {
 } satisfies DefaultZoteroRunnerOptions;
 
 /**
- * Resolve Zotero debug-related launch arguments, de-duplicated against
- * arguments already present in `baseArgs`:
- *
- * - `debugOutputWindow` appends `-ZoteroDebug` (opens the Debug Output window,
- *   `CommandLineOptions.forceDebugLog = 2`);
- * - `-ZoteroDebugText` (`forceDebugLog = 1`) is always appended so that
- *   `Zotero.debug()` / `dump()` output goes to stdout, where it is captured
- *   into the log file. Both flags clear `toolkit.startup.recent_crashes`
- *   (avoiding safe mode on Ctrl-C).
- *
- * 解析 Zotero 调试相关启动参数，与 `baseArgs` 中已有的参数去重。
- *
- * @see docs/src/design/zotero-output-debug-config.md §5
- */
-export function resolveDebugArgs(baseArgs: string[], debugOutputWindow: boolean): string[] {
-  const args = [...baseArgs];
-  if (debugOutputWindow && !args.includes("-ZoteroDebug"))
-    args.push("-ZoteroDebug");
-  if (!args.includes("-ZoteroDebugText"))
-    args.push("-ZoteroDebugText");
-  return args;
-}
-
-/**
  * Remove Zotero log files (matching `zotero-*.log`) in `dir` that are
  * older than `retentionDays`. Only files matching the scaffold naming are
  * touched; missing directories and vanished files are ignored.
@@ -247,12 +223,20 @@ export class ZoteroRunner {
     if (this.options.binary.devtools) {
       args.push("--jsdebugger");
     }
+    // Debug arguments: `-ZoteroDebugText` is always appended so that
+    // `Zotero.debug()` / `dump()` output goes to stdout (forceDebugLog=1),
+    // where it is captured into the log file; `-ZoteroDebug` (forceDebugLog=2)
+    // opens the Debug Output window when requested. Both flags clear
+    // `toolkit.startup.recent_crashes` (avoiding safe mode on Ctrl-C).
+    // Duplicates with user-written startArgs are harmless: `handleFlag()`
+    // in commandLineHandler.js takes effect on the first match.
+    if (this.options.binary.debugOutputWindow) {
+      args.push("-ZoteroDebug");
+    }
+    args.push("-ZoteroDebugText");
     if (this.options.binary.args) {
       args = [...args, ...this.options.binary.args];
     }
-    // Debug arguments: always record text output (`-ZoteroDebugText`), and
-    // open the Debug Output window when requested (`-ZoteroDebug`).
-    args = resolveDebugArgs(args, this.options.binary.debugOutputWindow);
 
     // support for starting the remote debugger server
     const remotePort = await findFreeTcpPort();
