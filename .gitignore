@@ -7,6 +7,9 @@ dist
 build
 .npmrc
 
+# design drafts
+**/design/
+
 # vitepress
 **/.vitepress/dist
 **/.vitepress/cache
