@@ -13,6 +13,7 @@ import { logger } from "./logger.js";
 import { PrefsManager } from "./prefs-manager.js";
 import { isRunning } from "./process.js";
 import { dateFormat } from "./string.js";
+import { ANSI_ESCAPE_RE, createMessageNormalizer } from "./zotero/log-normalizer.js";
 import { prefs as defaultPrefs } from "./zotero/preference.js";
 import { findFreeTcpPort, RemoteFirefox } from "./zotero/remote-zotero.js";
 
@@ -221,14 +222,18 @@ export class ZoteroRunner {
 
       logger.info(`Zotero output logs: ${outPath} / ${errPath}`);
 
-      // Sync writes so that the trailing data survives process.exit() in
-      // Serve.onZoteroExit, which fires right after the `close` event.
-      // Chunks are written verbatim, without line splitting: Node delivers
-      // whole Buffers, and byte-level passthrough avoids UTF-8 decoding
-      // issues when a multi-byte character spans a chunk boundary.
-      this.zotero.stdout?.on("data", data => writeSync(outFd, data));
-      this.zotero.stderr?.on("data", data => writeSync(errFd, data));
+      const stdoutNormalizer = createMessageNormalizer(line => writeSync(outFd, `${line}\n`));
+      const stderrDecoder = new TextDecoder("utf-8");
+      this.zotero.stdout?.on("data", data => stdoutNormalizer.push(data));
+      this.zotero.stderr?.on("data", (data) => {
+        const text = stderrDecoder.decode(data, { stream: true }).replace(ANSI_ESCAPE_RE, "");
+        writeSync(errFd, text);
+      });
       this.zotero.on("close", () => {
+        stdoutNormalizer.flush();
+        const stderrTail = stderrDecoder.decode();
+        if (stderrTail)
+          writeSync(errFd, stderrTail.replace(ANSI_ESCAPE_RE, ""));
         closeSync(outFd);
         closeSync(errFd);
       });

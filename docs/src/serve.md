@@ -58,10 +58,7 @@ import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
 export default defineConfig({
   server: {
-    // Debug output is recorded to .scaffold/logs/zotero-<starttime>.log by default.
-    // Set this to false to disable file logging:
     debugOutputFile: true,
-    // Open the Zotero Debug Output window in addition to file logging:
     debugOutputWindow: false,
   },
 });
@@ -69,7 +66,6 @@ export default defineConfig({
 
 - `server.debugOutputWindow` only controls whether the Zotero Debug Output window is opened (appends `-ZoteroDebug`). Debug output recording is independent of it.
 - `server.debugOutputFile: false` disables file logging; stdout/stderr are still consumed (to prevent the pipe buffer from filling up and blocking Zotero) but discarded.
-- Known limitation on Windows: Zotero writes to the console in the system code page, so non-ASCII output may appear garbled (utf8 passthrough). The main debug log content is English, so the practical impact is small.
 
 ## Hot Reloading and Proxy File
 
