@@ -34,20 +34,7 @@ interface BinaryOptions {
   path: string;
   args?: string[];
   devtools?: boolean;
-  /**
-   * Whether to open the Zotero Debug Output window on startup (`-ZoteroDebug`).
-   * This only controls the window; debug output recording (`-ZoteroDebugText`)
-   * and the log files are always enabled, independent of this option.
-   */
   debugOutputWindow?: boolean;
-  /**
-   * Whether to record the Zotero process stdout/stderr to log files.
-   *
-   * - false: disabled (default);
-   * - true: stdout → `.scaffold/logs/zotero-<start-time>.log`, stderr →
-   *   `.scaffold/logs/zotero-<start-time>-stderr.log`; files older than
-   *   7 days are removed automatically on startup.
-   */
   debugOutputFile?: boolean;
 }
 
@@ -232,7 +219,7 @@ export class ZoteroRunner {
       const outFd = openSync(outPath, "a");
       const errFd = openSync(errPath, "a");
 
-      logger.debug(`Zotero output logs: ${resolve(outPath)} / ${resolve(errPath)}`);
+      logger.info(`Zotero output logs: ${outPath} / ${errPath}`);
 
       // Sync writes so that the trailing data survives process.exit() in
       // Serve.onZoteroExit, which fires right after the `close` event.
