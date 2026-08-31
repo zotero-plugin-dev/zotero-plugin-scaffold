@@ -56,12 +56,16 @@ async function main() {
     .option("--abort-on-fail", "Abort the test suite on first failure")
     .option("--exit-on-finish", "Exit the test suite after all tests have run")
     .option("--no-watch", "Exit the test suite after all tests have run")
+    .option("--reporter <name>", "Vitest reporter(s), e.g. default|verbose|junit|json (comma-separated)")
+    .option("--output-file <path>", "Write the test report to a file, e.g. test-results/junit.xml")
     .action(async (options) => {
       process.env.NODE_ENV = "test";
       await runCommand(Test, {
         test: {
           abortOnFail: options.abortOnFail,
           watch: !options.exitOnFinish && options.watch,
+          reporter: options.reporter?.split(",").map((s: string) => s.trim()).filter(Boolean),
+          outputFile: options.outputFile,
         },
       });
     });

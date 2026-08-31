@@ -1,5 +1,6 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { RecursivePickOptional, RecursiveRequired } from "../types/utils.js";
+import { Buffer } from "node:buffer";
 import { execSync, spawn } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
 import { readdir, stat, unlink } from "node:fs/promises";
@@ -16,6 +17,13 @@ import { dateFormat } from "./string.js";
 import { ANSI_ESCAPE_RE, createMessageNormalizer } from "./zotero/log-normalizer.js";
 import { prefs as defaultPrefs } from "./zotero/preference.js";
 import { findFreeTcpPort, RemoteFirefox } from "./zotero/remote-zotero.js";
+
+/** An entry of Zotero's extensions.json (the fields this runner touches). */
+interface AddonInfo {
+  id: string;
+  active?: boolean;
+  userDisabled?: boolean;
+}
 
 export interface ZoteroRunnerOptions {
   binary: BinaryOptions;
@@ -37,6 +45,12 @@ interface BinaryOptions {
   devtools?: boolean;
   debugOutputWindow?: boolean;
   debugOutputFile?: boolean;
+  /**
+   * Connect to the remote Firefox debugger server (RDP). Defaults to
+   * `!plugins.asProxy` — proxy addons are installed via profile files and
+   * need no RDP. Set explicitly to override the derivation.
+   */
+  connectRDP?: boolean;
 }
 
 interface PluginsOptions {
@@ -73,13 +87,20 @@ const default_options = {
   },
 } satisfies DefaultZoteroRunnerOptions;
 
+/**
+ * Manages one Zotero process: profile preparation, launch (optionally with
+ * the remote debugger), proxy/temporary plugin installation, reloading and
+ * shutdown. The pool keeps one runner per live instance; helpers that act
+ * on a profile without a runner (cold-boot cleanup, takeover checks) live
+ * as module-level functions below.
+ */
 export class ZoteroRunner {
   private options: InternalZoteroRunnerOptions;
   private remoteFirefox = new RemoteFirefox();
   public zotero?: ChildProcessWithoutNullStreams;
 
   constructor(options: ZoteroRunnerOptions) {
-    this.options = toMerged(default_options, options);
+    this.options = toMerged(default_options, options) as InternalZoteroRunnerOptions;
 
     if (!options.binary.path)
       throw new Error("Binary path must be provided.");
@@ -91,6 +112,16 @@ export class ZoteroRunner {
       this.options.profile.dataDir = "./.scaffold/data";
 
     logger.debug(this.options);
+  }
+
+  /**
+   * Whether to start and connect to the remote debugger server.
+   * Defaults to `!asProxy`: proxy addons are installed via profile files and
+   * need no RDP; temporary addons are installed over RDP. Explicitly set
+   * `binary.connectRDP` to override (e.g. asProxy with a debug session).
+   */
+  private get connectRDP(): boolean {
+    return this.options.binary.connectRDP ?? !this.options.plugins.asProxy;
   }
 
   get default_profile_path(): string {
@@ -192,7 +223,9 @@ export class ZoteroRunner {
 
     // support for starting the remote debugger server
     const remotePort = await findFreeTcpPort();
-    args.push("-start-debugger-server", String(remotePort));
+    if (this.connectRDP) {
+      args.push("-start-debugger-server", String(remotePort));
+    }
 
     logger.debug(`Zotero start args: ${args}`);
 
@@ -245,9 +278,11 @@ export class ZoteroRunner {
       this.zotero.stderr?.on("data", () => {});
     }
 
-    logger.debug("Connecting to the remote Firefox debugger...");
-    await this.remoteFirefox.connect(remotePort);
-    logger.debug(`Connected to the remote Firefox debugger on port: ${remotePort}`);
+    if (this.connectRDP) {
+      logger.debug("Connecting to the remote Firefox debugger...");
+      await this.remoteFirefox.connect(remotePort);
+      logger.debug(`Connected to the remote Firefox debugger on port: ${remotePort}`);
+    }
   }
 
   private async installTemporaryPlugins() {
@@ -289,8 +324,8 @@ export class ZoteroRunner {
     // Force enable plugin in extensions.json
     const addonInfoFilePath = join(this.options.profile.path, "extensions.json");
     if (await pathExists(addonInfoFilePath)) {
-      const content = await readJSON(addonInfoFilePath);
-      content.addons = content.addons.map((addon: any) => {
+      const content = await readJSON(addonInfoFilePath) as { addons: AddonInfo[] };
+      content.addons = content.addons.map((addon) => {
         if (addon.id === id && addon.active === false) {
           addon.active = true;
           addon.userDisabled = false;
@@ -391,14 +426,139 @@ export class ZoteroRunner {
       await this.reloadAllTemporaryPlugins();
   }
 
+  /**
+   * True if a zotero process using this runner's profile is still running.
+   * Instance-level wrapper over isZoteroRunningByProfile — callers that
+   * hold a runner (e.g. the pool's watch takeover) should use this instead
+   * of re-deriving the profile path.
+   */
+  public isRunning(): boolean {
+    return isZoteroRunningByProfile(resolve(this.options.profile.path));
+  }
+
   public exit(): void {
-    this.zotero?.kill();
-    // Sometimes `process.kill()` cannot kill the Zotero,
-    // so we force kill it.
-    killZotero();
+    const child = this.zotero;
+    const pid = child?.pid;
+    child?.kill();
+    // Zotero restarts itself on first launch (setupProfile nulls
+    // extensions.lastAppBuildId/lastAppVersion, forcing an "update" restart),
+    // so the spawned PID may already be gone. Kill every instance whose
+    // command line uses our profile — an image-wide kill (taskkill /im
+    // zotero.exe) would take down sibling instances of parallel projects.
+    killZoteroByProfile(resolve(this.options.profile.path));
+    // Belt & suspenders: force-kill the original PID if it survived.
+    if (pid && isPidAlive(pid)) {
+      try {
+        if (process.env.ZOTERO_PLUGIN_KILL_COMMAND) {
+          execSync(process.env.ZOTERO_PLUGIN_KILL_COMMAND);
+        }
+        else if (isWindows) {
+          execSync(`taskkill /f /pid ${pid}`);
+        }
+        else if (isMacOS || isLinux) {
+          execSync(`kill -9 ${pid}`);
+        }
+        else {
+          logger.error("No commands found for this operating system.");
+        }
+      }
+      catch {
+        logger.fail("Kill Zotero failed.");
+      }
+    }
   }
 }
 
+/** True while the OS still reports the given PID. */
+function isPidAlive(pid: number): boolean {
+  try {
+    if (process.platform === "win32") {
+      const out = execSync(`tasklist /fi "PID eq ${pid}" /nh`, { encoding: "utf8" });
+      return out.includes(String(pid));
+    }
+    execSync(`kill -0 ${pid}`);
+    return true;
+  }
+  catch {
+    return false;
+  }
+}
+
+/**
+ * True if a zotero process whose command line references the profile path is
+ * still running. Used by the pool to decide whether a soft-stopped (watch
+ * mode) instance can be taken over by the next worker.
+ */
+export function isZoteroRunningByProfile(profilePath: string): boolean {
+  try {
+    if (isWindows) {
+      const escaped = profilePath.replaceAll("'", "''");
+      const script = `$ProgressPreference = 'SilentlyContinue'; `
+        + `[bool](Get-CimInstance Win32_Process -Filter "Name='zotero.exe'" `
+        + `| Where-Object { $_.CommandLine -like '*${escaped}*' })`;
+      const encoded = Buffer.from(script, "utf16le").toString("base64");
+      const out = execSync(`powershell -NoProfile -EncodedCommand ${encoded}`, { encoding: "utf8" });
+      return out.trim().endsWith("True");
+    }
+    execSync(`pgrep -f "${profilePath}"`, { stdio: "ignore" });
+    return true;
+  }
+  catch {
+    return false;
+  }
+}
+
+/**
+ * Kills every zotero process whose command line references the profile path.
+ * Exported so the pool can clear leftovers before a cold boot (e.g. a
+ * soft-stopped instance whose takeover failed, or a force-killed watch
+ * session's zombie).
+ */
+export function killZoteroByProfile(profilePath: string): void {
+  try {
+    if (process.env.ZOTERO_PLUGIN_KILL_COMMAND) {
+      execSync(process.env.ZOTERO_PLUGIN_KILL_COMMAND);
+    }
+    else if (isWindows) {
+      // -EncodedCommand (UTF-16LE base64) avoids the nested-quote mangling
+      // that execSync → cmd.exe would inflict on a plain -Command string.
+      const escaped = profilePath.replaceAll("'", "''");
+      // Plain string segments (NOT one template literal): eslint --fix once
+      // re-flowed a comment inside `${ ... }` into a unary-plus template
+      // (`` ${+`...`} ``), which evaluated to NaN and broke the script —
+      // the error was swallowed and Zotero survived shutdown.
+      const script = [
+        "$ProgressPreference = 'SilentlyContinue'; ",
+        "$all = Get-CimInstance Win32_Process -Filter \"Name='zotero.exe'\"; ",
+        "$ids = @{}; ",
+        "$all | ForEach-Object { $ids[$_.ProcessId] = $true }; ",
+        // kill the profile's main process with its whole tree, plus
+        // orphaned content processes whose main process is already gone
+        // (their command line has no profile path, so the filter above
+        // cannot see them — they hold profile locks and break the next boot)
+        `$all | Where-Object { $_.CommandLine -like '*${escaped}*' } `,
+        "| ForEach-Object { taskkill /f /t /pid $_.ProcessId 2>$null | Out-Null }; ",
+        "$all | Where-Object { $_.CommandLine -like '*-contentproc*' -and -not $ids[$_.ParentProcessId] } ",
+        "| ForEach-Object { taskkill /f /pid $_.ProcessId 2>$null | Out-Null };",
+      ].join("");
+      const encoded = Buffer.from(script, "utf16le").toString("base64");
+      execSync(`powershell -NoProfile -EncodedCommand ${encoded}`);
+    }
+    else if (isMacOS || isLinux) {
+      execSync(`pkill -9 -f "${profilePath}"`);
+      // Linux: content processes share the profile path in /proc cmdline
+      // (unlike Windows), so pkill -f already covers them.
+    }
+  }
+  catch {
+    // no matching process (already dead) — not an error
+  }
+}
+
+/**
+ * Kills every running Zotero instance. Only used as a manual cleanup helper
+ * (e.g. before a run starts); `ZoteroRunner.exit()` targets its own profile.
+ */
 export function killZotero(): void {
   function kill() {
     try {

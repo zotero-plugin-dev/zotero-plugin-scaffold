@@ -31,6 +31,12 @@ export default defineConfig({
         ],
       },
       {
+        text: "Design",
+        items: [
+          { text: "Vitest Pool", link: "/design/vitest-pool" },
+        ],
+      },
+      {
         text: "Presets",
         items: [
           { text: "ESLint", link: "/eslint" },

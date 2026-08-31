@@ -778,7 +778,7 @@ export interface TestConfig {
    */
   prefs: Record<string, string | boolean | number>;
 
-  mocha: {
+  vitest: {
     /**
      * The timeout of the test.
      *
@@ -788,6 +788,24 @@ export interface TestConfig {
      */
     timeout: number;
   };
+
+  /**
+   * Vitest reporters to use for the test run.
+   * Passed through to vitest's `reporters` option, e.g. "default", "verbose",
+   * "junit" or "json".
+   *
+   * 测试报告器，原样传递给 vitest 的 `reporters` 选项
+   * （如 "default"、"verbose"、"junit"、"json"）。
+   */
+  reporter?: string | string[];
+
+  /**
+   * Write the test report to a file. Passed through to vitest's `outputFile`
+   * option (e.g. `test-results/junit.xml`, `test-results/report.json`).
+   *
+   * 测试报告输出文件路径，原样传递给 vitest 的 `outputFile` 选项。
+   */
+  outputFile?: string;
 
   /**
    * Abort the test when the first test fails.
@@ -859,10 +877,31 @@ export interface TestConfig {
 }
 
 interface TestHooks {
+  /**
+   * Called at the very start of `zotero-plugin test`, right after the stale
+   * profile/data dirs are cleaned and before the plugin is built.
+   */
   "test:init": (ctx: Context) => void | Promise<void>;
+  /**
+   * Called after the user's plugin is prebuilt, before the run is prepared.
+   */
   "test:prebuild": (ctx: Context) => void | Promise<void>;
+  /**
+   * Called after the temporary vitest config is generated, right before the
+   * vitest process starts. The pool bundles the test files immediately after
+   * vitest starts (inside the child process), so this is the last CLI-side
+   * chance to prepare the bundle.
+   */
   "test:bundleTests": (ctx: Context) => void | Promise<void>;
+  /**
+   * Called right before the vitest process starts; the pool then boots
+   * Zotero and runs the tests inside it.
+   */
   "test:run": (ctx: Context) => void | Promise<void>;
+  /**
+   * Called after the vitest run finishes (success or failure), before the
+   * CLI exits with vitest's exit code.
+   */
   "test:exit": (ctx: Context) => void;
 }
 

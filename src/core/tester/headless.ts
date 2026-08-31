@@ -31,15 +31,10 @@ function isPackageInstalled(packageName: string): boolean {
 
 function installPackage(packageName: string): void {
   const debug = isDebug || logger.level <= LOG_LEVEL.DEBUG;
-  try {
-    logger.debug(`Installing ${packageName}...`);
-    execSync(`sudo apt update && sudo apt install -y ${packageName}`, { stdio: debug ? "inherit" : "pipe" });
-    logger.debug(`${packageName} installed successfully.`);
-  }
-  catch (error) {
-    logger.fail(`Failed to install ${packageName}. ${error}`);
-    throw error;
-  }
+  logger.debug(`Installing ${packageName}...`);
+  // Errors propagate to the CLI's error handler, which formats them.
+  execSync(`sudo apt update && sudo apt install -y ${packageName}`, { stdio: debug ? "inherit" : "pipe" });
+  logger.debug(`${packageName} installed successfully.`);
 }
 
 function checkAndInstallDependencies(packages: string[]): void {
