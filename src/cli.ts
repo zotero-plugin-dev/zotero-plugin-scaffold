@@ -1,3 +1,4 @@
+import type { VersionBumpRelease } from "bumpp";
 import type { Base } from "./core/base.js";
 import type { Context, OverrideConfig } from "./types/index.js";
 import process from "node:process";
@@ -84,7 +85,7 @@ async function main() {
       await runCommand(Release, {
         release: {
           bumpp: {
-            release: version,
+            release: version as VersionBumpRelease,
             preid: options.preid,
             confirm: !options.yes,
           },

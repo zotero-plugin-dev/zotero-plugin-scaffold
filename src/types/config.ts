@@ -1,3 +1,4 @@
+import type { VersionBumpRelease } from "bumpp";
 import type { GitCommit } from "changelogen";
 import type { BuildOptions } from "esbuild";
 import type { LogLevelType } from "../utils/logger.js";
@@ -521,7 +522,7 @@ export interface ReleaseConfig {
      *
      * @default "prompt"
      */
-    release: string;
+    release: VersionBumpRelease;
     /**
      * The prerelease type (e.g. "alpha", "beta", "next").
      *

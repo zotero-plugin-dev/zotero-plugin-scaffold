@@ -1,3 +1,4 @@
+import type { VersionBumpRelease } from "bumpp";
 import type { Context } from "../../types/index.js";
 import { execSync } from "node:child_process";
 import { isCI } from "std-env";
@@ -26,7 +27,7 @@ export default class Release extends Base {
     // Parse release config
     if (release.bumpp.release === "prompt" && isCI) {
       this.logger.warn("Config `release.bumpp.release == 'prompt'` will do nothing because in CI enviroment.");
-      this.ctx.release.bumpp.release = version;
+      this.ctx.release.bumpp.release = version as VersionBumpRelease;
     }
 
     if (release.bumpp.confirm && isCI) {
