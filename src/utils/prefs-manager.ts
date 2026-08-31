@@ -210,7 +210,6 @@ export class PrefsManager {
         },
       })),
     };
-    // @ts-expect-error no comments, loc, token
     const { code } = print(program, ts({ quotes: "double" }));
     return code;
   }
