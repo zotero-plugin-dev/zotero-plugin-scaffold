@@ -44,6 +44,29 @@ export default defineConfig({
 - `--purgecaches` and `--no-remote` are always included in the Zotero startup arguments, regardless of the `server.startArgs` configuration.
 - If `devtools` is set to `true`, the `--jsdebugger` argument is appended, enabling the Firefox developer tools.
 
+## Debug Output
+
+When `server.debugOutputFile` is enabled (default), Scaffold appends `-ZoteroDebugText` to the Zotero startup arguments, so `Zotero.debug()` / `dump()` output goes to stdout. The process stdout/stderr are captured and written to log files under `.scaffold/logs/`, numbered by the launch time:
+
+- stdout → `.scaffold/logs/zotero-<starttime>.log`
+- stderr → `.scaffold/logs/zotero-<starttime>-stderr.log`
+
+On startup the exact file paths are printed to the serve console (so you can `tail -f` them for real-time output). Files older than 7 days are removed automatically.
+
+```ts twoslash
+import { defineConfig } from "zotero-plugin-scaffold";
+// ---cut---
+export default defineConfig({
+  server: {
+    debugOutputFile: true,
+    debugOutputWindow: false,
+  },
+});
+```
+
+- `server.debugOutputWindow` only controls whether the Zotero Debug Output window is opened (appends `-ZoteroDebug`). Debug output recording is independent of it.
+- `server.debugOutputFile: false` disables file logging; stdout/stderr are still consumed (to prevent the pipe buffer from filling up and blocking Zotero) but discarded.
+
 ## Hot Reloading and Proxy File
 
 The Zotero team's [plugin development guide](https://www.zotero.org/support/dev/client_coding/plugin_development) describes using Proxy File for loading plugins from source. While this method works for older versions of Zotero (e.g., Zotero 6), it **does not support plugin reloading**.

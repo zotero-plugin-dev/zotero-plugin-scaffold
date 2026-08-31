@@ -420,6 +420,44 @@ export interface ServerConfig {
    * @default []
    */
   startArgs: string[];
+
+  /**
+   * Whether to open the Zotero Debug Output window on startup
+   * (appends `-ZoteroDebug`).
+   *
+   * This only controls the window. Debug output is always recorded when
+   * {@link ServerConfig.debugOutputFile} is enabled: scaffold then appends
+   * `-ZoteroDebugText`, so `Zotero.debug()` / `dump()` output goes to stdout
+   * and is captured into the log file regardless of this option.
+   *
+   * 是否在启动时打开 Zotero 的 Debug Output 窗口（追加 `-ZoteroDebug`）。
+   *
+   * 此项仅控制窗口。调试输出在 `debugOutputFile` 启用时被记录到日志文件
+   * （见 {@link ServerConfig.debugOutputFile}）：此时脚手架追加 `-ZoteroDebugText`，
+   * `Zotero.debug()` / `dump()` 输出进 stdout 并被捕获到日志文件，与本选项无关。
+   *
+   * @default false
+   */
+  debugOutputWindow: boolean;
+
+  /**
+   * Whether to record the Zotero process debug output (stdout/stderr) to
+   * log files under `.scaffold/logs/`.
+   *
+   * - stdout → `.scaffold/logs/zotero-<starttime>.log`
+   * - stderr → `.scaffold/logs/zotero-<starttime>-stderr.log`
+   *
+   *
+   * 是否把 Zotero 进程的调试输出（stdout/stderr）写入 `.scaffold/logs/` 下的日志文件。
+   *
+   * - stdout → `.scaffold/logs/zotero-<启动时间>.log`
+   * - stderr → `.scaffold/logs/zotero-<启动时间>-stderr.log`
+   *
+   *
+   * @default true
+   */
+  debugOutputFile: boolean;
+
   /**
    * The default preferences for the dev server.
    * These preferences will be set before Zotero starts.

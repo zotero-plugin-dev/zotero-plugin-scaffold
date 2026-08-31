@@ -1,14 +1,19 @@
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { RecursivePickOptional, RecursiveRequired } from "../types/utils.js";
 import { execSync, spawn } from "node:child_process";
+import { closeSync, openSync, writeSync } from "node:fs";
+import { readdir, stat, unlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import process from "node:process";
 import { delay, toMerged } from "es-toolkit";
-import { ensureDir, outputFile, outputJSON, pathExists, readJSON, remove } from "fs-extra/esm";
+import { ensureDir, ensureDirSync, outputFile, outputJSON, pathExists, readJSON, remove } from "fs-extra/esm";
 import { isLinux, isMacOS, isWindows } from "std-env";
+import { ZOTERO_LOG_DIR } from "../constant.js";
 import { logger } from "./logger.js";
 import { PrefsManager } from "./prefs-manager.js";
 import { isRunning } from "./process.js";
+import { dateFormat } from "./string.js";
+import { ANSI_ESCAPE_RE, createMessageNormalizer } from "./zotero/log-normalizer.js";
 import { prefs as defaultPrefs } from "./zotero/preference.js";
 import { findFreeTcpPort, RemoteFirefox } from "./zotero/remote-zotero.js";
 
@@ -30,6 +35,8 @@ interface BinaryOptions {
   path: string;
   args?: string[];
   devtools?: boolean;
+  debugOutputWindow?: boolean;
+  debugOutputFile?: boolean;
 }
 
 interface PluginsOptions {
@@ -50,6 +57,8 @@ const default_options = {
     // path: "",
     args: [],
     devtools: true,
+    debugOutputWindow: false,
+    debugOutputFile: false,
   },
   profile: {
     path: "./.scaffold/profile",
@@ -169,6 +178,14 @@ export class ZoteroRunner {
     if (this.options.binary.devtools) {
       args.push("--jsdebugger");
     }
+    // `-ZoteroDebug` (forceDebugLog=2) opens the Debug Output window when requested
+    if (this.options.binary.debugOutputWindow) {
+      args.push("-ZoteroDebug");
+    }
+    // `-ZoteroDebugText` (forceDebugLog=1) makes `Zotero.debug()` / `dump()` output go to stdout.
+    if (this.options.binary.debugOutputFile) {
+      args.push("-ZoteroDebugText");
+    }
     if (this.options.binary.args) {
       args = [...args, ...this.options.binary.args];
     }
@@ -193,8 +210,40 @@ export class ZoteroRunner {
     this.zotero = spawn(this.options.binary.path, args, { env });
     logger.debug(`Zotero started, pid: ${this.zotero.pid}`);
 
-    // Handle Zotero log, necessary on macOS
-    this.zotero.stdout?.on("data", (_data) => {});
+    if (this.options.binary.debugOutputFile) {
+      ensureDirSync(ZOTERO_LOG_DIR);
+      void cleanupOldLogs(ZOTERO_LOG_DIR);
+
+      const time = dateFormat("YYYYmmdd-HHMMSS", new Date());
+      const outPath = join(ZOTERO_LOG_DIR, `zotero-${time}.log`);
+      const errPath = join(ZOTERO_LOG_DIR, `zotero-${time}-stderr.log`);
+      const outFd = openSync(outPath, "a");
+      const errFd = openSync(errPath, "a");
+
+      logger.info(`Zotero output logs: ${outPath} / ${errPath}`);
+
+      const stdoutNormalizer = createMessageNormalizer(line => writeSync(outFd, `${line}\n`));
+      const stderrDecoder = new TextDecoder("utf-8");
+      this.zotero.stdout?.on("data", data => stdoutNormalizer.push(data));
+      this.zotero.stderr?.on("data", (data) => {
+        const text = stderrDecoder.decode(data, { stream: true }).replace(ANSI_ESCAPE_RE, "");
+        writeSync(errFd, text);
+      });
+      this.zotero.on("close", () => {
+        stdoutNormalizer.flush();
+        const stderrTail = stderrDecoder.decode();
+        if (stderrTail)
+          writeSync(errFd, stderrTail.replace(ANSI_ESCAPE_RE, ""));
+        closeSync(outFd);
+        closeSync(errFd);
+      });
+    }
+    else {
+      // Always consume stdout/stderr (even when logging is off) to avoid
+      // blocking Zotero on a full pipe buffer.
+      this.zotero.stdout?.on("data", () => {});
+      this.zotero.stderr?.on("data", () => {});
+    }
 
     logger.debug("Connecting to the remote Firefox debugger...");
     await this.remoteFirefox.connect(remotePort);
@@ -380,4 +429,32 @@ export function killZotero(): void {
   else {
     logger.fail("No Zotero instance is currently running.");
   }
+}
+
+/**
+ * Remove Zotero log files (matching `zotero-*.log`) in `dir` that are
+ * older than 7 days (fixed, not configurable). Only files matching the
+ * scaffold naming are touched; missing directories and vanished files are
+ * ignored.
+ */
+export async function cleanupOldLogs(dir: string): Promise<void> {
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  }
+  catch {
+    return;
+  }
+  await Promise.all(names
+    .filter(name => name.startsWith("zotero-") && name.endsWith(".log"))
+    .map(async (name) => {
+      try {
+        if ((await stat(join(dir, name))).mtimeMs < cutoff)
+          await unlink(join(dir, name));
+      }
+      catch {
+        // The file may be gone by now (removed concurrently)
+      }
+    }));
 }
