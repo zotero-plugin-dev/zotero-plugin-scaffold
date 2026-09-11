@@ -11,6 +11,7 @@ import buildLocale from "./fluent.js";
 import buildManifest from "./manifest.js";
 import buildPrefs from "./prefs.js";
 import replaceDefine from "./replace.js";
+import rolldownBuild from "./rolldown.js";
 import buildUpdateJson from "./update-json.js";
 import pack from "./zip.js";
 
@@ -72,8 +73,11 @@ export default class Build extends Base {
   }
 
   async bundle(): Promise<void> {
-    const { dist, build: { esbuildOptions } } = this.ctx;
-    await esbuild(dist, esbuildOptions);
+    const { dist, build: { esbuildOptions, bundle } } = this.ctx;
+    if (esbuildOptions.length !== 0)
+      await esbuild(dist, esbuildOptions);
+
+    await rolldownBuild(dist, bundle);
     await this.ctx.hooks.callHook("build:bundle", this.ctx);
   }
 
