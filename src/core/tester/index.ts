@@ -2,7 +2,7 @@ import type { Context } from "../../types/index.js";
 import { join, resolve } from "node:path";
 import process from "node:process";
 import { emptyDir } from "fs-extra/esm";
-import { isCI } from "std-env";
+import { isAgent, isCI } from "std-env";
 import { TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PROFILE_DIR } from "../../constant.js";
 import { toArray } from "../../utils/string.js";
 import { watch } from "../../utils/watcher.js";
@@ -29,6 +29,9 @@ export default class Test extends Base {
       this.ctx.test.headless = true;
       this.ctx.test.watch = false;
     }
+
+    if (isAgent)
+      this.ctx.test.watch = false;
   }
 
   async run(): Promise<void> {

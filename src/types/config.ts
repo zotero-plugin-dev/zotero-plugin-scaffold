@@ -734,7 +734,7 @@ export interface TestConfig {
    *
    * 若此选项设置为 false，Zotero 将在测试结束后立即退出。
    *
-   * @default true (false in ci)
+   * @default true (false in ci or AI agents)
    */
   watch: boolean;
 
