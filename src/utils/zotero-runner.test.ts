@@ -2,7 +2,8 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanupOldLogs } from "./zotero-runner.js";
+import { PrefsManager } from "./prefs-manager.js";
+import { cleanupOldLogs, ZoteroRunner } from "./zotero-runner.js";
 
 const tempDirs: string[] = [];
 
@@ -57,5 +58,41 @@ describe("cleanupOldLogs", () => {
 
     expect(existsSync(notZotero)).toBe(true);
     expect(readdirSync(dir)).toEqual(["scaffold.log"]);
+  });
+});
+
+// `setupProfile` merges prefs as: existing `prefs.js` → default prefs → caller prefs. That order
+// is what heals a dev profile from a value written by an older version (#179), so pin it here.
+describe("setupProfile", () => {
+  // `setupProfile` is private: it only touches the profile directory, no Zotero process needed
+  const callSetupProfile = (runner: ZoteroRunner) =>
+    (runner as unknown as { setupProfile: () => Promise<void> }).setupProfile();
+
+  async function writeAndRead(portInProfile?: number, customPrefs: Record<string, number> = {}) {
+    const dir = makeTempLogDir();
+    if (portInProfile !== undefined)
+      writeFileSync(join(dir, "prefs.js"), `user_pref("extensions.zotero.httpServer.port", ${portInProfile});\n`);
+
+    const runner = new ZoteroRunner({
+      binary: { path: "zotero" },
+      profile: { path: dir, customPrefs },
+      plugins: { list: [] },
+    });
+    await callSetupProfile(runner);
+
+    const written = new PrefsManager("user_pref");
+    await written.read(join(dir, "prefs.js"));
+    return written;
+  }
+
+  it("overrides a stale connector port left in an existing profile", async () => {
+    // Older versions forced 23124 into every profile they touched (#179)
+    const prefs = await writeAndRead(23124);
+    expect(prefs.getPref("extensions.zotero.httpServer.port")).toBe(23119);
+  });
+
+  it("keeps a connector port requested by the caller", async () => {
+    const prefs = await writeAndRead(23124, { "extensions.zotero.httpServer.port": 23124 });
+    expect(prefs.getPref("extensions.zotero.httpServer.port")).toBe(23124);
   });
 });
