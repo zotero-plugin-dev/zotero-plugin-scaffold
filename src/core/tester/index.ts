@@ -186,7 +186,11 @@ export default class Test extends Base {
       "extensions.zotero.firstRun2": false,
       "extensions.zotero.reportTranslationFailure": false,
       "extensions.zotero.httpServer.enabled": true,
-      "extensions.zotero.httpServer.port": 23124,
+      // Bind a different port than a possibly-running Zotero instance, so that tests touching
+      // Zotero's HTTP server can still start (same reason as Zotero's own test runner:
+      // https://github.com/zotero/zotero/pull/4903). The test profile is disposable, so unlike
+      // the shared defaults this can't leak into a real profile.
+      "extensions.zotero.httpServer.port": 23124, // ascii "ZT"
       "extensions.zotero.httpServer.localAPI.enabled": true,
       "extensions.zotero.backup.numBackups": 0,
       "extensions.zotero.sync.autoSync": false,
