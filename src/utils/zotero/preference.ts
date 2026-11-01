@@ -125,7 +125,12 @@ const prefsZotero = {
   "extensions.zotero.firstRun2": false,
   "extensions.zotero.reportTranslationFailure": false,
   "extensions.zotero.httpServer.enabled": true,
-  "extensions.zotero.httpServer.port": 23124, // ascii "ZT"
+  // Pin Zotero's default connector port (23119, ascii "ZO") so that a value left behind in an
+  // existing profile -- older versions of Scaffold forced 23124 (ascii "ZT") after copying
+  // Zotero's own test runner -- is overwritten instead of silently moving the connector away
+  // from the port the browser connector looks at (see #179).
+  // Use `server.prefs` / `test.prefs` to deliberately run on another port.
+  "extensions.zotero.httpServer.port": 23119,
   "extensions.zotero.httpServer.localAPI.enabled": true,
   // "extensions.zotero.backup.numBackups": 0,
   // "extensions.zotero.sync.autoSync": false,
