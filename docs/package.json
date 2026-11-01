@@ -10,9 +10,9 @@
     "preview": "vitepress preview src"
   },
   "devDependencies": {
-    "@shikijs/vitepress-twoslash": "^4.4.3",
-    "oxc-minify": "^0.147.0",
-    "vitepress": "2.0.0-alpha.19",
+    "@shikijs/vitepress-twoslash": "^4.5.0",
+    "oxc-minify": "^0.156.0",
+    "vitepress": "2.0.0-alpha.21",
     "zotero-plugin-scaffold": "workspace:^"
   }
 }
