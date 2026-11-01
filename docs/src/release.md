@@ -82,8 +82,8 @@ Scaffold will perform the following actions automatically:
 
 After bumping the version, Scaffold enters the publish phase, during which it:
 
-1. Creates a GitHub release tagged `v{version}` and uploads the XPI as an asset.
-2. Creates a GitHub release tagged `release` and uploads `update.json` and `update-beta.json` as assets.
+1. Creates a GitHub release tagged `v{version}` as a draft, uploads the XPI as an asset, and then publishes the release.
+2. Creates a GitHub release tagged `release` (configurable via `release.github.updater`) and uploads `update.json` and `update-beta.json` as assets.
 
 By default, Scaffold expects you to publish your plugin on CI. To publish locally, see [Publish Locally](#publish-locally).
 
@@ -125,6 +125,26 @@ jobs:
       - name: Release to GitHub
         run: npm run release
 ```
+
+## Immutable Releases
+
+GitHub supports [immutable releases](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/immutable-releases), which prevent the assets and the Git tag of a release from being changed after the release is published. Repository admins can enable it in **Settings → Releases → Enable release immutability**.
+
+Scaffold is compatible with immutable releases:
+
+- The release of a version is created as a **draft**, the XPI is uploaded, and only then is the release published. GitHub locks a release when it is published, so all assets are in place beforehand, and every release is covered by its automatically generated [release attestation](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/verifying-the-integrity-of-a-release).
+- `update.json` is hosted on a long-lived release (`release` by default), whose assets are **replaced on every release**. GitHub does not allow adding or deleting assets of a published immutable release, so this release has to stay mutable.
+
+::: warning
+**Publish the first release with immutable releases disabled.** The release that hosts `update.json` (tag `release` by default) must be created while immutability is off. Afterwards immutability can be enabled.
+
+Enabling immutability only applies to releases published afterwards, so the existing `release` release keeps accepting new assets and all following releases can be published with immutability enabled.
+:::
+
+The tag of an immutable release can never be reused, not even after the release is deleted. If the release that hosts `update.json` is already immutable, Scaffold cannot upload `update.json` to it and the release fails with an error. In that case you can either:
+
+- host `update.json` yourself (for example on GitHub Pages) and disable the upload with `release.github.updater: false`, or
+- disable immutability temporarily and release a **new** version — the tag of the failed release cannot be reused.
 
 ## Advanced Configuration
 
