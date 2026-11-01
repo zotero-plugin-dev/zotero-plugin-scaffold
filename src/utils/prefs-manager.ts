@@ -189,8 +189,12 @@ export class PrefsManager {
             optional: false,
           },
           arguments: [
-            { expression: getExpression(key) },
-            { expression: getExpression(value) },
+            {
+              expression: getExpression(key),
+            },
+            {
+              expression: getExpression(value),
+            },
           ],
         },
       })),
