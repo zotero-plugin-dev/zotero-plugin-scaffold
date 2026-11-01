@@ -102,7 +102,7 @@
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
     "unplugin-raw": "^0.7.0",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.5"
   },
   "workspaces": [
     "src",
