@@ -26,7 +26,14 @@ export function isRunning(query: string): boolean {
   }
 }
 
-export const ExitSignals = ["exit", "SIGABRT", "SIGALRM", "SIGHUP", "SIGINT", "SIGTERM"] as const;
+export const ExitSignals = [
+  "exit",
+  "SIGABRT",
+  "SIGALRM",
+  "SIGHUP",
+  "SIGINT",
+  "SIGTERM",
+] as const;
 
 export function whenExit(cb: (_code: number | string) => any): void {
   ExitSignals.forEach((signal) => {

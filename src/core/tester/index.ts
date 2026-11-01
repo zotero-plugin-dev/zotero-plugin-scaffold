@@ -124,13 +124,16 @@ export default class Test extends Base {
         customPrefs: this.prefs,
       },
       plugins: {
-        list: [{
-          id: this.ctx.id,
-          sourceDir: join(this.ctx.dist, "addon"),
-        }, {
-          id: TESTER_PLUGIN_ID,
-          sourceDir: TESTER_PLUGIN_DIR,
-        }],
+        list: [
+          {
+            id: this.ctx.id,
+            sourceDir: join(this.ctx.dist, "addon"),
+          },
+          {
+            id: TESTER_PLUGIN_ID,
+            sourceDir: TESTER_PLUGIN_DIR,
+          },
+        ],
       },
     });
 
