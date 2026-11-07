@@ -5,7 +5,9 @@ import { logger } from "../../utils/logger.js";
 import { toArray } from "../../utils/string.js";
 
 export function replace(contents: string, from: RegExp | RegExp[], to: string | string[]): string {
-  const froms = Array.isArray(from) ? from : [from];
+  const froms = Array.isArray(from)
+    ? from
+    : [from];
   const tos = Array.isArray(to)
     ? to
     // eslint-disable-next-line e18e/prefer-array-fill -- `Array.from({length: froms.length}).fill(to)` breaks type infer
@@ -24,7 +26,9 @@ export async function replaceInFile({ files, from, to, isGlob = true }: {
   to: string | string[];
   isGlob?: boolean;
 }): Promise<void> {
-  const paths = isGlob ? await glob(files) : toArray(files);
+  const paths = isGlob
+    ? await glob(files)
+    : toArray(files);
   await Promise.all(paths.map(async (path) => {
     const contents = await readFile(path, "utf-8");
     const newContents = replace(contents, from, to);
@@ -52,8 +56,12 @@ export default async function replaceDefine(dist: string, define: BuildConfig["d
     //   `${dist}/addon/**/*.css`,
     //   `${dist}/addon/**/*.json`,
     // ],
-    from: [...replaceMap.keys()],
-    to: [...replaceMap.values()],
+    from: [
+      ...replaceMap.keys(),
+    ],
+    to: [
+      ...replaceMap.values(),
+    ],
     // isGlob: false,
   });
 }

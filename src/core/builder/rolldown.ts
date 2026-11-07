@@ -57,7 +57,9 @@ export default async function rolldownBuild(dist: string, bundleConfigs: BuildCo
       const { output, ...inputOptions } = rolldownOption;
       const bundle = await rolldown(inputOptions);
       if (output) {
-        const outputConfig = Array.isArray(output) ? output : [output];
+        const outputConfig = Array.isArray(output)
+          ? output
+          : [output];
         await bundle.write(outputConfig[0]);
       }
       await bundle.close();

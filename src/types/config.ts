@@ -725,9 +725,18 @@ export interface ReleaseConfig {
      *
      * This is the tagName of the release when the value is a string.
      *
+     * The assets of this release are replaced on every release, so it must stay
+     * mutable: if the repository enables immutable releases, create this release
+     * before enabling immutability, or set this option to `false` and host
+     * update.json yourself.
+     *
      * 将 update.json 上传到指定的 GitHub release。
      *
      * 当值为字符串时，其为 release 的tagName。
+     *
+     * 该 release 的 asset 会在每次发布时被替换，因此它必须保持可变：如果仓库启用了
+     * 不可变 release，请在启用前创建该 release，或者将此项设为 `false` 并自行托管
+     * update.json。
      *
      * @default "release"
      */
@@ -809,7 +818,7 @@ export interface TestConfig {
    *
    * 若此选项设置为 false，Zotero 将在测试结束后立即退出。
    *
-   * @default true (false in ci)
+   * @default true (false in ci or AI agents)
    */
   watch: boolean;
 

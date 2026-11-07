@@ -187,7 +187,10 @@ export class ZoteroRunner {
       args.push("-ZoteroDebugText");
     }
     if (this.options.binary.args) {
-      args = [...args, ...this.options.binary.args];
+      args = [
+        ...args,
+        ...this.options.binary.args,
+      ];
     }
 
     // support for starting the remote debugger server

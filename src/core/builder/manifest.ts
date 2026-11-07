@@ -12,7 +12,9 @@ export default async function buildManifest(ctx: Context): Promise<void> {
 
   const manifestPath = `${dist}/addon/manifest.json`;
   const manifestExists = await pathExists(manifestPath);
-  const userData = (manifestExists ? await readJSON(manifestPath) : {}) as Partial<Manifest>;
+  const userData = (manifestExists
+    ? await readJSON(manifestPath)
+    : {}) as Partial<Manifest>;
 
   const template: Manifest = {
     ...(userData as Manifest),

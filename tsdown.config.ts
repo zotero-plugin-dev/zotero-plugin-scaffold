@@ -30,5 +30,7 @@ export default defineConfig({
   outputOptions: {
     chunkFileNames: "shared/scaffold-[name]-[hash].mjs",
   },
-  plugins: [Raw()],
+  plugins: [
+    Raw(),
+  ],
 });

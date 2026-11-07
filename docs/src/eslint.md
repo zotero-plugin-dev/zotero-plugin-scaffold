@@ -52,5 +52,8 @@ Or:
 import zotero from "@zotero-plugin/eslint-config";
 import xxx from "eslint-config-xxx";
 
-export default [...xxx, ...zotero];
+export default [
+  ...xxx,
+  ...zotero
+];
 ```

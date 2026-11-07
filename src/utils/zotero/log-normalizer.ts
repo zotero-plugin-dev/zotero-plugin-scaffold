@@ -112,12 +112,16 @@ export function createMessageNormalizer(onMessage: (message: string) => void): M
     }
     // Non-indented continuation line: a separate argument the logger joined with
     // `\n`, fold it into the current line.
-    currentLine = currentLine ? `${currentLine} ${line}` : line;
+    currentLine = currentLine
+      ? `${currentLine} ${line}`
+      : line;
   };
 
   return {
     push: (chunk: Buffer | string) => {
-      buf += typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
+      buf += typeof chunk === "string"
+        ? chunk
+        : decoder.decode(chunk, { stream: true });
       // Normalize CRLF/CR so the `\n\n` terminator survives on Windows too.
       buf = buf.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
       const lines = buf.split("\n");

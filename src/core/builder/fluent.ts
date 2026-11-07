@@ -63,7 +63,9 @@ export default async function buildLocale(
   messageManager.validateMessages();
 
   if (options.dts) {
-    const dtsContent = generateFluentDts([...messageManager.getFTLMessages()]);
+    const dtsContent = generateFluentDts([
+      ...messageManager.getFTLMessages(),
+    ]);
     await outputFile(options.dts, dtsContent, "utf-8");
   }
 }
@@ -191,7 +193,9 @@ export class MessageManager {
       if (this.ignores.includes(msg))
         return;
 
-      const missingLocales = [...this.ftlMessages.entries()]
+      const missingLocales = [
+        ...this.ftlMessages.entries(),
+      ]
         .filter(([_, messages]) => !messages.has(msg))
         .map(([locale]) => locale);
       if (missingLocales.length > 0)
@@ -246,7 +250,10 @@ export function processHTMLFile(
     return `${attr}="${namespace}-${id}"`;
   });
 
-  return { processedContent: processed, foundMessages: [...foundMessages] };
+  return {
+    processedContent: processed,
+    foundMessages: [...foundMessages],
+  };
 }
 
 export function generateFluentDts(messages: string[]) {

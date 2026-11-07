@@ -107,7 +107,16 @@ function Reporter(runner) {
       "\n\n";
     dump(str);
 
-    await send({ type: "fail", data: { title: test.title, fulltest: test.fullTitle(), duration: test.duration, error, indents: indents + 1 } });
+    // Serialize the error explicitly: send() JSON-stringifies the payload,
+    // and Error instances stringify to {} (message/stack are non-enumerable),
+    // so thrown errors / timeouts / XPCOM exceptions reached the terminal as
+    // ", undefined". Chai AssertionErrors were unaffected (own-enumerable
+    // props), which is why this went unnoticed in assertion-heavy suites.
+    // NOTE: this file is inlined verbatim into index.xhtml, an XML document.
+    // Never use raw ampersands or less-than signs here -- they break XML
+    // parsing and with it the whole runner page. Optional chaining and
+    // nullish coalescing are XML-safe.
+    await send({ type: "fail", data: { title: test.title, fulltest: test.fullTitle(), duration: test.duration, error: { message: String(error?.message ?? error), stack: error?.stack, actual: error?.actual, expected: error?.expected, showDiff: error?.showDiff, operator: error?.operator }, indents: indents + 1 } });
 
   });
 

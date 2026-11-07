@@ -103,6 +103,8 @@ In watch mode, Scaffold automatically:
 - Recompiles source code, reloads plugins, and reruns tests when the source changes.
 - Reruns tests when test files are modified.
 
+Watch mode is disabled automatically when tests run in CI or inside an AI coding agent (e.g. Claude Code, Codex, pi), so that the test command exits once all tests have run. Explicitly set `test.watch` to `false` (or pass `--no-watch`) to get the same behavior locally.
+
 ## Running Tests with CLI Options
 
 You can override configuration settings with CLI parameters. Use `zotero-plugin test --help` to view available options:
