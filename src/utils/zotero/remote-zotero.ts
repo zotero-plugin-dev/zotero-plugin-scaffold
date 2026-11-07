@@ -54,24 +54,37 @@ export class RemoteFirefox {
   checkedForAddonReloading: boolean;
 
   constructor() {
-    this.client = new MessagingClient();
+    this.client = this.createClient();
     this.checkedForAddonReloading = false;
+  }
 
-    this.client.on("disconnect", () => {
+  /**
+   * Create a client with all listeners attached.
+   *
+   * This has to be used for every (re)connection attempt, otherwise errors
+   * emitted by a fresh client would have no listener and be thrown as
+   * uncaught exceptions.
+   */
+  private createClient(): MessagingClient {
+    const client = new MessagingClient();
+
+    client.on("disconnect", () => {
       logger.debug("Received \"disconnect\" from Firefox client");
     });
-    this.client.on("end", () => {
+    client.on("end", () => {
       logger.debug("Received \"end\" from Firefox client");
     });
-    this.client.on("unsolicited-event", (info) => {
+    client.on("unsolicited-event", (info) => {
       logger.debug(`Received message from client: ${JSON.stringify(info)}`);
     });
-    this.client.on("rdp-error", (rdpError) => {
+    client.on("rdp-error", (rdpError) => {
       logger.debug(`Received error from client: ${JSON.stringify(rdpError)}`);
     });
-    this.client.on("error", (error) => {
+    client.on("error", (error) => {
       logger.debug(`Received error from client: ${String(error)}`);
     });
+
+    return client;
   }
 
   async connect(port: number): Promise<MessagingClient> {
@@ -79,7 +92,7 @@ export class RemoteFirefox {
 
     for (const _ of Array.from({ length: MAX_RETRIES })) {
       try {
-        this.client = new MessagingClient();
+        this.client = this.createClient();
         await this.client.connect(port);
         return this.client;
       }
