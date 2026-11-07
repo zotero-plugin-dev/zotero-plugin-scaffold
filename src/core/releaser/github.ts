@@ -184,7 +184,9 @@ export default class GitHub extends ReleaseBase {
         draft: false,
         prerelease,
         // Drafts and prereleases cannot be marked as the latest release.
-        ...(makeLatest && !prerelease ? { make_latest: "true" } : {}),
+        ...(makeLatest && !prerelease
+          ? { make_latest: "true" }
+          : {}),
       })
       .then((res) => {
         this.logger.debug(`Publish release ${releaseID} success, immutable=${res.data.immutable}.`);

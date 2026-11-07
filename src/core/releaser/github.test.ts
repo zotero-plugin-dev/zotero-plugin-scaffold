@@ -48,7 +48,9 @@ function createOctokitStub(options: OctokitStubOptions = {}) {
 
   const uploadReleaseAsset = vi.fn(async (params: { name: string }) => {
     calls.push(`upload:${params.name}`);
-    return { data: { id: 11, name: params.name } };
+    return {
+      data: { id: 11, name: params.name },
+    };
   });
 
   const updateRelease = vi.fn(async (params: { release_id: number; draft?: boolean; prerelease?: boolean }) => {
@@ -198,8 +200,12 @@ describe("releaser/github", () => {
 
     it("reuses an unfinished draft release instead of creating a new one", async () => {
       const stub = createOctokitStub({
-        releases: [{ id: 12, draft: true, tag_name: "v1.2.3" }],
-        assets: [{ id: 13, name: "my-plugin.xpi" }],
+        releases: [
+          { id: 12, draft: true, tag_name: "v1.2.3" },
+        ],
+        assets: [
+          { id: 13, name: "my-plugin.xpi" },
+        ],
       });
       const releaser = await createReleaser(stub);
 
@@ -216,7 +222,9 @@ describe("releaser/github", () => {
     it("skips uploading when the published release already has the XPI", async () => {
       const stub = createOctokitStub({
         releaseByTag: { id: 5, draft: false, immutable: true },
-        assets: [{ id: 6, name: "my-plugin.xpi" }],
+        assets: [
+          { id: 6, name: "my-plugin.xpi" },
+        ],
       });
       const releaser = await createReleaser(stub);
 
@@ -270,7 +278,9 @@ describe("releaser/github", () => {
     it("replaces the manifests of a mutable manifest release", async () => {
       const stub = createOctokitStub({
         releaseByTag: { id: 7, draft: false, immutable: false },
-        assets: [{ id: 8, name: "update.json" }],
+        assets: [
+          { id: 8, name: "update.json" },
+        ],
       });
       const releaser = await createReleaser(stub);
 
