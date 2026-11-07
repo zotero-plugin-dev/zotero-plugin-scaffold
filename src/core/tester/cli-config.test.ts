@@ -36,7 +36,10 @@ describe("generateVitestConfig", () => {
   });
 
   it("maps abortOnFail to bail and the timeout", () => {
-    const config = generateVitestConfig(makeContext({ abortOnFail: true, vitest: { timeout: 30000 } }));
+    const config = generateVitestConfig(makeContext({
+      abortOnFail: true,
+      vitest: { timeout: 30000 },
+    }));
     expect(config).toContain("bail: 1");
     expect(config).toContain("testTimeout: 30000");
     expect(config).toContain("hookTimeout: 30000");

@@ -162,7 +162,10 @@ export class WorkerProtocol {
         const isCollect = message.type === "collect";
         // Snapshot the context for THIS run before queueing: a later request
         // may overwrite state.ctx while this one is still queued.
-        const ctx = { ...this.state.ctx, ...message.context } as RunContext;
+        const ctx = {
+          ...this.state.ctx,
+          ...message.context,
+        } as RunContext;
         this.state.ctx = ctx as unknown as ContextRPC;
         this.state.filepath = undefined;
         const generation = ++this.runGeneration;

@@ -14,7 +14,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 import { emptyDir, outputFile } from "fs-extra/esm";
-import { isCI } from "std-env";
+import { isAgent, isCI } from "std-env";
 import { TESTER_DATA_DIR, TESTER_PROFILE_DIR } from "../../constant.js";
 import { logger } from "../../utils/logger.js";
 import { Base } from "../base.js";
@@ -34,6 +34,9 @@ export default class Test extends Base {
       this.ctx.test.headless = true;
       this.ctx.test.watch = false;
     }
+
+    if (isAgent)
+      this.ctx.test.watch = false;
   }
 
   async run(): Promise<void> {
@@ -71,7 +74,9 @@ export default class Test extends Base {
       process.exit(1);
     }
 
-    const args = this.ctx.test.watch ? [] : ["run"];
+    const args = this.ctx.test.watch
+      ? []
+      : ["run"];
     args.push("--config", configPath);
 
     // Tests are about to run: the pool boots Zotero and executes the files

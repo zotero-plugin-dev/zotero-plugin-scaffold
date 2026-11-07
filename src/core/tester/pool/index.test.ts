@@ -39,12 +39,16 @@ describe("findResourceConflict", () => {
   const other = { profileDir: "D:/p2", dataDir: "D:/d2" };
 
   it("finds a worker sharing the same profile and data dirs", () => {
-    const active = new Set([{ resources: shared }]);
+    const active = new Set([
+      { resources: shared },
+    ]);
     expect(findResourceConflict(active, shared)).toEqual(shared);
   });
 
   it("allows workers with distinct resource dirs to run in parallel", () => {
-    const active = new Set([{ resources: shared }]);
+    const active = new Set([
+      { resources: shared },
+    ]);
     expect(findResourceConflict(active, other)).toBeUndefined();
   });
 

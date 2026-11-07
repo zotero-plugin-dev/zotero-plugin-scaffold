@@ -141,7 +141,12 @@ function resolveDeps(): Record<string, string> {
     }
     if (t && typeof t === "object") {
       const o = t as Record<string, unknown>;
-      for (const key of ["import", "default", "require", "browser"]) {
+      for (const key of [
+        "import",
+        "default",
+        "require",
+        "browser",
+      ]) {
         const v = pickEntry(o[key]);
         if (v) {
           return v;
@@ -159,7 +164,9 @@ function resolveDeps(): Record<string, string> {
       module?: string;
       main?: string;
     };
-    const exportsMap = typeof pkg.exports === "string" ? undefined : pkg.exports;
+    const exportsMap = typeof pkg.exports === "string"
+      ? undefined
+      : pkg.exports;
     const rel = pickEntry(exportsMap?.["."]) ?? pkg.module ?? pkg.main;
     if (!rel) {
       throw new Error(`Cannot resolve ESM entry for ${id}`);
@@ -243,12 +250,17 @@ function buildManifest(
   const sep = String.fromCharCode(92); // backslash, built at runtime to dodge escaping
   const manifest: Record<string, string> = {};
   const testInput: Record<string, string> = {};
-  for (const file of [...files, ...setupFiles]) {
+  for (const file of [
+    ...files,
+    ...setupFiles,
+  ]) {
     const relPath = relative(testDir, file).split(sep).join("/");
     const flatName = relPath.split("/").join("_");
     const baseName = flatName.slice(0, flatName.lastIndexOf("."));
     const digest = createHash("sha1").update(relPath).digest("hex").slice(0, 8);
-    const outName = `tests/${stamp ? `${stamp}-` : ""}${baseName}-${digest}.js`;
+    const outName = `tests/${stamp
+      ? `${stamp}-`
+      : ""}${baseName}-${digest}.js`;
     const entryName = outName.slice(0, outName.lastIndexOf("."));
     const existing = testInput[entryName];
     if (existing) {
@@ -293,9 +305,16 @@ async function bundleRuntime(contentDir: string, outDir: string): Promise<void> 
         input: runtimeEntry,
         platform: "browser",
         treeshake: false,
-        plugins: [createRuntimeResolvePlugin(deps)],
+        plugins: [
+          createRuntimeResolvePlugin(deps),
+        ],
       },
-      { dir: contentDir, format: "esm", entryFileNames: "runtime.js", sourcemap: true },
+      {
+        dir: contentDir,
+        format: "esm",
+        entryFileNames: "runtime.js",
+        sourcemap: true,
+      },
     );
   }
   finally {
@@ -330,7 +349,12 @@ async function bundlePage(
           createPageManifestPlugin(manifest, waitForPlugin, pageTmp),
         ],
       },
-      { dir: contentDir, format: "esm", entryFileNames: "setup.js", sourcemap: true },
+      {
+        dir: contentDir,
+        format: "esm",
+        entryFileNames: "setup.js",
+        sourcemap: true,
+      },
     );
   }
   finally {
@@ -362,7 +386,9 @@ function createPageManifestPlugin(
       if (id === WAIT_PLUGIN_ID) {
         // The page polls this before starting; null means "no wait".
         const expr = waitForPlugin?.trim();
-        return `export const waitForPluginReady = ${expr ? `(${expr})` : "null"};`;
+        return `export const waitForPluginReady = ${expr
+          ? `(${expr})`
+          : "null"};`;
       }
       return null;
     },
@@ -378,9 +404,16 @@ async function bundleTests(testInput: Record<string, string>, contentDir: string
       input: testInput,
       platform: "browser",
       treeshake: false,
-      plugins: [createRuntimeAliasPlugin("../runtime.js")],
+      plugins: [
+        createRuntimeAliasPlugin("../runtime.js"),
+      ],
     },
-    { dir: contentDir, format: "esm", entryFileNames: "[name].js", sourcemap: true },
+    {
+      dir: contentDir,
+      format: "esm",
+      entryFileNames: "[name].js",
+      sourcemap: true,
+    },
   );
 }
 
@@ -446,7 +479,9 @@ function createRuntimeAliasPlugin(runtimePath: string) {
   return {
     name: "tester-runtime-alias",
     resolveId(source: string) {
-      return RUNTIME_ALIASES.has(source) ? { id: runtimePath, external: true } : null;
+      return RUNTIME_ALIASES.has(source)
+        ? { id: runtimePath, external: true }
+        : null;
     },
   };
 }

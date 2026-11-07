@@ -227,6 +227,8 @@ In watch mode (`zotero-plugin test`, or `vitest --watch`), Scaffold:
   rebundles just the files vitest is about to re-run (with a fresh artifact stamp) and hands the page the new manifest, so the updated code is what actually runs.
 - Recompiles source code and reloads plugins when the source changes.
 
+Watch mode is disabled automatically when tests run in CI or inside an AI coding agent (e.g. Claude Code, Codex, pi), so that the test command exits once all tests have run. Explicitly set `test.watch` to `false` (or pass `--no-watch`) to get the same behavior locally.
+
 ## Running Tests on CI
 
 To run tests automatically on CI services like GitHub Actions, Scaffold provides a `headless` mode.

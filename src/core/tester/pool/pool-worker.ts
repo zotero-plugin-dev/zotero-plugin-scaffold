@@ -109,7 +109,9 @@ export class ZoteroPoolWorker implements PoolWorker {
   constructor(options: PoolOptions, poolOptions: ZoteroPoolOptions = {}) {
     this.poolOptions = options;
     this.options = resolveOptions(poolOptions, options.project.config.name);
-    this.projectSuffix = options.project.config.name ? `-${options.project.config.name}` : "";
+    this.projectSuffix = options.project.config.name
+      ? `-${options.project.config.name}`
+      : "";
     const { isolate } = options.project.config;
     // vitest 5's resolved config type dropped fileParallelism (it is folded
     // into maxWorkers at resolution); check it at runtime for older majors.
@@ -214,7 +216,9 @@ export class ZoteroPoolWorker implements PoolWorker {
         this.emit("message", {
           type: "testfileFinished",
           __vitest_worker_response__: true,
-          error: error instanceof Error ? error : new Error(String(error)),
+          error: error instanceof Error
+            ? error
+            : new Error(String(error)),
         });
       }
     }
@@ -247,7 +251,9 @@ export class ZoteroPoolWorker implements PoolWorker {
   }
 
   deserialize(data: unknown): unknown {
-    return typeof data === "string" ? flatted.parse(data) : data;
+    return typeof data === "string"
+      ? flatted.parse(data)
+      : data;
   }
 
   async start(): Promise<void> {
@@ -363,7 +369,12 @@ export class ZoteroPoolWorker implements PoolWorker {
         list: [
           { id: this.options.testerPluginId, sourceDir: testerDir },
           ...(this.options.pluginDir && this.options.pluginId
-            ? [{ id: this.options.pluginId!, sourceDir: resolve(this.options.pluginDir) }]
+            ? [
+                {
+                  id: this.options.pluginId!,
+                  sourceDir: resolve(this.options.pluginDir),
+                },
+              ]
             : []),
         ],
       },

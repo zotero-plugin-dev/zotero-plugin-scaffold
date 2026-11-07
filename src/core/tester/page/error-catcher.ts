@@ -28,7 +28,11 @@ export function serializeError(unhandledError: unknown, state: WorkerStateLike):
     : undefined;
   const VITEST_TEST_PATH = state.filepath;
   if (typeof unhandledError !== "object" || !unhandledError) {
-    return { message: String(unhandledError), VITEST_TEST_NAME, VITEST_TEST_PATH };
+    return {
+      message: String(unhandledError),
+      VITEST_TEST_NAME,
+      VITEST_TEST_PATH,
+    };
   }
   const e = unhandledError as { name?: unknown; message?: unknown; stack?: unknown };
   return {
@@ -61,7 +65,9 @@ function catchWindowErrors(
       // ErrorEvent doesn't necessarily have `.error` (e.g. ResizeObserver);
       // some only carry `.message`.
       const message = (e as { message?: unknown }).message;
-      console.error(message ? new Error(String(message)) : e);
+      console.error(message
+        ? new Error(String(message))
+        : e);
     }
   }
   const add = window.addEventListener as unknown as (

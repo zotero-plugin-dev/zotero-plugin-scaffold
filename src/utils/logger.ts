@@ -108,7 +108,9 @@ export class Logger {
     if (isDebug)
       return LOG_LEVEL.TRACE;
     const envLevel = process.env.ZOTERO_PLUGIN_LOG_LEVEL as LogLevelType;
-    return envLevel ? LOG_LEVEL[envLevel] : level ?? LOG_LEVEL.INFO;
+    return envLevel
+      ? LOG_LEVEL[envLevel]
+      : level ?? LOG_LEVEL.INFO;
   }
 
   public static getInstance(): Logger {

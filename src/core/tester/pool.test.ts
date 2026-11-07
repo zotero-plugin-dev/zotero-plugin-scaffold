@@ -61,7 +61,11 @@ describe("httpBridge protocol", () => {
     interface FileTask { type: string; name: string; tasks: unknown[]; file?: FileTask }
     const file: FileTask = { type: "file", name: "a.mjs", tasks: [] };
     file.file = file;
-    const msg = { type: "rpc", method: "onCollected", files: [file] };
+    const msg = {
+      type: "rpc",
+      method: "onCollected",
+      files: [file],
+    };
     await post(bridge, "/post", flatted.stringify(msg));
     expect(received).toHaveLength(1);
     const parsed = received[0] as { type?: string; files?: FileTask[] };

@@ -33,7 +33,9 @@ function installPackage(packageName: string): void {
   const debug = isDebug || logger.level <= LOG_LEVEL.DEBUG;
   logger.debug(`Installing ${packageName}...`);
   // Errors propagate to the CLI's error handler, which formats them.
-  execSync(`sudo apt update && sudo apt install -y ${packageName}`, { stdio: debug ? "inherit" : "pipe" });
+  execSync(`sudo apt update && sudo apt install -y ${packageName}`, {
+    stdio: debug ? "inherit" : "pipe",
+  });
   logger.debug(`${packageName} installed successfully.`);
 }
 

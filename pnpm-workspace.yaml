@@ -1,6 +1,6 @@
-shellEmulator: true
-
+minimumReleaseAgeExcludePrune: true
 trustPolicy: no-downgrade
+shellEmulator: true
 
 packages:
   - src
@@ -9,7 +9,7 @@ packages:
   - test/e2e
 
 overrides:
-  vite: ^8.2.2
+  vite: ^8.3.5
 
 allowBuilds:
   "@swc/core": false

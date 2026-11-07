@@ -25,8 +25,6 @@
 // For some reason it seems Firefox requires a remote client to add temporary add-ons.
 
 import { Buffer } from "node:buffer";
-// eslint-disable-next-line node/no-deprecated-api
-import domain from "node:domain";
 import EventEmitter from "node:events";
 import net from "node:net";
 
@@ -113,54 +111,22 @@ export class MessagingClient extends EventEmitter {
 
   async connect(port: number): Promise<void> {
     await new Promise<void>((resolve, reject) => {
-      // Create a domain to wrap the errors that may be triggered
-      // by creating the client connection (e.g. ECONNREFUSED)
-      // so that we can reject the promise returned instead of
-      // exiting the entire process.
-      const d = domain.create();
-      d.once("error", reject);
-      d.run(() => {
-        const connectionOptions = { port, host: "127.0.0.1" };
-        const conn = net.createConnection(connectionOptions, () => {
-          resolve();
-        });
-        this.connection = conn;
-
-        conn.on("data", this.onData.bind(this));
-        conn.on("error", reject);
-        conn.on("end", this.onEnd.bind(this));
-        conn.on("timeout", this.onTimeout.bind(this));
-        this.expectReply("root", { resolve, reject });
-
-        // Cannot use try-catch, which results in the following error:
-        //  Error: Received unexpected message:
-        //   {"from":"root","type":"addonListChanged"}
-        //      at MessagingClient.handleMessage (D:\Code\Zotero\zotero-plugin-dev-tool\src\utils\zotero\rdp-client.ts:288:7)
-        //      at MessagingClient.readMessage (D:\Code\Zotero\zotero-plugin-dev-tool\src\utils\zotero\rdp-client.ts:250:10)
-        //      at MessagingClient.onData (D:\Code\Zotero\zotero-plugin-dev-tool\src\utils\zotero\rdp-client.ts:225:17)
-        //      at Socket.emit (node:events:514:28)
-        //      at addChunk (node:internal/streams/readable:545:12)
-        //      at readableAddChunkPushByteMode (node:internal/streams/readable:495:3)
-        //      at Readable.push (node:internal/streams/readable:375:5)
-        //      at TCP.onStreamRead (node:internal/stream_base_commons:190:23)
-        //
-        // try {
-        //   const connectionOptions = { port, host: "127.0.0.1" };
-        //   const conn = net.createConnection(connectionOptions, () => {
-        //     resolve();
-        //   });
-        //   this.connection = conn;
-
-        //   conn.on("data", this.onData.bind(this));
-        //   conn.on("error", reject);
-        //   conn.on("end", this.onEnd.bind(this));
-        //   conn.on("timeout", this.onTimeout.bind(this));
-        //   this.expectReply("root", { resolve, reject });
-        // }
-        // catch (err) {
-        //   reject(err);
-        // }
+      // Socket errors (e.g. ECONNREFUSED) are emitted asynchronously on the
+      // connection, so wrapping `net.createConnection()` in a try-catch block
+      // is not enough: Zotero may not be listening yet, so such an error must
+      // reject the returned promise (which lets the caller retry) instead of
+      // surfacing as an uncaught exception that kills the whole process.
+      const connectionOptions = { port, host: DEFAULT_HOST };
+      const conn = net.createConnection(connectionOptions, () => {
+        resolve();
       });
+      this.connection = conn;
+
+      conn.on("data", this.onData.bind(this));
+      conn.on("error", reject);
+      conn.on("end", this.onEnd.bind(this));
+      conn.on("timeout", this.onTimeout.bind(this));
+      this.expectReply("root", { resolve, reject });
     });
   }
 

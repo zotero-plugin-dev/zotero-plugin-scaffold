@@ -47,10 +47,12 @@ export default class Serve extends Base {
         customPrefs: prefs,
       },
       plugins: {
-        list: [{
-          id: this.ctx.id,
-          sourceDir: join(this.ctx.dist, "addon"),
-        }],
+        list: [
+          {
+            id: this.ctx.id,
+            sourceDir: join(this.ctx.dist, "addon"),
+          },
+        ],
         asProxy,
       },
     });

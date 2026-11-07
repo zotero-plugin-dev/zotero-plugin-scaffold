@@ -19,7 +19,9 @@ export function errorReplacer(_key: string, value: unknown): unknown {
       name: value.name,
       message: value.message,
       stack: value.stack,
-      cause: value.cause instanceof Error ? errorReplacer("", value.cause) : value.cause,
+      cause: value.cause instanceof Error
+        ? errorReplacer("", value.cause)
+        : value.cause,
       ...Object.fromEntries(Object.entries(value)),
     };
   }
@@ -56,7 +58,9 @@ export function createPageRpc(
       serialize: value => flattedStringify(value, errorReplacer),
       // dispatch() already flatted-parses request messages; birpc messages
       // arrive as strings here (or as objects from a wrapping layer).
-      deserialize: value => (typeof value === "string" ? flattedParse(value) : value),
+      deserialize: value => (typeof value === "string"
+        ? flattedParse(value)
+        : value),
     },
   );
   return { rpc, onMessageCallbacks };

@@ -61,7 +61,9 @@ export function resolveOptions(
   // resource dirs from the project name so they never collide by default.
   // Zotero allows any number of instances — only a shared profile/database
   // is mutually exclusive. Explicit options still override the derivation.
-  const suffix = projectName ? `-${projectName}` : "";
+  const suffix = projectName
+    ? `-${projectName}`
+    : "";
   return {
     zoteroBin: bin,
     // Single source of truth with the `zotero-plugin test` CLI (constant.ts):

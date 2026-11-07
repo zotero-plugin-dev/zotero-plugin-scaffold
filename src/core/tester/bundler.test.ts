@@ -47,7 +47,12 @@ describe("buildTesterPlugin", () => {
   });
 
   it("injects the bridge port into bootstrap.js", async () => {
-    await buildTesterPlugin({ outDir, port: 43210, testDir, testFiles: [] });
+    await buildTesterPlugin({
+      outDir,
+      port: 43210,
+      testDir,
+      testFiles: [],
+    });
     const bootstrap = await readFile(join(outDir, "bootstrap.js"), "utf8");
     expect(bootstrap).toContain("port=43210");
     expect(bootstrap).not.toContain("__PORT__");
@@ -55,7 +60,12 @@ describe("buildTesterPlugin", () => {
   });
 
   it("redirects runtime imports to the shared chunk in setup.js", async () => {
-    await buildTesterPlugin({ outDir, port: 12345, testDir, testFiles: [] });
+    await buildTesterPlugin({
+      outDir,
+      port: 12345,
+      testDir,
+      testFiles: [],
+    });
     const setup = await readFile(join(outDir, "content", "setup.js"), "utf8");
     // no bare specifiers may survive the bundle (chrome:// cannot load them)
     expect(setup).not.toMatch(/from "vitest"|from "birpc"|from "flatted"/);
@@ -65,7 +75,12 @@ describe("buildTesterPlugin", () => {
     // Regression: the page's console.ts imports { format } from
     // vitest/internal/browser, redirected to runtime.js — if the chunk does
     // not re-export it, the page fails on load with a SyntaxError.
-    await buildTesterPlugin({ outDir, port: 12345, testDir, testFiles: [] });
+    await buildTesterPlugin({
+      outDir,
+      port: 12345,
+      testDir,
+      testFiles: [],
+    });
     const runtime = await readFile(join(outDir, "content", "runtime.js"), "utf8");
     expect(runtime).toContain("format");
   });
@@ -76,7 +91,12 @@ describe("buildTesterPlugin", () => {
       "import { describe, it, expect } from \"vitest\";\n"
       + "describe(\"x\", () => { it(\"y\", () => { expect(1).toBe(1); }); });\n",
     );
-    await buildTesterPlugin({ outDir, port: 12345, testDir, testFiles: ["**/*.spec.mjs"] });
+    await buildTesterPlugin({
+      outDir,
+      port: 12345,
+      testDir,
+      testFiles: ["**/*.spec.mjs"],
+    });
     const artifact = (await readdir(join(outDir, "content", "tests")))
       .find(name => /^sample\.spec-[0-9a-f]{8}\.js$/.test(name))!;
     const testBundle = await readFile(join(outDir, "content", "tests", artifact), "utf8");

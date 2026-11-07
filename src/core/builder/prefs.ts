@@ -63,7 +63,9 @@ export default async function buildPrefs(dist: string, options: BuildConfig["pre
     const xhtmlPaths = await glob(`${dist}/addon/**/*.xhtml`);
     await Promise.all(xhtmlPaths.map(async (path) => {
       let content = await readFile(path, "utf-8");
-      const matchs = [...content.matchAll(HTML_PREFERENCE_PATTERN)];
+      const matchs = [
+        ...content.matchAll(HTML_PREFERENCE_PATTERN),
+      ];
       for (const match of matchs) {
         const [matched, key] = match;
         if (key.startsWith(prefix)) {

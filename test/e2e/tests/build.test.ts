@@ -18,7 +18,9 @@ describe("#build", () => {
   });
 
   it("should output correct files", async () => {
-    const paths = [...globSync(["dist/**/*", "!**/*.xpi", "typings"], { cwd: FIXTURES_DIR })];
+    const paths = [
+      ...globSync(["dist/**/*", "!**/*.xpi", "typings"], { cwd: FIXTURES_DIR }),
+    ];
 
     for (const path of paths) {
       const content = readFileSync(`${FIXTURES_DIR}/${path}`, "utf-8");
