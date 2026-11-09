@@ -11,7 +11,7 @@ import { isLinux, isMacOS, isWindows } from "std-env";
 import { ZOTERO_LOG_DIR } from "../constant.js";
 import { logger } from "./logger.js";
 import { PrefsManager } from "./prefs-manager.js";
-import { isRunning } from "./process.js";
+import { isRunning, isTcpPortAvailable } from "./process.js";
 import { dateFormat } from "./string.js";
 import { ANSI_ESCAPE_RE, createMessageNormalizer } from "./zotero/log-normalizer.js";
 import { prefs as defaultPrefs } from "./zotero/preference.js";
@@ -138,15 +138,19 @@ export class ZoteroRunner {
     // Setup prefs.js
     const prefsPath = join(this.options.profile.path, "prefs.js");
     const prefsManager = new PrefsManager("user_pref");
-    prefsManager.setPrefs(defaultPrefs);
     if (await pathExists(prefsPath))
       await prefsManager.read(prefsPath);
+    // Scaffold's prefs win over values already present in the profile.
+    prefsManager.setPrefs(defaultPrefs);
+    // Caller-provided prefs (`server.prefs` / `test.prefs`) still win over both.
     prefsManager.setPrefs(this.options.profile.customPrefs);
     prefsManager.setPrefs({
       "extensions.lastAppBuildId": null,
       "extensions.lastAppVersion": null,
     });
     await prefsManager.write(prefsPath);
+
+    await this.warnIfHttpServerPortInUse(prefsManager);
 
     // Install plugins in proxy file mode
     if (this.options.plugins.asProxy) {
@@ -157,6 +161,31 @@ export class ZoteroRunner {
   private async createProfile(path: string) {
     logger.debug(`Creating profile at ${this.default_profile_path}...`);
     await ensureDir(path);
+  }
+
+  /**
+   * Zotero's built-in HTTP server (browser connector, local API, plugin endpoints) binds
+   * `httpServer.port` (23119 by default) and silently gives up if the port is taken -- usually
+   * because the developer's daily Zotero is already running. Nothing else in the dev loop
+   * depends on that server, so warn about it instead of failing.
+   */
+  private async warnIfHttpServerPortInUse(prefsManager: PrefsManager) {
+    if (prefsManager.getPref("extensions.zotero.httpServer.enabled") === false)
+      return;
+    const pref = prefsManager.getPref("extensions.zotero.httpServer.port");
+    // 23119 (ascii "ZO") is Zotero's default; 0 means "any free port", nothing to conflict with
+    const port = typeof pref === "number" ? pref : 23119;
+    if (port <= 0)
+      return;
+    if (await isTcpPortAvailable(port))
+      return;
+
+    logger.warn([
+      `Port ${port} is already in use, so Zotero's HTTP server will not start in this instance.`,
+      `  Unavailable: browser connector, local API and plugin endpoints.`,
+      `  Close the other Zotero instance, or use another port explicitly, e.g.`,
+      `  server.prefs: { "extensions.zotero.httpServer.port": 23124 }`,
+    ].join("\n"));
   }
 
   // private async copyProfile(from: string, to = this.default_profile_path) {

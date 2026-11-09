@@ -67,6 +67,10 @@ export default defineConfig({
 - `server.debugOutputWindow` only controls whether the Zotero Debug Output window is opened (appends `-ZoteroDebug`). Debug output recording is independent of it.
 - `server.debugOutputFile: false` disables file logging; stdout/stderr are still consumed (to prevent the pipe buffer from filling up and blocking Zotero) but discarded.
 
+## Connector Port
+
+The default prefs pin `extensions.zotero.httpServer.port` to Zotero's default (`23119`) and are applied on top of the existing profile, so a dev profile always keeps the port the browser connector and third-party tools expect. Zotero's own HTTP server (connector, local API, plugin endpoints) can't start when that port is already bound — e.g. while your daily Zotero is running — and Scaffold warns about it. The browser connector only ever looks at `23119`, so close the other instance instead of moving the dev instance to another port; use `server.prefs` if you deliberately need a dedicated port.
+
 ## Hot Reloading and Proxy File
 
 The Zotero team's [plugin development guide](https://www.zotero.org/support/dev/client_coding/plugin_development) describes using Proxy File for loading plugins from source. While this method works for older versions of Zotero (e.g., Zotero 6), it **does not support plugin reloading**.
