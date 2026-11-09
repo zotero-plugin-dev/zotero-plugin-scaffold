@@ -170,7 +170,7 @@ const defaultConfig = {
   test: {
     entries: "test",
     prefs: {},
-    mocha: {
+    vitest: {
       timeout: 10000,
     },
     abortOnFail: false,

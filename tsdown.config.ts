@@ -3,7 +3,13 @@ import { defineConfig } from "tsdown";
 import Raw from "unplugin-raw/rolldown";
 
 export default defineConfig({
-  entry: ["./src/index.ts", "./src/vendor", "./src/cli.ts"],
+  entry: [
+    "./src/index.ts",
+    "./src/vendor",
+    "./src/cli.ts",
+    "./src/core/tester/pool/index.ts",
+    "./src/core/tester/bundler.ts",
+  ],
   clean: true,
   // unbundle: true,
 
@@ -30,6 +36,9 @@ export default defineConfig({
   outputOptions: {
     chunkFileNames: "shared/scaffold-[name]-[hash].mjs",
   },
+  // NOTE: no copy of template/page to dist — the bundler inlines them via
+  // ?raw at build time (see src/core/tester/bundler.ts), so the published
+  // package needs only the compiled chunks.
   plugins: [
     Raw(),
   ],
