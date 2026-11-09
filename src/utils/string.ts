@@ -59,3 +59,7 @@ export function parseRepoUrl(url?: string): {
   const [, owner, repo] = match;
   return { owner, repo };
 }
+
+export function normalizePath(path: string): string {
+  return path.replace(/\\/g, "/");
+}

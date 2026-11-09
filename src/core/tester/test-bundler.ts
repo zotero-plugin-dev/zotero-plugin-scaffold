@@ -1,17 +1,18 @@
-import type { BuildContext, BuildResult } from "esbuild";
+import type { InputOptions, OutputChunk, OutputOptions, RolldownOutput } from "rolldown";
 import type { Context } from "../../types/index.js";
-import { resolve } from "node:path";
-import { context } from "esbuild";
+import { relative, resolve } from "node:path";
+import { cwd } from "node:process";
 import { copy, outputFile, outputJSON, pathExists } from "fs-extra/esm";
+import { rolldown } from "rolldown";
 import { glob } from "tinyglobby";
-import { CACHE_DIR, TESTER_PLUGIN_DIR } from "../../constant.js";
+import { CACHE_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_TESTS_DIR } from "../../constant.js";
 import { saveResource } from "../../utils/file.js";
 import { logger } from "../../utils/logger.js";
-import { toArray } from "../../utils/string.js";
+import { normalizePath, toArray } from "../../utils/string.js";
 import { generateBootstrap, generateHtml, generateManifest, generateMochaSetup } from "./test-bundler-template/index.js";
 
 export class TestBundler {
-  private esbuildContext?: BuildContext;
+  private rolldownOutput?: RolldownOutput;
   constructor(
     private ctx: Context,
     private port: number,
@@ -35,10 +36,11 @@ export class TestBundler {
 
   async regenerate(changedFile: string): Promise<void> {
     // re-bundle tests
-    const esbuildResult = await this.esbuildContext?.rebuild();
+    await this.bundleTests();
 
-    // get affected tests
-    const tests = findImpactedTests(changedFile, esbuildResult?.metafile);
+    // get affected tests based on changed file
+    const metadata = transformRolldownOutputToMetafile(this.rolldownOutput?.output);
+    const tests = findImpactedTests(changedFile, metadata);
 
     // this.generateTestPage
     //   mocha setup
@@ -110,21 +112,28 @@ export class TestBundler {
 
   private async bundleTests() {
     const testDirs = toArray(this.ctx.test.entries);
-    // Because esbuild only support `*` and `**`，
-    // so we need glob ourselves.
-    // https://esbuild.github.io/api/#glob-style-entry-points
+    // Find all test files
     const entryPoints = (await Promise.all(testDirs.map(dir => glob(`${dir}/**/*.{spec,test}.[jt]s`))))
       .flat();
 
-    // Bundle all test files, including both JavaScript and TypeScript
-    this.esbuildContext = await context({
-      entryPoints,
-      outdir: `${TESTER_PLUGIN_DIR}/content/units`,
-      bundle: true,
-      target: "firefox115",
-      metafile: true,
-    });
-    await this.esbuildContext.rebuild();
+    // configure rolldown options
+    const rolldownInputOptions: InputOptions = {
+      input: entryPoints,
+      treeshake: false,
+      preserveEntrySignatures: "allow-extension",
+    };
+
+    const outputOptions: OutputOptions = {
+      dir: `${TESTER_PLUGIN_DIR}/content/units`,
+      format: "esm",
+      sourcemap: true,
+      codeSplitting: false,
+    };
+
+    const rolldownBuild = await rolldown(rolldownInputOptions);
+    this.rolldownOutput = await rolldownBuild.write(outputOptions);
+
+    await rolldownBuild.close();
   }
 
   private async createTestHtml(tests: string[] = []) {
@@ -139,38 +148,55 @@ export class TestBundler {
     // html
     let testFiles = tests;
     if (testFiles.length === 0) {
-      testFiles = (await glob(`**/*.{spec,test}.js`, { cwd: `${TESTER_PLUGIN_DIR}/content` })).sort();
+      testFiles = (await glob(`**/*.{spec,test}.js`, { cwd: `${TESTER_PLUGIN_TESTS_DIR}` })).sort();
     }
     const html = generateHtml(setupCode, testFiles);
     await outputFile(`${TESTER_PLUGIN_DIR}/content/index.xhtml`, html);
   }
 }
 
-/**
- * Determines which test files are impacted by a given changed file based on the esbuild metafile.
- *
- * This function analyzes the build metadata to find test files that depend on the changed file
- * either directly as an entry point or indirectly as an input. It is useful in a watch mode setup
- * to selectively rerun only the affected tests.
- *
- * @param {string} changedFilePath - The file path of the changed source file.
- * @param {BuildResult["metafile"]} buildMetadata - The esbuild metafile containing dependency information.
- * @returns {string[]} An array of impacted test file paths that need to be re-executed.
- */
-export function findImpactedTests(changedFilePath: string, buildMetadata: BuildResult["metafile"]): string[] {
-  if (!buildMetadata)
+interface _MetaData extends Pick<OutputChunk, "fileName" | "name" | "moduleIds"> {}
+export type MetaData = _MetaData[];
+
+function transformRolldownOutputToMetafile(output?: RolldownOutput["output"]): MetaData {
+  if (!output)
     return [];
 
-  const resolvedChangedFile = resolve(changedFilePath);
+  return output
+    .flat()
+    .filter(r => r.type === "chunk")
+    .map(r => ({
+      fileName: normalizePath(r.fileName),
+      name: r.name,
+      moduleIds: r.moduleIds.map(id => relative(cwd(), id)).map(normalizePath),
+    }));
+}
+
+/**
+ * Determines which test files are impacted by a given changed file based on rolldown build output.
+ *
+ * This function analyzes the build metadata to find test files that depend on the changed file
+ * either directly as an entry point or indirectly as an input.
+ *
+ * @param {string} changedFilePath - The file path of the changed source file.
+ * @param {MetaData} buildMetadata - The transfromed rolldown build outputs.
+ * @returns {string[]} An array of impacted test file names that need to be re-executed.
+ */
+export function findImpactedTests(
+  changedFilePath: string,
+  buildMetadata: MetaData,
+): string[] {
+  const normalizedChangedFile = resolve(changedFilePath);
   const impactedTestFiles = new Set<string>();
 
-  for (const [outputFilePath, outputInfo] of Object.entries(buildMetadata.outputs)) {
-    const testFilePath = outputFilePath.replace(`${TESTER_PLUGIN_DIR}/content/`, "");
-    // const resolvedEntryPoint = outputInfo.entryPoint ? resolve(outputInfo.entryPoint) : null;
-
-    if (Object.keys(outputInfo.inputs).some(inputPath => resolve(inputPath) === resolvedChangedFile)) {
-      impactedTestFiles.add(testFilePath);
+  for (const { fileName, moduleIds } of buildMetadata) {
+    for (const moduleId of moduleIds) {
+      const normalizedModuleId = resolve(moduleId);
+      if (normalizedModuleId === normalizedChangedFile) {
+        impactedTestFiles.add(fileName);
+      }
     }
   }
+
   return [...impactedTestFiles];
 }
