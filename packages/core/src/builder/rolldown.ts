@@ -2,8 +2,8 @@ import type { RolldownOptions } from "rolldown";
 import type { BuildConfig, BundleItem } from "../types.js";
 import { resolve } from "node:path";
 import process from "node:process";
-import { rolldown } from "rolldown";
 import { toArray } from "@zotero-plugin/utils";
+import { rolldown } from "rolldown";
 
 export function resolveConfig(dist: string, configs: BundleItem[]): RolldownOptions[] {
   const distAbsolute = resolve(dist);
@@ -57,7 +57,9 @@ export default async function rolldownBuild(dist: string, bundleConfigs: BuildCo
       const { output, ...inputOptions } = rolldownOption;
       const bundle = await rolldown(inputOptions);
       if (output) {
-        const outputConfig = Array.isArray(output) ? output : [output];
+        const outputConfig = Array.isArray(output)
+          ? output
+          : [output];
         await bundle.write(outputConfig[0]);
       }
       await bundle.close();

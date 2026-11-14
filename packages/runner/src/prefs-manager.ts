@@ -1,11 +1,11 @@
 import type { BooleanLiteral, NumericLiteral, StringLiteral, UnaryExpression } from "@oxc-project/types";
 import type { ParseResult } from "rolldown/experimental";
 import { readFile } from "node:fs/promises";
+import { logger } from "@zotero-plugin/utils";
 import { print } from "esrap";
 import ts from "esrap/languages/ts";
 import { outputFile } from "fs-extra/esm";
 import { parseSync } from "rolldown/experimental";
-import { logger } from "@zotero-plugin/utils";
 
 class PrefFileError extends Error {
   constructor(message: string) {
