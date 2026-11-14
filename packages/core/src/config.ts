@@ -1,6 +1,6 @@
 import type { ConfigTransform } from "@zotero-plugin/config";
 import type { BuildConfig, DevServerConfig } from "./types.js";
-import { logger, template } from "@zotero-plugin/utils";
+import { template } from "@zotero-plugin/utils";
 import { mapValues, toMerged } from "es-toolkit";
 
 export const buildDefaults: BuildConfig = {
@@ -68,15 +68,12 @@ export const buildTransform: ConfigTransform = (config, templateData, pkgUser) =
  * Patches the dev-server configuration.
  *
  * The `server` key was renamed to `devServer`; the deprecated key is migrated
- * here with a warning, then defaults are applied.
+ * here, then defaults are applied.
  */
 export const devServerTransform: ConfigTransform = (config) => {
   let userConfig = config.devServer;
 
   if (config.server) {
-    logger.warn(
-      "Config `server` is deprecated and will be removed in 1.0, please rename it to `devServer`.",
-    );
     // `devServer` wins when both keys are present.
     userConfig = toMerged(config.server, userConfig ?? {});
     delete config.server;
