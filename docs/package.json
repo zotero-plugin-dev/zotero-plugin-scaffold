@@ -12,7 +12,7 @@
   "devDependencies": {
     "@shikijs/vitepress-twoslash": "catalog:",
     "oxc-minify": "catalog:",
-    "typescript": "catalog:conflicts_dev_t6_0_3",
+    "typescript": "catalog:dev",
     "vitepress": "catalog:",
     "zotero-plugin-scaffold": "workspace:^"
   }

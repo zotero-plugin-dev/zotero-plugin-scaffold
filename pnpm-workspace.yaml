@@ -41,8 +41,6 @@ catalog:
   xvfb-ts: ^1.1.1
 
 catalogs:
-  conflicts_dev_t6_0_3:
-    typescript: ~6.0.3
   dev:
     "@antfu/eslint-config": ^10.0.0
     "@commander-js/extra-typings": ^15.0.0
@@ -52,6 +50,6 @@ catalogs:
     eslint-plugin-format: ^2.0.1
     tsdown: ^0.23.7
     tsx: ^4.23.15
-    typescript: npm:@typescript/typescript6@^6.0.2
+    typescript: ~6.0.3
     unplugin-raw: ^0.8.0
     vitest: ^5.1.0
