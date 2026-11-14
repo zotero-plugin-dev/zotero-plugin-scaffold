@@ -1,0 +1,64 @@
+{
+  "name": "@zotero-plugin/utils",
+  "type": "module",
+  "version": "0.9.4",
+  "description": "Shared utilities for zotero-plugin-scaffold.",
+  "author": "northword",
+  "license": "AGPL-3.0-or-later",
+  "homepage": "https://zotero-plugin-dev.github.io/zotero-plugin-scaffold",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git",
+    "directory": "packages/utils"
+  },
+  "bugs": {
+    "url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "keywords": [
+    "zotero",
+    "plugin",
+    "scaffold",
+    "utils"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.8.0"
+  },
+  "scripts": {
+    "dev": "tsdown --watch",
+    "build": "tsdown && tsc --noEmit",
+    "build:tsdown": "tsdown",
+    "build:tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chokidar": "catalog:",
+    "es-toolkit": "catalog:",
+    "fs-extra": "catalog:",
+    "std-env": "catalog:"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "tsdown": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev"
+  },
+  "directories": {
+    "lib": "dist"
+  }
+}

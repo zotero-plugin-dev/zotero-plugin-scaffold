@@ -1,0 +1,83 @@
+{
+  "name": "zotero-plugin-scaffold",
+  "type": "module",
+  "version": "0.9.4",
+  "description": "A scaffold for Zotero plugin development.",
+  "author": "northword",
+  "license": "AGPL-3.0-or-later",
+  "homepage": "https://zotero-plugin-dev.github.io/zotero-plugin-scaffold",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git",
+    "directory": "packages/scaffold"
+  },
+  "bugs": {
+    "url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "keywords": [
+    "zotero",
+    "plugin",
+    "developer",
+    "scaffold",
+    "web-ext"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli": {
+      "import": "./dist/cli.js"
+    },
+    "./vendor": {
+      "types": "./dist/vendor.d.ts",
+      "import": "./dist/vendor.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "zotero-plugin": "./bin/zotero-plugin.mjs"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.8.0"
+  },
+  "scripts": {
+    "dev": "tsdown --watch",
+    "build": "tsdown && tsc --noEmit",
+    "build:tsdown": "tsdown",
+    "build:tsc": "tsc --noEmit"
+  },
+  "directories": {
+    "lib": "dist"
+  },
+  "dependencies": {
+    "@zotero-plugin/config": "workspace:*",
+    "@zotero-plugin/core": "workspace:*",
+    "@zotero-plugin/releaser": "workspace:*",
+    "@zotero-plugin/tester": "workspace:*",
+    "@zotero-plugin/utils": "workspace:*",
+    "@zotero-plugin/zotero-runner": "workspace:*",
+    "commander": "catalog:",
+    "es-toolkit": "catalog:",
+    "fs-extra": "catalog:",
+    "hookable": "catalog:",
+    "tiny-update-notifier": "catalog:"
+  },
+  "devDependencies": {
+    "@commander-js/extra-typings": "catalog:dev",
+    "@types/fs-extra": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "tsdown": "catalog:dev",
+    "typescript": "catalog:dev"
+  }
+}

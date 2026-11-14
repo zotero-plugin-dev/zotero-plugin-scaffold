@@ -1,15 +1,11 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "strict": true,
-    "declaration": true,
-    "outDir": "dist",
-    "esModuleInterop": true,
-    "isolatedDeclarations": true,
-    "skipLibCheck": true
-  },
-  "include": ["src", "test", "typings"]
+  "extends": "./tsconfig.base.json",
+  "include": [
+    "packages/*/src",
+    "packages/*/types",
+    "typings",
+    "test/e2e/fixtures",
+    "test/e2e/tests"
+  ],
+  "exclude": ["**/dist/**", "**/node_modules/**"]
 }

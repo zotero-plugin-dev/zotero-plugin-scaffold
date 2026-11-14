@@ -1,14 +1,11 @@
 name: Release
 
+# Frozen during the monorepo migration: no tag or pull request may publish a
+# partially migrated release. Re-enable the `v**` tag trigger once the
+# migration has landed on main and the reusable workflow
+# (zotero-plugin-dev/workflows) supports publishing all workspace packages.
 on:
-  push:
-    branches:
-      - main
-    tags:
-      - v**
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   release:
