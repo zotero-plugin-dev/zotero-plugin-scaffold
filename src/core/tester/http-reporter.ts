@@ -1,56 +1,8 @@
+import type { ReportEvent } from "./protocol.js";
 import http from "node:http";
 import { styleText } from "node:util";
 import { logger } from "../../utils/logger.js";
 import { findFreeTcpPort } from "../../utils/zotero/remote-zotero.js";
-
-interface ResultDataBase {
-  title: string;
-  indents: number;
-}
-
-interface ResultS {
-  type: "start" | "pending" | "debug" | "error";
-  data?: ResultDataBase | any;
-}
-
-interface ResultEnd {
-  type: "end";
-  data: ResultDataBase & {
-    passed: number;
-    failed: number;
-    aborted: number;
-  };
-}
-
-interface ResultSuite {
-  type: "suite" | "suite end";
-  data: ResultDataBase & {
-    root: boolean;
-  };
-}
-
-interface ResultTestPass {
-  type: "pass";
-  data: ResultDataBase & {
-    fullTitle: string;
-    duration: number;
-  };
-}
-
-interface ResultTestFail {
-  type: "fail";
-  data: ResultTestPass["data"] & {
-    error: {
-      message: string;
-      actual: unknown;
-      expected: unknown;
-      operator: string;
-      stack: string;
-    };
-  };
-}
-
-type Result = ResultS | ResultSuite | ResultTestPass | ResultTestFail | ResultEnd;
 
 export class TestHttpReporter {
   private _server?: http.Server;
@@ -96,7 +48,7 @@ export class TestHttpReporter {
         // Parse and handle the complete data
         req.on("end", async () => {
           try {
-            const jsonData = JSON.parse(body);
+            const jsonData = JSON.parse(body) as ReportEvent;
             await this.onData(jsonData);
 
             // Send a response to the client
@@ -116,56 +68,51 @@ export class TestHttpReporter {
       }
   }
 
-  async onData(body: Result): Promise<void> {
-    const { type, data } = body;
-    const logger_option = { space: data.indents - 1 };
-
-    switch (type) {
+  async onData(event: ReportEvent): Promise<void> {
+    switch (event.type) {
       case "debug":
-        logger.log(data);
+        logger.log(event.data);
         break;
+
       case "start":
         logger.newLine();
         break;
+
       case "suite":
-        if (data.title)
-          logger.tip(data.title, logger_option);
+        if (event.data.title)
+          logger.tip(event.data.title, { space: event.data.indents - 1 });
         break;
+
       case "pass":
-        logger.success(`${data.title} ${styleText("gray", `${data.duration}ms`)}`, logger_option);
+        logger.success(
+          `${event.data.title} ${styleText("gray", `${event.data.duration ?? 0}ms`)}`,
+          { space: event.data.indents - 1 },
+        );
         break;
-      case "fail":{
-        logger.fail(styleText("red", `${data.title}, ${data?.error?.message}`), logger_option);
-        let expected = data.error.expected;
-        let received = data.error.actual;
 
-        function formatOutput(obj: object, indent: number) {
-          const jsonStr = JSON.stringify(obj, null, 2);
-          const lines = jsonStr.split("\n");
-          const firstLine = lines[0];
-          const restLines = lines.slice(1)
-            .map(line => "  ".repeat(indent) + line)
-            .join("\n");
-          return `${firstLine}\n${restLines}`;
-        }
+      case "fail": {
+        const { data } = event;
+        logger.fail(styleText("red", `${data.title}, ${data.error.message}`), { space: data.indents - 1 });
 
-        if (expected && typeof expected === "object")
-          expected = formatOutput(expected, data.indents + 1);
-        if (received && typeof received === "object")
-          received = formatOutput(received, data.indents + 1);
+        const format = (value: unknown) => typeof value === "object"
+          ? JSON.stringify(value, null, 2).replaceAll("\n", `\n${"  ".repeat(data.indents + 1)}`)
+          : String(value);
 
-        logger.log(`Expected: ${styleText("green", String(expected))}`, { space: data.indents + 0.5 });
-        logger.log(`Received: ${styleText("red", String(received))}`, { space: data.indents + 0.5 });
+        logger.log(`Expected: ${styleText("green", format(data.error.expected))}`, { space: data.indents + 0.5 });
+        logger.log(`Received: ${styleText("red", format(data.error.actual))}`, { space: data.indents + 0.5 });
         break;
       }
+
       case "pending":
-        logger.info(`${data.title} pending`, logger_option);
+        logger.info(`${event.data.title} pending`, { space: event.data.indents - 1 });
         break;
+
       case "suite end":
         break;
+
       case "end":
-        this.passed = data.passed;
-        this.failed = data.failed;
+        this.passed = event.data.passed;
+        this.failed = event.data.failed;
 
         logger.newLine();
         if (this.failed === 0)
@@ -175,12 +122,8 @@ export class TestHttpReporter {
         break;
 
       case "error":
-        logger.error(body.data?.title);
+        logger.error(event.data.title);
         this.failed++;
-        break;
-
-      default:
-        logger.log(data);
         break;
     }
   }

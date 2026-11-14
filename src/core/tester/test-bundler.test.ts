@@ -1,6 +1,6 @@
 import type { Metafile } from "esbuild";
 import { describe, expect, it } from "vitest";
-import { findImpactedTests } from "./test-bundler.js";
+import { findImpactedTests, TEST_API_EXPORTS } from "./test-bundler.js";
 
 describe("findImpactedTests", () => {
   const mockMetafileOutputs = {
@@ -48,5 +48,13 @@ describe("findImpactedTests", () => {
   it("returns an empty array if no test file is affected", () => {
     const result = findImpactedTests("src/unrelated.ts", mockMetafileOutputs);
     expect(result).toEqual([]);
+  });
+});
+
+describe("test api shim", () => {
+  it("exports every value of the public test api", async () => {
+    const api = await import("./assertions/index.js");
+
+    expect([...TEST_API_EXPORTS].sort()).toEqual(Object.keys(api).sort());
   });
 });

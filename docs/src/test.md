@@ -1,6 +1,6 @@
 # Testing
 
-This module facilitates testing Zotero plugins in a live Zotero environment using [Mocha](https://mochajs.org/) and [Chai](https://www.chaijs.com/).
+This module facilitates testing Zotero plugins in a live Zotero environment using [Mocha](https://mochajs.org/) and Vitest's [`expect`](https://vitest.dev/api/expect) (Jest-style assertions on top of [Chai](https://www.chaijs.com/)).
 
 ## Why Use This Approach?
 
@@ -22,32 +22,59 @@ Ensure `zotero-plugin-scaffold` is installed first. Then add a `test` script to 
 }
 ```
 
-### Install Mocha and Chai
+### Assertions
 
-Install `mocha` and `chai` as development dependencies to avoid potential conflicts:
+`mocha`, `chai` and `@vitest/expect` are direct dependencies of Scaffold, nothing needs to be installed in your plugin project, and nothing is downloaded at runtime.
 
-```bash
-npm install -D mocha chai @types/mocha @types/chai
-```
+Test files can use [Vitest's `expect`](https://vitest.dev/api/expect), which is available from the `zotero-plugin-scaffold/test` entry:
 
-If Scaffold detects a local Mocha installation, it uses it; otherwise, it fetches the latest version from NPM. Cached versions are stored in `.scaffold/cache`, which can be deleted to force updates.
+```ts
+import { describe, expect, it } from "zotero-plugin-scaffold/test";
 
-### Writing Test Cases
-
-Write test cases using [Mocha](https://mochajs.org/) and [Chai](https://www.chaijs.com/) syntax in `test/*.{spec,test}.{js,ts}`:
-
-```js
 describe("Example Test", () => {
   it("should pass", () => {
-    expect(1 + 1).to.equal(2);
+    expect(1 + 1).toBe(2);
+    expect({ a: 1 }).toEqual({ a: 1 });
+    expect(() => {
+      throw new TypeError("boom");
+    }).toThrow(TypeError);
   });
 });
+```
 
-describe("Startup", () => {
-  it("should have plugin instance defined", () => {
+Mocha's BDD interface is exported too, like Vitest does: `describe`, `it`, `before`, `beforeEach`, `after`, `afterEach`, plus the `context`, `specify` and `x*` aliases. The page also exposes all of them as globals, so the classic Chai syntax keeps working without any import:
+
+```js
+describe("Chai style", () => {
+  it("should pass", () => {
+    expect(1 + 1).to.equal(2);
     assert.isNotEmpty(Zotero[MyPlugin]);
   });
 });
+```
+
+`expect.assertions(n)` and `expect.hasAssertions()` are verified at the end of each test. Snapshots, mocking (`vi`) and `expect.soft`/`expect.poll` are not available, since they need Vitest's own runner; the latter two throw a descriptive error instead of silently passing.
+
+::: tip
+To type the globals in your own `typings/*.d.ts`, add:
+
+```ts
+declare global {
+  const expect: typeof import("zotero-plugin-scaffold/test").expect;
+  const assert: typeof import("zotero-plugin-scaffold/test").assert;
+}
+```
+
+Importing from `zotero-plugin-scaffold/test` is always fully typed, and does not need this.
+:::
+
+### Writing Test Cases
+
+Write test cases in `test/*.{spec,test}.{js,ts}`, using Mocha's BDD interface (imported from `zotero-plugin-scaffold/test`, or as globals) and either assertion style shown above. Everything a test file imports is bundled together with the file, so normal `import` statements work as usual:
+
+```ts
+import { expect } from "zotero-plugin-scaffold/test";
+import { MyPlugin } from "../src/index"; // your plugin's code
 ```
 
 ### Running Tests
