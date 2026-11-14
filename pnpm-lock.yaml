@@ -303,6 +303,9 @@ importers:
       lint-staged:
         specifier: 'catalog:'
         version: 17.6.0
+      tsdown:
+        specifier: catalog:dev
+        version: 0.23.7(@typescript/typescript6@6.0.2)(@vue/language-core@3.3.14)(tsx@4.23.15)
       typescript:
         specifier: catalog:dev
         version: '@typescript/typescript6@6.0.2'

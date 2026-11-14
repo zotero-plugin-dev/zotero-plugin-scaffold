@@ -1,0 +1,20 @@
+import Module from "node:module";
+import { defineConfig } from "tsdown";
+
+export default defineConfig({
+  workspace: {
+    include: ["packages/*"],
+  },
+  clean: true,
+  platform: "node",
+  outExtensions: () => ({ js: ".js", dts: ".d.ts" }),
+  deps: {
+    neverBundle: [
+      ...Module.builtinModules,
+      ...Module.builtinModules.map(m => `node:${m}`),
+    ],
+  },
+  outputOptions: {
+    chunkFileNames: "shared/[name]-[hash].mjs",
+  },
+});

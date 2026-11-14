@@ -19,8 +19,8 @@
     "node": ">=22.8.0"
   },
   "scripts": {
-    "dev": "pnpm -r --parallel --filter \"./packages/*\" dev",
-    "build": "pnpm -r --filter \"./packages/*\" build",
+    "dev": "tsdown -W --watch",
+    "build": "pnpm build:tsdown && pnpm build:tsc",
     "lint:check": "eslint .",
     "lint:fix": "eslint . --fix",
     "docs:dev": "pnpm -C docs run dev",
@@ -28,7 +28,9 @@
     "release": "bumpp -r --commit \"chore(release): publish v%s\"",
     "update:deps": "pnpx taze minor -w -f -l -r",
     "test": "vitest",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:tsdown": "tsdown -W",
+    "build:tsc": "pnpm -r build:tsc"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:dev",
@@ -39,6 +41,7 @@
     "eslint-plugin-format": "catalog:dev",
     "husky": "catalog:",
     "lint-staged": "catalog:",
+    "tsdown": "catalog:dev",
     "typescript": "catalog:dev",
     "vitest": "catalog:dev"
   },

@@ -40,9 +40,6 @@
     "node": ">=22.8.0"
   },
   "scripts": {
-    "dev": "tsdown --watch",
-    "build": "tsdown && tsc --noEmit",
-    "build:tsdown": "tsdown",
     "build:tsc": "tsc --noEmit"
   },
   "dependencies": {
