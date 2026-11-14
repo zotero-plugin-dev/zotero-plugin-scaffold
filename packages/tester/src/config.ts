@@ -3,7 +3,7 @@ import type { TestConfig } from "./types.js";
 export const testDefaults: TestConfig = {
   entries: "test",
   prefs: {},
-  mocha: {
+  vitest: {
     timeout: 10000,
   },
   abortOnFail: false,
