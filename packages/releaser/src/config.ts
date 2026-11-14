@@ -36,5 +36,4 @@ export const releaseSlice: SliceDescriptor = {
 
     config.release.github.repository = template(config.release.github.repository, templateData);
   },
-  hooksOf: config => [config.release?.hooks ?? {}],
 };

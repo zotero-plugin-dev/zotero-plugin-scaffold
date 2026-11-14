@@ -2,7 +2,7 @@ import type { RecursivePartial } from "@zotero-plugin/utils";
 import type { BaseConfig, BaseContext, BaseUserConfig, SliceDescriptor, TemplateData, UserPackageJson } from "./types.js";
 import { dateFormat, logger, parseRepoUrl, template } from "@zotero-plugin/utils";
 import { loadConfig as c12 } from "c12";
-import { kebabCase } from "es-toolkit";
+import { isPlainObject, kebabCase } from "es-toolkit";
 import { readJsonSync } from "fs-extra/esm";
 import { createHooks } from "hookable";
 
@@ -72,11 +72,15 @@ export async function loadConfig<
     slice.resolve?.(config, templateData, pkgUser);
   }
 
+  // Convention: every top-level module config keeps its hook registry under
+  // `hooks`, e.g. `build.hooks`, `devServer.hooks`, `test.hooks` and
+  // `release.hooks`. Discovering them by shape lets slices stay free of any
+  // hooks bookkeeping.
   const hooks = createHooks<any>();
-  for (const slice of options.slices ?? []) {
-    for (const registry of slice.hooksOf?.(config) ?? []) {
-      hooks.addHooks(registry);
-    }
+  for (const value of Object.values(config)) {
+    if (!isPlainObject(value) || !isPlainObject(value.hooks))
+      continue;
+    hooks.addHooks(value.hooks);
   }
 
   return {

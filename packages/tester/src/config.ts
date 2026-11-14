@@ -37,5 +37,4 @@ export const testSlice: SliceDescriptor = {
     config.test.devtools ??= config.devServer?.devtools ?? true;
     config.test.startArgs ??= config.devServer?.startArgs ?? [];
   },
-  hooksOf: config => [config.test?.hooks ?? {}],
 };

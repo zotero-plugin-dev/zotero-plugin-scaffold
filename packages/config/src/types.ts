@@ -153,8 +153,12 @@ export interface TemplateData {
  * A command slice descriptor injected into the configuration engine.
  *
  * The engine itself is agnostic of command-specific configuration; each
- * command package contributes its own default patching, template
- * interpolation and hooks registry through this descriptor.
+ * command package contributes its own default patching and template
+ * interpolation through this descriptor.
+ *
+ * Hooks are discovered by convention instead of being declared here: after all
+ * slices are resolved, the engine scans top-level config objects and registers
+ * their `hooks` field, e.g. `build.hooks` or `devServer.hooks`.
  */
 export interface SliceDescriptor {
   /**
@@ -164,11 +168,6 @@ export interface SliceDescriptor {
    */
 
   resolve?: (config: any, templateData: TemplateData, pkgUser: UserPackageJson) => void;
-  /**
-   * Extract the hooks registry of this slice from the configuration.
-   */
-
-  hooksOf?: (config: any) => Record<string, unknown>[];
 }
 
 /**

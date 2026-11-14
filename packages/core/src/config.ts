@@ -64,7 +64,6 @@ export const buildSlice: SliceDescriptor = {
     config.build.prefs.prefix ||= pkgUser.config?.prefsPrefix || `extensions.${config.namespace}`;
     config.build.define = mapValues(config.build.define, v => template(v, templateData));
   },
-  hooksOf: config => [config.build?.hooks ?? {}],
 };
 
 /**
@@ -88,5 +87,4 @@ export const devServerSlice: SliceDescriptor = {
 
     config.devServer = toMerged(devServerDefaults, userConfig ?? {});
   },
-  hooksOf: config => [config.devServer?.hooks ?? {}],
 };
