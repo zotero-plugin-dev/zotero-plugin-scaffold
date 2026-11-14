@@ -1,0 +1,66 @@
+{
+  "name": "@zotero-plugin/core",
+  "type": "module",
+  "version": "0.9.4",
+  "description": "Build and dev-server commands for zotero-plugin-scaffold.",
+  "author": "northword",
+  "license": "AGPL-3.0-or-later",
+  "homepage": "https://scaffold.zotero-plugin.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "keywords": [
+    "zotero",
+    "plugin",
+    "scaffold",
+    "build"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22.8.0"
+  },
+  "scripts": {
+    "build:tsc": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fluent/syntax": "catalog:",
+    "@zotero-plugin/config": "workspace:*",
+    "@zotero-plugin/utils": "workspace:*",
+    "@zotero-plugin/zotero-runner": "workspace:*",
+    "adm-zip": "catalog:",
+    "es-toolkit": "catalog:",
+    "esbuild": "catalog:",
+    "fs-extra": "catalog:",
+    "tinyglobby": "catalog:"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "tsdown": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev"
+  },
+  "directories": {
+    "lib": "dist"
+  }
+}

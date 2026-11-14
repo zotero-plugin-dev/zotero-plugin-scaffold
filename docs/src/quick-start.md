@@ -65,7 +65,7 @@ export default defineConfig({
 });
 ```
 
-For a full list of configuration options, refer to the [type definitions](https://github.com/northword/zotero-plugin-scaffold/blob/main/src/types/config.ts).
+For a full list of configuration options, refer to the [type definitions](https://github.com/zotero-plugin-dev/zotero-plugin-scaffold/blob/main/packages/scaffold/src/types.ts).
 
 ### 03. Create an Environment File
 
@@ -99,7 +99,7 @@ Add the following scripts for development:
 ```json
 {
   "scripts": {
-    "start": "zotero-plugin serve",
+    "start": "zotero-plugin dev",
     "build": "zotero-plugin build",
     "release": "zotero-plugin release"
   }
@@ -123,10 +123,10 @@ pnpm run build
 You can also use `zotero-plugin-scaffold` programmatically in your Node.js scripts:
 
 ```ts
-import { Build, Config } from "zotero-plugin-scaffold";
+import { Builder, loadConfig } from "zotero-plugin-scaffold";
 
-const config = await Config.loadConfig();
+const config = await loadConfig();
 
-const builder = new Build(config);
+const builder = new Builder(config);
 await builder.run();
 ```

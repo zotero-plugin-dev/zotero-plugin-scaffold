@@ -15,7 +15,9 @@ jobs:
     uses: zotero-plugin-dev/workflows/.github/workflows/release-npm.yml@main
     with:
       build: pnpm build
+      publish: pnpm -r publish --no-git-checks --access public
       cr: true
+      cr-publish: pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/*'
     permissions:
       contents: write
       id-token: write

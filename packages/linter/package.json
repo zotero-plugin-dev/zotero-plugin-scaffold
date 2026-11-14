@@ -1,0 +1,18 @@
+{
+  "name": "@zotero-plugin/linter",
+  "type": "module",
+  "version": "0.9.4",
+  "private": true,
+  "description": "Lint command for zotero-plugin-scaffold (not implemented yet).",
+  "author": "northword",
+  "license": "AGPL-3.0-or-later",
+  "homepage": "https://scaffold.zotero-plugin.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git",
+    "directory": "packages/linter"
+  },
+  "engines": {
+    "node": ">=22.8.0"
+  }
+}

@@ -1,0 +1,6 @@
+export { ZOTERO_LOG_DIR } from "./constant.js";
+export type { Prefs } from "./prefs-manager.js";
+export { PrefsManager } from "./prefs-manager.js";
+export type { ZoteroRunnerOptions } from "./zotero-runner.js";
+export { cleanupOldLogs, killZotero, ZoteroRunner } from "./zotero-runner.js";
+export { findFreeTcpPort, RemoteFirefox } from "./zotero/remote-zotero.js";
