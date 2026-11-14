@@ -1,7 +1,6 @@
 import process from "node:process";
+import { ExitSignals, logger } from "@zotero-plugin/utils";
 import tinyUpdateNotifier from "tiny-update-notifier";
-import { logger } from "./logger.js";
-import { ExitSignals } from "./process.js";
 
 export function updateNotifier(name: string, version: string): void {
   tinyUpdateNotifier({

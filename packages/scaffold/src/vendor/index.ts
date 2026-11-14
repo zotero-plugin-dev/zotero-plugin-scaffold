@@ -1,4 +1,4 @@
-export { replace, replaceInFile } from "../core/builder/replace.js";
+export { replace, replaceInFile } from "@zotero-plugin/core";
 
 /**
  * Export some dependencies of scaffold from this directory to make it easier for the user to invoke

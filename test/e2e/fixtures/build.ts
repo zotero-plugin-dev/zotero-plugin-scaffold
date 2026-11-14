@@ -1,4 +1,4 @@
-import { Build, Config } from "zotero-plugin-scaffold";
+import { Builder, Config } from "zotero-plugin-scaffold";
 
 async function main() {
   const config = await Config.loadConfig({
@@ -44,7 +44,7 @@ async function main() {
     // logLevel: "trace",
   });
 
-  const build = new Build(config);
+  const build = new Builder(config);
   await build.run();
 }
 

@@ -1,13 +1,14 @@
-import type { VersionBumpRelease } from "bumpp";
-import type { Base } from "./core/base.js";
-import type { Context, OverrideConfig } from "./types/index.js";
+import type { Base, OverrideConfig } from "@zotero-plugin/config";
+import type { VersionBumpRelease } from "@zotero-plugin/releaser";
+import type { Context, UserConfig } from "./types.js";
+
 import process from "node:process";
+import { checkGitIgnore, logger } from "@zotero-plugin/utils";
 import { Command } from "commander";
 import { name, version } from "../package.json" with { type: "json" };
-import { Build, Config, Release, Serve, Test } from "./index.js";
-import { checkGitIgnore } from "./utils/gitignore.js";
-import { logger } from "./utils/logger.js";
-import { updateNotifier } from "./utils/updater.js";
+import { loadConfig } from "./config.js";
+import { Builder, DevServer, Releaser, Tester } from "./index.js";
+import { updateNotifier } from "./updater.js";
 
 async function main() {
   updateNotifier(name, version);
@@ -30,14 +31,14 @@ async function main() {
     .option("--dist <dir>", "The relative path for the new output directory (default: build)")
     .action(async (options) => {
       process.env.NODE_ENV = options.dev ? "development" : "production";
-      await runCommand(Build, {
+      await runCommand(Builder, {
         dist: options.dist,
       });
     });
 
   cli
-    .command("serve")
-    .alias("dev")
+    .command("dev")
+    .alias("serve")
     .description("Start development server")
     // .option(
     //   "--skip-build",
@@ -48,7 +49,7 @@ async function main() {
     //   "skip building website before deploy it (default: false)",
     // )
     .action(async (_options) => {
-      await runCommand(Serve, {});
+      await runCommand(DevServer, {});
     });
 
   cli.command("test")
@@ -58,7 +59,7 @@ async function main() {
     .option("--no-watch", "Exit the test suite after all tests have run")
     .action(async (options) => {
       process.env.NODE_ENV = "test";
-      await runCommand(Test, {
+      await runCommand(Tester, {
         test: {
           abortOnFail: options.abortOnFail,
           watch: !options.exitOnFinish && options.watch,
@@ -82,7 +83,7 @@ async function main() {
     .option("-y, --yes", "Skip confirmation")
     .action(async (version, options) => {
       process.env.NODE_ENV = "production";
-      await runCommand(Release, {
+      await runCommand(Releaser, {
         release: {
           bumpp: {
             release: version as VersionBumpRelease,
@@ -105,9 +106,9 @@ type Constructor<T> = new (ctx: Context) => T;
 
 export async function runCommand<T extends Base>(
   CommandClass: Constructor<T>,
-  config: OverrideConfig,
+  config: OverrideConfig<UserConfig>,
 ): Promise<void> {
-  const ctx = await Config.loadConfig(config);
+  const ctx = await loadConfig(config);
   const instance = new CommandClass(ctx);
   process.on("SIGINT", instance.exit.bind(instance));
   await instance.run();

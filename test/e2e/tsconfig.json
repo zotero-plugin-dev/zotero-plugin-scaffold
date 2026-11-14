@@ -1,8 +1,12 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["vitest/globals"]
+    "types": [
+      "vitest/globals"
+    ]
   },
-  "include": ["fixtures", "tests"],
-  "exclude": ["dist"]
+  "include": [
+    "fixtures",
+    "tests"
+  ]
 }

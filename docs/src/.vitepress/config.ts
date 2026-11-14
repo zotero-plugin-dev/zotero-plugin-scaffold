@@ -23,7 +23,7 @@ export default defineConfig({
       {
         text: "Modules",
         items: [
-          { text: "Serve", link: "/serve" },
+          { text: "Dev Server", link: "/serve" },
           { text: "Build", link: "/build" },
           { text: "Test", link: "/test" },
           { text: "Release", link: "/release" },
@@ -50,8 +50,8 @@ export default defineConfig({
     // The twoslash renderer calls `codeToHast` to render the popup JSDoc (e.g. `waitForPlugin`
     // in test.md) without loading the language first, and VitePress highlights all fences of a
     // page concurrently, so an unloaded language would intermittently fail the build with
-    // "Language not found". See JSDoc fences in `src/types/config.ts` (`js`, `json`) and
-    // `src/core/releaser/changelog.ts` (`bash`). Other languages used in docs are loaded lazily
+    // "Language not found". See JSDoc fences in `packages/core/src/types.ts` (`js`, `json`) and
+    // `packages/releaser/src/changelog.ts` (`bash`). Other languages used in docs are loaded lazily
     // by the normal highlight path and need no preloading.
     languages: ["ts", "js", "json", "bash"],
     codeTransformers: [

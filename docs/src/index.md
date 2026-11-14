@@ -12,7 +12,7 @@ hero:
       link: /quick-start
 
 features:
-  - title: "Dev Serve"
+  - title: "Dev Server"
     details: "Automatically reload your plugin whenever the source code changes."
     link: /serve
   - title: "Build Plugin"

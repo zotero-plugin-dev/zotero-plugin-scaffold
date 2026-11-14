@@ -1,4 +1,4 @@
-# Serve
+# Dev Server
 
 This module starts a development server, precompiles the plugin, and installs it after launching Zotero.
 
@@ -28,25 +28,25 @@ ZOTERO_PLUGIN_DATA_DIR=/path/to/data
 
 ## Launch Arguments and Developer Tools
 
-Customize launch arguments and enable developer tools using the `serve.tools` and `serve.startArgs` options:
+Customize launch arguments and enable developer tools using the `devServer.devtools` and `devServer.startArgs` options:
 
 ```ts twoslash
 import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
 export default defineConfig({
-  server: {
+  devServer: {
     devtools: true,
     startArgs: [],
   },
 });
 ```
 
-- `--purgecaches` and `--no-remote` are always included in the Zotero startup arguments, regardless of the `server.startArgs` configuration.
+- `--purgecaches` and `--no-remote` are always included in the Zotero startup arguments, regardless of the `devServer.startArgs` configuration.
 - If `devtools` is set to `true`, the `--jsdebugger` argument is appended, enabling the Firefox developer tools.
 
 ## Debug Output
 
-When `server.debugOutputFile` is enabled (default), Scaffold appends `-ZoteroDebugText` to the Zotero startup arguments, so `Zotero.debug()` / `dump()` output goes to stdout. The process stdout/stderr are captured and written to log files under `.scaffold/logs/`, numbered by the launch time:
+When `devServer.debugOutputFile` is enabled (default), Scaffold appends `-ZoteroDebugText` to the Zotero startup arguments, so `Zotero.debug()` / `dump()` output goes to stdout. The process stdout/stderr are captured and written to log files under `.scaffold/logs/`, numbered by the launch time:
 
 - stdout → `.scaffold/logs/zotero-<starttime>.log`
 - stderr → `.scaffold/logs/zotero-<starttime>-stderr.log`
@@ -57,15 +57,15 @@ On startup the exact file paths are printed to the serve console (so you can `ta
 import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
 export default defineConfig({
-  server: {
+  devServer: {
     debugOutputFile: true,
     debugOutputWindow: false,
   },
 });
 ```
 
-- `server.debugOutputWindow` only controls whether the Zotero Debug Output window is opened (appends `-ZoteroDebug`). Debug output recording is independent of it.
-- `server.debugOutputFile: false` disables file logging; stdout/stderr are still consumed (to prevent the pipe buffer from filling up and blocking Zotero) but discarded.
+- `devServer.debugOutputWindow` only controls whether the Zotero Debug Output window is opened (appends `-ZoteroDebug`). Debug output recording is independent of it.
+- `devServer.debugOutputFile: false` disables file logging; stdout/stderr are still consumed (to prevent the pipe buffer from filling up and blocking Zotero) but discarded.
 
 ## Hot Reloading and Proxy File
 
@@ -75,13 +75,13 @@ Zotero 7 and later use an updated Firefox architecture, which supports more mode
 
 By default, Scaffold employs this new approach for plugin installation and reloading, similar to the method used by Firefox's `web-ext` tool.
 
-For Zotero 6 or earlier, set `server.asProxy` to `true` to enable the Proxy File approach.
+For Zotero 6 or earlier, set `devServer.asProxy` to `true` to enable the Proxy File approach.
 
 ```ts twoslash
 import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
 export default defineConfig({
-  server: {
+  devServer: {
     asProxy: true
   },
 });
