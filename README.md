@@ -14,6 +14,23 @@ This project is under active development, and some APIs may change. However, it 
 
 For best practices regarding this package, please refer to [zotero-plugin-template](https://github.com/windingwind/zotero-plugin-template).
 
+## Packages
+
+This repository is a pnpm workspace. The published packages are:
+
+| Package                                             | Description                             |
+| --------------------------------------------------- | --------------------------------------- |
+| [`zotero-plugin-scaffold`](./packages/scaffold)     | Composition root: CLI and public facade |
+| [`@zotero-plugin/utils`](./packages/utils)          | Shared utilities                        |
+| [`@zotero-plugin/config`](./packages/config)        | Configuration contract and loader       |
+| [`@zotero-plugin/zotero-runner`](./packages/runner) | Zotero host runner                      |
+| [`@zotero-plugin/core`](./packages/core)            | Build and dev-server commands           |
+| [`@zotero-plugin/tester`](./packages/tester)        | Test command                            |
+| [`@zotero-plugin/releaser`](./packages/releaser)    | Release command                         |
+
+`zotero-plugin-scaffold` re-exports the public API, so downstream projects
+that depend on it keep working unchanged.
+
 ## Documentation
 
 [Read the Docs to Learn More](https://zotero-plugin-dev.github.io/zotero-plugin-scaffold).
@@ -29,12 +46,12 @@ cd zotero-plugin-scaffold/
 corepack enable
 pnpm install
 
-# Development Mode
-pnpm run dev
+# Build all packages
+pnpm run build
 
 # link local scaffold to your plugin
 cd your-plugin-work-dir/
-pnpm link ../zotero-plugin-scaffold/
+pnpm link ../zotero-plugin-scaffold/packages/scaffold/
 cd zotero-plugin-scaffold/
 ```
 
@@ -45,6 +62,9 @@ When you're done modifying, make sure that you can pass the build and that the c
 ```bash
 # Build
 pnpm run build
+
+# Test
+pnpm test
 
 # ES Lint
 pnpm run lint:fix
