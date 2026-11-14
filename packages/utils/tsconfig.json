@@ -1,4 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src", "types", "../../typings/env.d.ts"]
+  "compilerOptions": {
+    "rootDir": "src"
+  },
+  "include": [
+    "src",
+    "types",
+    "../../typings/env.d.ts"
+  ]
 }
