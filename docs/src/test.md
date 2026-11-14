@@ -82,25 +82,6 @@ export default defineConfig({
 });
 ```
 
-### Launch Options
-
-The test command has its own Zotero launch options, independent from
-`devServer`:
-
-- `test.devtools` defaults to `true`;
-- `test.startArgs` defaults to `[]`.
-
-```ts twoslash
-import { defineConfig } from "zotero-plugin-scaffold";
-// ---cut---
-export default defineConfig({
-  test: {
-    devtools: true,
-    startArgs: [],
-  },
-});
-```
-
 ### Source of Tests
 
 The `test.entries` option allows you to configure the source directories for test files.

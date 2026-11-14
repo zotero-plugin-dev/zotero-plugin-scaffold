@@ -5,7 +5,7 @@
   "description": "Shared utilities for zotero-plugin-scaffold.",
   "author": "northword",
   "license": "AGPL-3.0-or-later",
-  "homepage": "https://zotero-plugin-dev.github.io/zotero-plugin-scaffold",
+  "homepage": "https://scaffold.zotero-plugin.dev",
   "repository": {
     "type": "git",
     "url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git",
