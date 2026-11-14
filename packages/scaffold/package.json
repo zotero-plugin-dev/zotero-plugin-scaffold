@@ -63,7 +63,6 @@
     "@zotero-plugin/releaser": "workspace:*",
     "@zotero-plugin/tester": "workspace:*",
     "@zotero-plugin/utils": "workspace:*",
-    "@zotero-plugin/zotero-runner": "workspace:*",
     "commander": "catalog:",
     "es-toolkit": "catalog:",
     "fs-extra": "catalog:",

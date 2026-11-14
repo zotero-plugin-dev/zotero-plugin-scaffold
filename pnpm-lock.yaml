@@ -497,9 +497,6 @@ importers:
       '@zotero-plugin/utils':
         specifier: workspace:*
         version: link:../utils
-      '@zotero-plugin/zotero-runner':
-        specifier: workspace:*
-        version: link:../runner
       commander:
         specifier: 'catalog:'
         version: 15.0.0
