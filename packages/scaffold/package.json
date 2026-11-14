@@ -36,6 +36,10 @@
     "./vendor": {
       "types": "./dist/vendor.d.ts",
       "import": "./dist/vendor.js"
+    },
+    "./vitest": {
+      "types": "./dist/vitest.d.ts",
+      "import": "./dist/vitest.js"
     }
   },
   "main": "./dist/index.js",

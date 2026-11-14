@@ -28,6 +28,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./vitest": {
+      "types": "./dist/pool/index.d.ts",
+      "import": "./dist/pool/index.js"
     }
   },
   "main": "./dist/index.js",
@@ -42,11 +46,17 @@
   "scripts": {
     "build:tsc": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "vitest": "^5.1.0"
+  },
   "dependencies": {
     "@zotero-plugin/config": "workspace:*",
     "@zotero-plugin/core": "workspace:*",
     "@zotero-plugin/utils": "workspace:*",
     "@zotero-plugin/zotero-runner": "workspace:*",
+    "birpc": "catalog:",
+    "es-toolkit": "catalog:",
+    "flatted": "catalog:",
     "fs-extra": "catalog:",
     "rolldown": "catalog:",
     "std-env": "catalog:",
