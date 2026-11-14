@@ -1,18 +1,37 @@
 name: Release
 
-# Frozen during the monorepo migration: no tag or pull request may publish a
-# partially migrated release. Re-enable the `v**` tag trigger once the
-# migration has landed on main and the reusable workflow
-# (zotero-plugin-dev/workflows) supports publishing all workspace packages.
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - v**
+  pull_request:
+    branches:
+      - main
 
 jobs:
   release:
     uses: zotero-plugin-dev/workflows/.github/workflows/release-npm.yml@main
     with:
       build: pnpm build
+
+      # The root package is private, so the default `pnpm publish` would fail
+      # with EPRIVATE. `-r` publishes every non-private workspace package and
+      # skips versions that are already on the registry, matching the single
+      # lockstep tag created by `bumpp -r`.
+      publish: pnpm -r publish --no-git-checks --access public
+
+      # Continuous releases: list the package globs, otherwise pkg-pr-new only
+      # targets the private root package and finds nothing.
       cr: true
+      cr-publish: pnpx pkg-pr-new publish --compact --no-template --pnpm './packages/*'
+
+    # Optional. Without it, publishing uses npm trusted publishing (OIDC),
+    # which needs a trusted publisher configured for every package on npmjs.com.
+    # secrets:
+    #   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
     permissions:
       contents: write
       id-token: write
