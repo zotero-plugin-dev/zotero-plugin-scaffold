@@ -5,8 +5,10 @@ export { LOG_LEVEL, Logger, logger } from "./logger.js";
 export { getMimeTypeByFileName } from "./mime.js";
 export { is32BitNumber } from "./number.js";
 export { ExitSignals, isRunning, whenExit } from "./process.js";
-export { dateFormat, parseRepoUrl, template, toArray } from "./string.js";
+export { dateFormat, normalizePath, parseRepoUrl, template, toArray } from "./string.js";
 export type {
+  Arrayable,
+  Awaitable,
   RecursiveNonNullable,
   RecursivePartial,
   RecursivePickOptional,

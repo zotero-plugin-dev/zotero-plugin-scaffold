@@ -43,13 +43,15 @@
     "build:tsc": "tsc --noEmit"
   },
   "dependencies": {
-    "@swc/core": "catalog:",
     "@zotero-plugin/utils": "workspace:*",
     "es-toolkit": "catalog:",
+    "esrap": "catalog:",
     "fs-extra": "catalog:",
+    "rolldown": "catalog:",
     "std-env": "catalog:"
   },
   "devDependencies": {
+    "@oxc-project/types": "catalog:dev",
     "@types/fs-extra": "catalog:dev",
     "@types/node": "catalog:dev",
     "tsdown": "catalog:dev",

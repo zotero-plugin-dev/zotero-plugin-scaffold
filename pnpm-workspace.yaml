@@ -12,13 +12,11 @@ overrides:
   vite: ^8.3.5
 
 allowBuilds:
-  "@swc/core": false
   esbuild: false
 
 catalog:
   "@fluent/syntax": ^0.19.0
   "@octokit/rest": ^22.0.1
-  "@swc/core": ^1.16.22
   adm-zip: ^0.6.1
   bumpp: ^12.3.0
   c12: 4.0.0-rc.4
@@ -27,8 +25,10 @@ catalog:
   commander: ^15.0.0
   es-toolkit: ^1.53.2
   esbuild: ^0.28.2
+  esrap: ^2.2.3
   fs-extra: ^11.4.1
   hookable: ^6.1.2
+  rolldown: 1.0.0-rc.3
   std-env: ^4.3.0
   tiny-update-notifier: ^2.0.2
   tinyglobby: ^0.2.17
@@ -38,6 +38,7 @@ catalogs:
   dev:
     "@antfu/eslint-config": ^10.0.0
     "@commander-js/extra-typings": ^15.0.0
+    "@oxc-project/types": ^0.112.0
     "@shikijs/vitepress-twoslash": ^4.6.0
     "@types/fs-extra": ^11.0.4
     "@types/node": ^26.6.6

@@ -1,6 +1,60 @@
 import type { BaseContext, Manifest, UpdateJSON } from "@zotero-plugin/config";
-import type { RecursivePartial } from "@zotero-plugin/utils";
+import type { Arrayable, RecursivePartial } from "@zotero-plugin/utils";
 import type { BuildOptions } from "esbuild";
+import type { InputOptions, RolldownPluginOption, TransformOptions } from "rolldown";
+import type { MinifyOptions } from "rolldown/experimental";
+
+export interface BundleItem {
+  /**
+   *
+   * @example
+   *
+   * ```ts
+   * // Single entry
+   * entries: "src/index.ts"                            // -> outDir/index.js
+   *
+   * // Multiple entries
+   * entries: [
+   *   "src/index.ts",                                 // -> outDir/index.js
+   *   "src/another-entry.ts"                          // -> outDir/another-entry.js
+   * ]
+   *
+   * // Named multiple entries
+   * entries: {
+   *   bootstrap: "src/bootstrap.ts",                  // -> outDir/bootstrap.js
+   *   content: "src/content.ts",                      // -> outDir/content.js
+   *   'components/Foo': 'src/components/Foo.js',      // -> outDir/components/Foo.js
+   * }
+   * ```
+   *
+   * The outDir is based on {@linkcode BaseConfig.dist | dist/build/addon }.
+   *
+   * @see https://rolldown.rs/reference/InputOptions.input
+   */
+  input: InputOptions["input"];
+
+  /**
+   * Replace global variables or [property accessors](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Property_accessors) with the provided values.
+   *
+   * See Oxc's [`define` option](https://oxc.rs/docs/guide/usage/transformer/global-variable-replacement.html#define) for more details.
+   *
+   */
+  define?: TransformOptions["define"];
+
+  /**
+   * Minify the output using rolldown.
+   *
+   * Defaults to `false` if not provided.
+   */
+  minify?: boolean | "dce-only" | MinifyOptions;
+
+  /**
+   * Options passed to rolldown.
+   *
+   * See [rolldown config options](https://rolldown.rs/reference/config-options) for more details.
+   */
+  rolldown?: Omit<InputOptions, "input"> & { plugins?: RolldownPluginOption[] };
+}
 
 export interface BuildConfig {
   /**
@@ -78,15 +132,41 @@ export interface BuildConfig {
     dts: false | string;
   };
   /**
-   * Configurations of esbuild.
+   * Configurations for code bundler (rolldown).
    *
    * Paths should be relative to the root directory of the project.
-   * And if `outfile` and `outdir` not start with `dist`,
+   * And if `output.file` and `output.dir` not start with `dist`,
    * `dist/` will be automatically added as a prefix.
    *
+   * 代码捆绑器（rolldown）的配置。
+   *
+   * 路径应相对于项目根目录。
+   * 其中"output.file"和"output.dir"若不以 `dist` 开头，
+   * 则会自动添加 `dist/` 前缀。
+   *
    * @default []
+   *
+   * @deprecated Use `build.bundle` instead.
+   *
    */
   esbuildOptions: BuildOptions[];
+  /**
+   * Configurations for code bundler (rolldown).
+   *
+   * Paths should be relative to the root directory of the project.
+   * And if `output.file` and `output.dir` not start with `dist`,
+   * `dist/` will be automatically added as a prefix.
+   *
+   * 代码捆绑器（rolldown）的配置。
+   *
+   * 路径应相对于项目根目录。
+   * 其中"output.file"和"output.dir"若不以 `dist` 开头，
+   * 则会自动添加 `dist/` 前缀。
+   *
+   * @default []
+   *
+   */
+  bundle: Arrayable<BundleItem>;
   /**
    * Make manifest.json.
    */

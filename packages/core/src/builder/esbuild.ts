@@ -2,7 +2,6 @@ import type { BuildOptions, BuildResult } from "esbuild";
 import type { BuildConfig } from "../types.js";
 import { resolve } from "node:path";
 import { logger } from "@zotero-plugin/utils";
-import { build as buildAsync } from "esbuild";
 
 export function resolveConfig(dist: string, esbuildOptions: BuildConfig["esbuildOptions"]): BuildOptions[] {
   const distAbsolute = resolve(dist);
@@ -26,6 +25,8 @@ export default async function esbuild(dist: string, esbuildOptions: BuildConfig[
     return;
 
   const options = resolveConfig(dist, esbuildOptions);
+
+  const { build: buildAsync } = await import("esbuild");
 
   return await Promise.all(
     options.map(esbuildOption =>
