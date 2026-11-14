@@ -74,7 +74,10 @@ export interface TestConfig {
   /**
    * Open devtool on Zotero start.
    *
-   * @default true
+   * Unlike `devServer.devtools`, this defaults to `false` so that test runs
+   * stay headless-friendly; enable it explicitly when debugging tests.
+   *
+   * @default false
    */
   devtools: boolean;
 

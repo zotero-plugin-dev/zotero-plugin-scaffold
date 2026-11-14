@@ -11,7 +11,7 @@ export const testDefaults: TestConfig = {
   startupDelay: 1000,
   waitForPlugin: "() => true",
   watch: true,
-  devtools: true,
+  devtools: false,
   startArgs: [],
   hooks: {},
 };
