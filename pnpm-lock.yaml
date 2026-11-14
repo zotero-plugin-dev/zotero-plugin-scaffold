@@ -170,15 +170,9 @@ catalogs:
     '@octokit/rest':
       specifier: ^22.0.1
       version: 22.0.1
-    '@shikijs/vitepress-twoslash':
-      specifier: ^4.6.0
-      version: 4.6.0
     '@swc/core':
       specifier: ^1.16.22
       version: 1.16.22
-    '@typescript/native':
-      specifier: npm:typescript@^7.0.2
-      version: 7.0.2
     adm-zip:
       specifier: ^0.6.1
       version: 0.6.1
@@ -209,15 +203,6 @@ catalogs:
     hookable:
       specifier: ^6.1.2
       version: 6.1.2
-    husky:
-      specifier: ^9.1.7
-      version: 9.1.7
-    lint-staged:
-      specifier: ^17.6.0
-      version: 17.6.0
-    oxc-minify:
-      specifier: ^0.156.0
-      version: 0.156.0
     std-env:
       specifier: ^4.3.0
       version: 4.3.0
@@ -227,9 +212,6 @@ catalogs:
     tinyglobby:
       specifier: ^0.2.17
       version: 0.2.17
-    vitepress:
-      specifier: 2.0.0-alpha.21
-      version: 2.0.0-alpha.21
     xvfb-ts:
       specifier: ^1.1.1
       version: 1.1.1
@@ -240,18 +222,33 @@ catalogs:
     '@commander-js/extra-typings':
       specifier: ^15.0.0
       version: 15.0.0
+    '@shikijs/vitepress-twoslash':
+      specifier: ^4.6.0
+      version: 4.6.0
     '@types/fs-extra':
       specifier: ^11.0.4
       version: 11.0.4
     '@types/node':
       specifier: ^26.6.6
       version: 26.6.6
+    '@typescript/native':
+      specifier: npm:typescript@^7.0.2
+      version: 7.0.2
     eslint:
       specifier: ^10.14.0
       version: 10.14.0
     eslint-plugin-format:
       specifier: ^2.0.1
       version: 2.0.1
+    husky:
+      specifier: ^9.1.7
+      version: 9.1.7
+    lint-staged:
+      specifier: ^17.6.0
+      version: 17.6.0
+    oxc-minify:
+      specifier: ^0.156.0
+      version: 0.156.0
     tsdown:
       specifier: ^0.23.7
       version: 0.23.7
@@ -264,6 +261,9 @@ catalogs:
     unplugin-raw:
       specifier: ^0.8.0
       version: 0.8.0
+    vitepress:
+      specifier: 2.0.0-alpha.21
+      version: 2.0.0-alpha.21
     vitest:
       specifier: ^5.1.0
       version: 5.1.0
@@ -282,7 +282,7 @@ importers:
         specifier: catalog:dev
         version: 26.6.6
       '@typescript/native':
-        specifier: 'catalog:'
+        specifier: catalog:dev
         version: typescript@7.0.2
       bumpp:
         specifier: 'catalog:'
@@ -294,10 +294,10 @@ importers:
         specifier: catalog:dev
         version: 2.0.1(eslint@10.14.0(jiti@2.7.0))
       husky:
-        specifier: 'catalog:'
+        specifier: catalog:dev
         version: 9.1.7
       lint-staged:
-        specifier: 'catalog:'
+        specifier: catalog:dev
         version: 17.6.0
       tsdown:
         specifier: catalog:dev
@@ -312,16 +312,16 @@ importers:
   docs:
     devDependencies:
       '@shikijs/vitepress-twoslash':
-        specifier: 'catalog:'
+        specifier: catalog:dev
         version: 4.6.0(typescript@6.0.3)
       oxc-minify:
-        specifier: 'catalog:'
+        specifier: catalog:dev
         version: 0.156.0
       typescript:
         specifier: catalog:dev
         version: 6.0.3
       vitepress:
-        specifier: 'catalog:'
+        specifier: catalog:dev
         version: 2.0.0-alpha.21(@types/node@26.6.6)(change-case@5.4.4)(esbuild@0.28.2)(jiti@2.7.0)(postcss@8.5.32)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.9.1)
       zotero-plugin-scaffold:
         specifier: workspace:^

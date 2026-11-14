@@ -35,12 +35,12 @@
   "devDependencies": {
     "@antfu/eslint-config": "catalog:dev",
     "@types/node": "catalog:dev",
-    "@typescript/native": "catalog:",
+    "@typescript/native": "catalog:dev",
     "bumpp": "catalog:",
     "eslint": "catalog:dev",
     "eslint-plugin-format": "catalog:dev",
-    "husky": "catalog:",
-    "lint-staged": "catalog:",
+    "husky": "catalog:dev",
+    "lint-staged": "catalog:dev",
     "tsdown": "catalog:dev",
     "typescript": "catalog:dev",
     "vitest": "catalog:dev"

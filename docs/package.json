@@ -10,10 +10,10 @@
     "preview": "vitepress preview src"
   },
   "devDependencies": {
-    "@shikijs/vitepress-twoslash": "catalog:",
-    "oxc-minify": "catalog:",
+    "@shikijs/vitepress-twoslash": "catalog:dev",
+    "oxc-minify": "catalog:dev",
     "typescript": "catalog:dev",
-    "vitepress": "catalog:",
+    "vitepress": "catalog:dev",
     "zotero-plugin-scaffold": "workspace:^"
   }
 }
