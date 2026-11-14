@@ -2,8 +2,10 @@ import Module from "node:module";
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
+  entry: ["./src/index.ts"],
   workspace: {
     include: ["packages/*"],
+    exclude: ["**/linter/**"],
   },
   clean: true,
   platform: "node",

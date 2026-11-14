@@ -19,7 +19,7 @@
     "node": ">=22.8.0"
   },
   "scripts": {
-    "dev": "tsdown -W --watch",
+    "dev": "tsdown --watch",
     "build": "pnpm build:tsdown && pnpm build:tsc",
     "lint:check": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -29,7 +29,7 @@
     "update:deps": "pnpx taze minor -w -f -l -r",
     "test": "vitest",
     "prepare": "husky",
-    "build:tsdown": "tsdown -W",
+    "build:tsdown": "tsdown",
     "build:tsc": "pnpm -r build:tsc"
   },
   "devDependencies": {
