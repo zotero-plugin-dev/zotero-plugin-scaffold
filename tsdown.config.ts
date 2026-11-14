@@ -17,4 +17,7 @@ export default defineConfig({
   outputOptions: {
     chunkFileNames: "shared/[name]-[hash].mjs",
   },
+  report: {
+    summary: true,
+  },
 });
