@@ -1,4 +1,4 @@
-import type { SliceDescriptor } from "@zotero-plugin/config";
+import type { ConfigTransform } from "@zotero-plugin/config";
 import type { BuildConfig, DevServerConfig } from "./types.js";
 import { logger, template } from "@zotero-plugin/utils";
 import { mapValues, toMerged } from "es-toolkit";
@@ -55,15 +55,13 @@ export const devServerDefaults: DevServerConfig = {
 /**
  * Patches the build slice: preference prefix fallback and template interpolation.
  */
-export const buildSlice: SliceDescriptor = {
-  resolve(config, templateData, pkgUser) {
-    if (!config.build)
-      return;
+export const buildSlice: ConfigTransform = (config, templateData, pkgUser) => {
+  if (!config.build)
+    return;
 
-    // Patch to maintain compatibility for zotero-plugin-template users
-    config.build.prefs.prefix ||= pkgUser.config?.prefsPrefix || `extensions.${config.namespace}`;
-    config.build.define = mapValues(config.build.define, v => template(v, templateData));
-  },
+  // Patch to maintain compatibility for zotero-plugin-template users
+  config.build.prefs.prefix ||= pkgUser.config?.prefsPrefix || `extensions.${config.namespace}`;
+  config.build.define = mapValues(config.build.define, v => template(v, templateData));
 };
 
 /**
@@ -72,19 +70,17 @@ export const buildSlice: SliceDescriptor = {
  * The `server` key was renamed to `devServer`; the deprecated key is migrated
  * here with a warning, then defaults are applied.
  */
-export const devServerSlice: SliceDescriptor = {
-  resolve(config) {
-    let userConfig = config.devServer;
+export const devServerSlice: ConfigTransform = (config) => {
+  let userConfig = config.devServer;
 
-    if (config.server) {
-      logger.warn(
-        "Config `server` is deprecated and will be removed in 1.0, please rename it to `devServer`.",
-      );
-      // `devServer` wins when both keys are present.
-      userConfig = toMerged(config.server, userConfig ?? {});
-      delete config.server;
-    }
+  if (config.server) {
+    logger.warn(
+      "Config `server` is deprecated and will be removed in 1.0, please rename it to `devServer`.",
+    );
+    // `devServer` wins when both keys are present.
+    userConfig = toMerged(config.server, userConfig ?? {});
+    delete config.server;
+  }
 
-    config.devServer = toMerged(devServerDefaults, userConfig ?? {});
-  },
+  config.devServer = toMerged(devServerDefaults, userConfig ?? {});
 };

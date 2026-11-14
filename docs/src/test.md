@@ -84,8 +84,11 @@ export default defineConfig({
 
 ### Launch Options
 
-The Zotero launch options `devtools` and `startArgs` are inherited from the
-`devServer` configuration unless they are set in `test`:
+The test command has its own Zotero launch options, independent from
+`devServer`:
+
+- `test.devtools` defaults to `true`;
+- `test.startArgs` defaults to `[]`.
 
 ```ts twoslash
 import { defineConfig } from "zotero-plugin-scaffold";

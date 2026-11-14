@@ -1,12 +1,12 @@
-import type { OverrideConfig, SliceDescriptor } from "@zotero-plugin/config";
+import type { ConfigTransform, OverrideConfig } from "@zotero-plugin/config";
 import type { Context, UserConfig } from "./types.js";
 import { baseDefaults, loadConfig as loadConfigBase } from "@zotero-plugin/config";
 import { buildDefaults, buildSlice, devServerSlice } from "@zotero-plugin/core";
 import { releaseDefaults, releaseSlice } from "@zotero-plugin/releaser";
-import { testDefaults, testSlice } from "@zotero-plugin/tester";
+import { testDefaults } from "@zotero-plugin/tester";
 
 /**
- * Default values of all slices.
+ * Default values of all command configs.
  *
  * `devServer` is intentionally absent: its defaults are applied by
  * `devServerSlice` after the deprecated `server` key has been migrated.
@@ -19,12 +19,11 @@ export const defaults: UserConfig = {
 };
 
 /**
- * Slice descriptors injected into the configuration engine.
+ * Configuration transforms injected into the engine.
  */
-export const slices: SliceDescriptor[] = [
+export const transforms: ConfigTransform[] = [
   buildSlice,
   devServerSlice,
-  testSlice,
   releaseSlice,
 ];
 
@@ -45,6 +44,6 @@ export function loadConfig(overrides?: OverrideConfig<UserConfig>): Promise<Cont
   return loadConfigBase<UserConfig, Context>({
     defaults,
     overrides,
-    slices,
+    transforms,
   });
 }

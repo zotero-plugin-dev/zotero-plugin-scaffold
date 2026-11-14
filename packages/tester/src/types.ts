@@ -74,16 +74,12 @@ export interface TestConfig {
   /**
    * Open devtool on Zotero start.
    *
-   * Falls back to `devServer.devtools` when not set.
-   *
    * @default true
    */
   devtools: boolean;
 
   /**
    * Additional command line arguments when starting Zotero.
-   *
-   * Falls back to `devServer.startArgs` when not set.
    *
    * @default []
    */

@@ -1,5 +1,5 @@
 import type { RecursivePartial } from "@zotero-plugin/utils";
-import type { BaseConfig, BaseContext, BaseUserConfig, SliceDescriptor, TemplateData, UserPackageJson } from "./types.js";
+import type { BaseConfig, BaseContext, BaseUserConfig, ConfigTransform, TemplateData, UserPackageJson } from "./types.js";
 import { dateFormat, logger, parseRepoUrl, template } from "@zotero-plugin/utils";
 import { loadConfig as c12 } from "c12";
 import { isPlainObject, kebabCase } from "es-toolkit";
@@ -13,7 +13,7 @@ import { createHooks } from "hookable";
  * @param options Configuration engine options.
  * @param options.defaults Default configuration, usually a composition of the base defaults and all slice defaults.
  * @param options.overrides Highest priority configuration, e.g. CLI arguments.
- * @param options.slices Slice descriptors contributed by the command packages.
+ * @param options.transforms Configuration transforms contributed by the command packages.
  */
 export async function loadConfig<
   TUser extends BaseUserConfig = BaseUserConfig,
@@ -21,7 +21,7 @@ export async function loadConfig<
 >(options: {
   defaults: TUser;
   overrides?: RecursivePartial<TUser>;
-  slices?: SliceDescriptor[];
+  transforms?: ConfigTransform[];
 }): Promise<TCtx> {
   const result = await c12<TUser>({
     name: "zotero-plugin",
@@ -67,14 +67,14 @@ export async function loadConfig<
   config.updateURL = template(config.updateURL, templateData);
   config.xpiDownloadLink = template(config.xpiDownloadLink, templateData);
 
-  // Let each command slice patch its own configuration
-  for (const slice of options.slices ?? []) {
-    slice.resolve?.(config, templateData, pkgUser);
+  // Let each command package patch its own configuration
+  for (const transform of options.transforms ?? []) {
+    transform(config, templateData, pkgUser);
   }
 
   // Convention: every top-level module config keeps its hook registry under
   // `hooks`, e.g. `build.hooks`, `devServer.hooks`, `test.hooks` and
-  // `release.hooks`. Discovering them by shape lets slices stay free of any
+  // `release.hooks`. Discovering them by shape keeps transforms free of any
   // hooks bookkeeping.
   const hooks = createHooks<any>();
   for (const value of Object.values(config)) {

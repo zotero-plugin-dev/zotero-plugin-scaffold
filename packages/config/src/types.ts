@@ -150,25 +150,22 @@ export interface TemplateData {
 }
 
 /**
- * A command slice descriptor injected into the configuration engine.
+ * A transformation applied to the resolved configuration by a command package.
  *
  * The engine itself is agnostic of command-specific configuration; each
- * command package contributes its own default patching and template
- * interpolation through this descriptor.
+ * command package contributes one transform that patches its own defaults and
+ * interpolates its templates.
  *
  * Hooks are discovered by convention instead of being declared here: after all
- * slices are resolved, the engine scans top-level config objects and registers
- * their `hooks` field, e.g. `build.hooks` or `devServer.hooks`.
+ * transforms are applied, the engine scans top-level config objects and
+ * registers their `hooks` field, e.g. `build.hooks` or `devServer.hooks`.
  */
-export interface SliceDescriptor {
-  /**
-   * Patch slice-specific defaults and interpolate templates.
-   *
-   * Receives the full (loosely typed) configuration and the resolved template data.
-   */
+export type ConfigTransform = (
 
-  resolve?: (config: any, templateData: TemplateData, pkgUser: UserPackageJson) => void;
-}
+  config: any,
+  templateData: TemplateData,
+  pkgUser: UserPackageJson,
+) => void;
 
 /**
  * The resolved base context: base configuration, runtime objects, and the

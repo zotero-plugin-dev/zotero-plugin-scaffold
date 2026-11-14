@@ -7,10 +7,10 @@ export type {
   BaseConfig,
   BaseContext,
   BaseUserConfig,
+  ConfigTransform,
   LintConfig,
   Manifest,
   PluginIdentity,
-  SliceDescriptor,
   TemplateData,
   UpdateJSON,
   UserPackageJson,
@@ -66,7 +66,7 @@ export { defineConfig, loadConfig };
  */
 export { Releaser as Release } from "@zotero-plugin/releaser";
 // Test
-export { testDefaults, Tester, testSlice } from "@zotero-plugin/tester";
+export { testDefaults, Tester } from "@zotero-plugin/tester";
 export type { TestConfig, TestContext, TestHooks, TestUserConfig } from "@zotero-plugin/tester";
 /**
  * @deprecated Use {@link Tester} instead.

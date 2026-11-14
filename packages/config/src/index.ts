@@ -7,10 +7,10 @@ export type {
   BaseConfig,
   BaseContext,
   BaseUserConfig,
+  ConfigTransform,
   LintConfig,
   OverrideConfig,
   PluginIdentity,
-  SliceDescriptor,
   TemplateData,
   UserPackageJson,
 } from "./types.js";
