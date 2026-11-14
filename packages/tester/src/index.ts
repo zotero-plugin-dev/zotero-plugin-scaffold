@@ -203,10 +203,9 @@ export class Tester extends Base<TestContext> {
   }
 }
 
+export { testDefaults, testSlice } from "./config.js";
 export { TESTER_BASE_PATH, TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PLUGIN_REF, TESTER_PROFILE_DIR } from "./constant.js";
-export { testDefaults } from "./defaults.js";
 export { prepareHeadless } from "./headless.js";
 export { TestHttpReporter } from "./http-reporter.js";
-export { testSlice } from "./slices.js";
 export { TestBundler } from "./test-bundler.js";
 export type { TestConfig, TestContext, TestHooks, TestUserConfig } from "./types.js";

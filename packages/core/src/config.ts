@@ -1,7 +1,56 @@
 import type { SliceDescriptor } from "@zotero-plugin/config";
+import type { BuildConfig, DevServerConfig } from "./types.js";
 import { logger, template } from "@zotero-plugin/utils";
 import { mapValues, toMerged } from "es-toolkit";
-import { devServerDefaults } from "./defaults.js";
+
+export const buildDefaults: BuildConfig = {
+  assets: "addon/**/*.*",
+  define: {},
+  fluent: {
+    prefixFluentMessages: true,
+    prefixLocaleFiles: true,
+    ignore: [],
+    dts: "typings/i10n.d.ts",
+  },
+  prefs: {
+    prefix: "",
+    prefixPrefKeys: true,
+    dts: "typings/prefs.d.ts",
+  },
+  esbuildOptions: [],
+  makeManifest: {
+    enable: true,
+    template: {
+      manifest_version: 2,
+      name: "",
+      version: "",
+      applications: {
+        zotero: {
+          id: "",
+          update_url: "",
+        },
+      },
+    },
+  },
+  makeUpdateJson: {
+    updates: [],
+    hash: true,
+  },
+  hooks: {},
+};
+
+export const devServerDefaults: DevServerConfig = {
+  devtools: true,
+  startArgs: [],
+  debugOutputWindow: false,
+  debugOutputFile: true,
+  prefs: {},
+  asProxy: false,
+  prebuild: true,
+  // keepProfileChanges: true,
+  createProfileIfMissing: true,
+  hooks: {},
+};
 
 /**
  * Patches the build slice: preference prefix fallback and template interpolation.
