@@ -22,11 +22,11 @@ export type { OverrideConfig } from "@zotero-plugin/config";
 export {
   buildDefaults,
   Builder,
-  buildSlice,
+  buildTransform,
   DEFAULT_DIST_TEMP_DIR,
   DevServer,
   devServerDefaults,
-  devServerSlice,
+  devServerTransform,
   replace,
   replaceInFile,
 } from "@zotero-plugin/core";
@@ -50,7 +50,7 @@ export { Builder as Build } from "@zotero-plugin/core";
 export { DevServer as Serve } from "@zotero-plugin/core";
 
 // Release
-export { releaseDefaults, Releaser, releaseSlice } from "@zotero-plugin/releaser";
+export { releaseDefaults, Releaser, releaseTransform } from "@zotero-plugin/releaser";
 export type {
   ReleaseConfig,
   ReleaseContext,

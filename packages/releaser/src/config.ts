@@ -27,9 +27,9 @@ export const releaseDefaults: ReleaseConfig = {
 };
 
 /**
- * Patches the release slice: interpolates the GitHub repository template.
+ * Patches the release configuration: interpolates the GitHub repository template.
  */
-export const releaseSlice: ConfigTransform = (config, templateData) => {
+export const releaseTransform: ConfigTransform = (config, templateData) => {
   if (!config.release?.github)
     return;
 

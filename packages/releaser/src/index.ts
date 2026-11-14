@@ -109,7 +109,7 @@ export class Releaser extends Base<ReleaseContext> {
 }
 
 export { Bump } from "./bump.js";
-export { releaseDefaults, releaseSlice } from "./config.js";
+export { releaseDefaults, releaseTransform } from "./config.js";
 export { GitHub } from "./github.js";
 export type {
   ReleaseConfig,

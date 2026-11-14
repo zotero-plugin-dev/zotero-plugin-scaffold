@@ -53,9 +53,9 @@ export const devServerDefaults: DevServerConfig = {
 };
 
 /**
- * Patches the build slice: preference prefix fallback and template interpolation.
+ * Patches the build configuration: preference prefix fallback and template interpolation.
  */
-export const buildSlice: ConfigTransform = (config, templateData, pkgUser) => {
+export const buildTransform: ConfigTransform = (config, templateData, pkgUser) => {
   if (!config.build)
     return;
 
@@ -65,12 +65,12 @@ export const buildSlice: ConfigTransform = (config, templateData, pkgUser) => {
 };
 
 /**
- * Patches the dev-server slice.
+ * Patches the dev-server configuration.
  *
  * The `server` key was renamed to `devServer`; the deprecated key is migrated
  * here with a warning, then defaults are applied.
  */
-export const devServerSlice: ConfigTransform = (config) => {
+export const devServerTransform: ConfigTransform = (config) => {
   let userConfig = config.devServer;
 
   if (config.server) {
