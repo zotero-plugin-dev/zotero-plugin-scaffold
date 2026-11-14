@@ -28,8 +28,7 @@ This repository is a pnpm workspace. The published packages are:
 | [`@zotero-plugin/tester`](./packages/tester)        | Test command                            |
 | [`@zotero-plugin/releaser`](./packages/releaser)    | Release command                         |
 
-`zotero-plugin-scaffold` re-exports the public API, so downstream projects
-that depend on it keep working unchanged.
+`zotero-plugin-scaffold` re-exports the public API, so downstream projects that depend on it keep working unchanged.
 
 ## Documentation
 
