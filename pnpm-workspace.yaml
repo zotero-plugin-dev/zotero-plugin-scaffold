@@ -22,6 +22,7 @@ catalog:
   "@types/chai": ^5.2.3
   "@types/mocha": ^10.0.10
   "@vitest/expect": ^5.1.0
+  "@vitest/spy": ^5.1.0
   adm-zip: ^0.6.1
   bumpp: ^12.3.0
   c12: 4.0.0-rc.4

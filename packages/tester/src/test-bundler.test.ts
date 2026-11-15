@@ -7,16 +7,7 @@ import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateHtml, serializeTestOptions } from "./test-bundler-template/index.js";
 import { createTestApiPlugin, findImpactedTests, resolveRuntimeEntry } from "./test-bundler.js";
-
-/**
- * A marker that only `@vitest/expect` itself contains: the symbol key it
- * registers its matcher state under (`Symbol.for("$$jest-matchers-object")`).
- *
- * Matcher *names* (`toHaveBeenCalled`) would make the purity check below
- * fragile: a sample suite is free to call one in a real assertion, and the
- * check would then fail on a bundle that contains no library code at all.
- */
-const VITEST_EXPECT_MARKER = "$$jest-matchers-object";
+import { VITEST_EXPECT_MARKER, VITEST_SPY_MARKER } from "./test-markers.js";
 
 describe("findImpactedTests", () => {
   const mockMetafileOutputs = {
@@ -80,12 +71,21 @@ describe("test bundle purity", () => {
   let dir: string;
   let entry: string;
 
-  const SAMPLE_TEST = `import { describe, expect, it } from "zotero-plugin-scaffold/test";
+  const SAMPLE_TEST = `import { describe, expect, it, zo } from "zotero-plugin-scaffold/test";
 
 describe("sample", () => {
   it("adds", () => {
     expect(1 + 1).toBe(2);
     expect({ a: 1 }).toEqual({ a: 1 });
+  });
+
+  it("spies", () => {
+    // A bundle is free to use the zo namespace: its members are read from the
+    // runtime, so the sample exercises exactly that path as well.
+    const mock = zo.fn();
+    mock();
+    expect(mock).toHaveBeenCalled();
+    expect(zo.spyOn({ m: () => 1 }, "m").mock).toBeDefined();
   });
 });
 `;
@@ -129,6 +129,8 @@ describe("sample", () => {
     expect(text).not.toContain("deep-eql");
     // Nor `@vitest/expect`, see `VITEST_EXPECT_MARKER`.
     expect(text).not.toContain(VITEST_EXPECT_MARKER);
+    // Nor `@vitest/spy`, see `VITEST_SPY_MARKER`.
+    expect(text).not.toContain(VITEST_SPY_MARKER);
     // A test bundle is user code plus the shim reads, far below the size of
     // the libraries themselves (the runtime is ~700KB, see the test below).
     expect(text.length).toBeLessThan(10_000);
@@ -152,6 +154,8 @@ describe("sample", () => {
     expect(text).toContain("Mocha");
     // ...including `@vitest/expect`, see `VITEST_EXPECT_MARKER`.
     expect(text).toContain(VITEST_EXPECT_MARKER);
+    // ...and `@vitest/spy`, see `VITEST_SPY_MARKER`.
+    expect(text).toContain(VITEST_SPY_MARKER);
     expect(text.length).toBeGreaterThan(100_000);
     // ...bundled as a self-executing script, not as an ES module.
     expect(text).not.toMatch(/^import\s/m);

@@ -17,6 +17,11 @@ export default defineConfig({
   deps: {
     // `dependencies` stay external in the published dist: the test libraries
     // must never be inlined into the tester bundle.
-    neverBundle: [/^mocha(\/|$)/, /^chai(\/|$)/, /^@vitest\/expect(\/|$)/],
+    neverBundle: [
+      /^mocha(\/|$)/,
+      /^chai(\/|$)/,
+      /^@vitest\/expect(\/|$)/,
+      /^@vitest\/spy(\/|$)/,
+    ],
   },
 });

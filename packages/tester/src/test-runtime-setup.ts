@@ -16,6 +16,8 @@
  * `window.__TEST_OPTIONS__` itself, see `generateHtml()`.
  */
 import type { TestRuntimeOptions } from "./types.js";
+import type { Zo } from "./zo.js";
+import * as spy from "@vitest/spy";
 import * as chai from "chai";
 import { createAssertionStateChecks, createExpect } from "./expect.js";
 // Side-effect import of the official browser build of mocha: it attaches
@@ -56,6 +58,24 @@ const expect = createExpect();
 window.expect = expect;
 window.assert = chai.assert;
 window.chai = chai;
+// The `zo` namespace, the stand-in for Vitest's `vi`: one object, assembled
+// here from the libraries behind it. The shim reads it from here, so the spies a
+// test creates and the matchers which assert on them share one library
+// instance. It is *not* spread over `globalThis` (no bare `fn` / `spyOn`
+// globals).
+// Note that nothing resets these mocks automatically: a `spyOn()` leaks into
+// later tests unless the test suite calls `afterEach(zo.restoreAllMocks)`
+// itself, see `docs/src/test.md`. A future fake-timers integration adds its
+// members next to the mocks in this object.
+const zo: Zo = {
+  fn: spy.fn,
+  spyOn: spy.spyOn,
+  isMockFunction: spy.isMockFunction,
+  clearAllMocks: spy.clearAllMocks,
+  resetAllMocks: spy.resetAllMocks,
+  restoreAllMocks: spy.restoreAllMocks,
+};
+window.__TEST_ZO__ = zo;
 
 // `expect.assertions()` / `expect.hasAssertions()` are verified by the runner
 // in Vitest, here Mocha has to do it: the state is reset before every test and

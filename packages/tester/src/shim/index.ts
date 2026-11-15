@@ -21,12 +21,16 @@
  *   and the Jest-style `expect` with the `Expect` interface of
  *   `src/expect.ts`, while the mocha side uses interface types
  *   (`MochaTypes.SuiteFunction`): `@types/chai` only exports those members as
- *   values, it has no `AssertStatic` / `Config` interface to name.
+ *   values, it has no `AssertStatic` / `Config` interface to name;
+ * - the `zo` namespace is one annotated `export const` of the `Zo` interface of
+ *   `src/zo.ts`, so adding a member of a namespace library changes that
+ *   interface and the runtime only, never this file.
  */
 
 import type * as ChaiTypes from "chai";
 import type * as MochaTypes from "mocha";
 import type { Expect } from "../expect.js";
+import type { Zo } from "../zo.js";
 
 if (typeof (globalThis as { Zotero?: unknown }).Zotero === "undefined") {
   throw new Error(
@@ -39,6 +43,12 @@ type TestGlobals = typeof globalThis & {
   chai: typeof ChaiTypes;
   expect: Expect;
   assert: typeof ChaiTypes.assert;
+  /**
+   * The `zo` namespace object, installed by the test runtime. It is assembled
+   * there from the libraries behind it (`@vitest/spy`, later fake timers), the
+   * shim only reads it back under the type of `src/zo.ts`.
+   */
+  __TEST_ZO__: Zo;
 };
 const g = globalThis as TestGlobals;
 
@@ -67,6 +77,20 @@ export const config: typeof ChaiTypes.config = g.chai.config;
 export const chai: typeof ChaiTypes = g.chai;
 export default chai;
 
+/**
+ * The `zo` namespace, the stand-in for Vitest's `vi`.
+ *
+ * A single object instead of one export per factory: `zo.fn()`,
+ * `zo.spyOn()` and the timer members a future fake-timers integration adds are
+ * one discoverable surface, and they cannot collide with the names of the
+ * plugin under test.
+ *
+ * @see ./zo.js
+ */
+export const zo: Zo = g.__TEST_ZO__;
+
 // The type of the Jest-style `expect`, for consumers which declare the bare
 // globals themselves (`const expect: Expect`).
 export type { Expect } from "../expect.js";
+// The type of the `zo` namespace, for consumers which declare it themselves.
+export type { Zo } from "../zo.js";

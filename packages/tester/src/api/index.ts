@@ -27,6 +27,7 @@ export {
   xdescribe,
   xit,
   xspecify,
+  zo,
 } from "../shim/index.js";
 export { default } from "../shim/index.js";
-export type { Expect } from "../shim/index.js";
+export type { Expect, Zo } from "../shim/index.js";
