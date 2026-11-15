@@ -47,7 +47,9 @@ mocha.setup({
 });
 
 // Keep the bare globals of existing tests working (`expect(...)`,
-// `assert.isTrue(...)`, `chai.use(plugin)`).
+// `assert.isTrue(...)`, `chai.use(plugin)`). Three plain assignments on purpose:
+// `@types/chai` types the members, so a chai upgrade that renames one of them
+// fails the build instead of mounting `undefined`.
 window.expect = chai.expect;
 window.assert = chai.assert;
 window.chai = chai;

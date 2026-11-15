@@ -1,19 +1,23 @@
 /**
  * The API registry of the test runtime.
  *
- * It is the single source of truth for three things that used to be spread
- * over the code base:
+ * It is the single source of truth for two things that used to be spread over
+ * the code base:
  *
  * 1. the export set of the public facade (`src/api/index.ts`) and of the
  *    bundler shim (`src/shim/index.ts`),
  * 2. the specifier set intercepted by the esbuild `onResolve` plugin in
- *    `test-bundler.ts`,
- * 3. the global mount list of the test runtime
- *    (`src/test-runtime-setup.ts`).
+ *    `test-bundler.ts`.
  *
  * The facade and the shim are published static files, so "derived from the
  * registry" means *hand written, guarded by a consistency unit test*
  * (`src/apis.test.ts`) rather than generated at build time.
+ *
+ * The globals the runtime installs are **not** listed here: `window.expect` /
+ * `window.assert` / `window.chai` in `test-runtime-setup.ts` are three plain
+ * assignments whose types come from `@types/chai`, and deriving them from the
+ * registry buys nothing while costing a lookup table that can disagree with
+ * itself.
  *
  * Adding a new library (e.g. `@vitest/expect`, `sinon`) should cost one
  * dependency, one registry entry and one line each in the shim and the
@@ -22,19 +26,6 @@
 export interface TestApiModule {
   /** The module specifier intercepted by the onResolve plugin */
   id: string;
-  /** The module that provides the types */
-  module: string;
-  /**
-   * How the globals are injected:
-   *
-   * - `auto`   — the library attaches its interface to `globalThis` by itself
-   *              (the mocha browser build does it via `mocha.setup()`), so
-   *              `test-runtime-setup` only has to bundle it and trigger its
-   *              mechanism, no manual mounting;
-   * - `manual` — `test-runtime-setup` imports it explicitly and attaches the
-   *              globals to `globalThis`.
-   */
-  mount: "auto" | "manual";
   /** The export names of the shim, i.e. the test API surface */
   exports: string[];
 }
@@ -42,8 +33,6 @@ export interface TestApiModule {
 export const TEST_API_MODULES: TestApiModule[] = [
   {
     id: "mocha",
-    module: "mocha",
-    mount: "auto",
     // The globals injected by mocha's `bdd` interface,
     // see mocha/lib/interfaces/bdd.js.
     exports: [
@@ -63,8 +52,6 @@ export const TEST_API_MODULES: TestApiModule[] = [
   },
   {
     id: "chai",
-    module: "chai",
-    mount: "manual",
     // `expect` / `assert` are also mounted on `globalThis` to keep bare
     // globals of existing tests working; `use` / `config` / `chai` / `default`
     // expose the chai namespace so that `chai.use(plugin)` keeps working.
