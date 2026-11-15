@@ -1,19 +1,38 @@
-import type { BuildContext, BuildResult } from "esbuild";
+import type { BuildContext, BuildResult, Plugin } from "esbuild";
 import type { TestPageConfig } from "./protocol.js";
 import type { TestContext } from "./types.js";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { toArray } from "@zotero-plugin/utils";
 import { context } from "esbuild";
 import { copy, outputFile, outputJSON } from "fs-extra/esm";
 import { glob } from "tinyglobby";
+import { MOCHA_BDD_NAMES } from "./assertions/mocha.js";
 import { TESTER_PLUGIN_DIR } from "./constant.js";
 import { generateBootstrap, generateHtml, generateManifest } from "./test-bundler-template/index.js";
 
+/** The specifier users import the assertion API from in their test files. */
+const TEST_API_SPECIFIER = "zotero-plugin-scaffold/test";
+
 /** Files of the prebuilt page runtime, in load order. */
 const PAGE_RUNTIME_FILES = ["test-api.js", "mocha-setup.js"] as const;
+
+/**
+ * Values `zotero-plugin-scaffold/test` exposes to the test files.
+ *
+ * The page shim must export all of them, and a unit test keeps this list in
+ * sync with `assertions/index.ts`.
+ */
+export const TEST_API_EXPORTS: readonly string[] = [
+  "assert",
+  "chai",
+  "expect",
+  "should",
+  ...MOCHA_BDD_NAMES,
+];
 
 /**
  * Resolves a file of the prebuilt page runtime (`dist/page/`).
@@ -100,8 +119,8 @@ export class TestBundler {
 
   /**
    * Copies the prebuilt page runtime into the tester plugin: Mocha's browser
-   * build, plus `test-api.js` (chai) and `mocha-setup.js` (the Mocha
-   * reporter) from `dist/page/`.
+   * build, plus `test-api.js` (chai + expect) and `mocha-setup.js` (the Mocha
+   * reporter and the assertion checks) from `dist/page/`.
    *
    * They are built when scaffold is published, never on the user's machine,
    * see `tsdown.config.ts`.
@@ -117,6 +136,33 @@ export class TestBundler {
     ]);
   }
 
+  /**
+   * Resolves imports of `zotero-plugin-scaffold/test` in test files to the
+   * page globals, instead of bundling a second `chai`/`expect` per test file.
+   * Reading the globals (instead of forwarding in `assertions/`) keeps
+   * Mocha's `it.only` / `describe.skip` and friends available.
+   */
+  private testApiShimPlugin(): Plugin {
+    const namespace = "zotero-plugin-scaffold-test-api";
+    const filter = new RegExp(`^${TEST_API_SPECIFIER.replaceAll("/", "\\/")}$`);
+
+    return {
+      name: "zotero-plugin-scaffold-test-api-shim",
+      setup(build) {
+        build.onResolve({ filter }, args => ({ namespace, path: args.path }));
+        build.onLoad({ filter: /.*/, namespace }, () => ({
+          contents: [
+            "const api = globalThis;",
+            ...TEST_API_EXPORTS.map(name => `export const ${name} = api.${name};`),
+            "",
+          ].join("\n"),
+          loader: "js",
+          resolveDir: process.cwd(),
+        }));
+      },
+    };
+  }
+
   private async bundleTests() {
     const testDirs = toArray(this.ctx.test.entries);
     // Because esbuild only support `*` and `**`，
@@ -130,6 +176,9 @@ export class TestBundler {
       entryPoints,
       outdir: `${TESTER_PLUGIN_DIR}/content/units`,
       bundle: true,
+      plugins: [
+        this.testApiShimPlugin(),
+      ],
       target: "firefox115",
       metafile: true,
     });

@@ -33,6 +33,10 @@
     "./cli": {
       "import": "./dist/cli.js"
     },
+    "./test": {
+      "types": "./dist/test.d.ts",
+      "import": "./dist/test.js"
+    },
     "./vendor": {
       "types": "./dist/vendor.d.ts",
       "import": "./dist/vendor.js"

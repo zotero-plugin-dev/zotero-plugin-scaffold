@@ -1,13 +1,14 @@
 /// <reference types="mocha" />
 
 /**
- * Page-side entry of the tester: configures Mocha and streams the results to
- * the HTTP reporter of the Node side.
+ * Page-side entry of the tester: configures Mocha, streams the results to the
+ * HTTP reporter of the Node side, and checks what Mocha cannot check by itself
+ * (`expect.assertions(n)` / `expect.hasAssertions()`).
  *
- * Bundled into `packages/tester/dist/page/mocha-setup.js` (IIFE) at build
- * time and loaded by the generated `index.xhtml` after `mocha.js` and
- * `test-api.js`. The configuration arrives as `window.__scaffoldConfig`, which
- * the Node side writes into the page ({@link TestPageConfig}).
+ * Bundled into `dist/page/mocha-setup.js` (IIFE) at build time and loaded by
+ * the generated `index.xhtml` after `mocha.js` and `test-api.js`. The configuration
+ * arrives as `window.__scaffoldConfig`, which the Node side writes into the
+ * page ({@link TestPageConfig}).
  */
 import type { ReportEvent, ReportFailureData, ReportTestData, TestPageConfig } from "./protocol.js";
 
@@ -28,8 +29,23 @@ interface ZoteroPage {
   };
 }
 
+/** The subset of the `expect` state the assertion checks need. */
+interface ExpectState {
+  assertionCalls: number;
+  expectedAssertionsNumber?: number | null;
+  expectedAssertionsNumberErrorGen?: (() => Error) | null;
+  isExpectingAssertions?: boolean;
+  isExpectingAssertionsError?: Error | null;
+}
+
+interface ExpectGlobal {
+  getState: () => ExpectState;
+  setState: (state: Partial<ExpectState>) => void;
+}
+
 const page = globalThis as unknown as {
   __scaffoldConfig?: TestPageConfig;
+  expect?: ExpectGlobal;
   Zotero?: ZoteroPage;
 };
 
@@ -42,6 +58,7 @@ if (!page.__scaffoldConfig || !page.Zotero) {
 
 const config: TestPageConfig = page.__scaffoldConfig;
 const zotero: ZoteroPage = page.Zotero;
+const expectGlobal = page.expect;
 
 /** Sends one event to the HTTP reporter of the Node side. */
 async function send(event: ReportEvent): Promise<void> {
@@ -235,3 +252,33 @@ mocha.setup({
 Object.assign(globalThis, {
   debug: (data: unknown) => void send({ type: "debug", data }),
 });
+
+// `expect.assertions()` / `expect.hasAssertions()` are verified by the runner in
+// Vitest, here Mocha has to do it: the state is reset before every test and
+// checked afterwards.
+if (expectGlobal && typeof expectGlobal.getState === "function") {
+  beforeEach(() => {
+    expectGlobal.setState({
+      assertionCalls: 0,
+      expectedAssertionsNumber: null,
+      expectedAssertionsNumberErrorGen: null,
+      isExpectingAssertions: false,
+      isExpectingAssertionsError: null,
+    });
+  });
+
+  afterEach(() => {
+    const state = expectGlobal.getState();
+
+    if (state.expectedAssertionsNumber != null && state.assertionCalls !== state.expectedAssertionsNumber) {
+      throw state.expectedAssertionsNumberErrorGen
+        ? state.expectedAssertionsNumberErrorGen()
+        : new Error(`expected number of assertions to be ${state.expectedAssertionsNumber}, but got ${state.assertionCalls}`);
+    }
+
+    if (state.isExpectingAssertions && state.assertionCalls === 0) {
+      throw state.isExpectingAssertionsError
+        ?? new Error("expected any number of assertion, but got none");
+    }
+  });
+}

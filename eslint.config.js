@@ -20,6 +20,9 @@ export default antfu(
     // (`dist/page/`, see tsdown.config.ts), so they must stay free of Node.js
     // APIs. Keep this list in sync with the page build entries.
     files: [
+      "packages/tester/src/assertions/index.ts",
+      "packages/tester/src/assertions/expect.ts",
+      "packages/tester/src/assertions/mocha.ts",
       "packages/tester/src/assertions/page.ts",
       "packages/tester/src/mocha-setup.ts",
     ],

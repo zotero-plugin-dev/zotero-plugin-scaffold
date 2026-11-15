@@ -28,6 +28,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./assertions": {
+      "types": "./dist/assertions/index.d.ts",
+      "import": "./dist/assertions/index.js"
     }
   },
   "main": "./dist/index.js",
@@ -45,6 +49,7 @@
   "dependencies": {
     "@types/chai": "catalog:",
     "@types/mocha": "catalog:",
+    "@vitest/expect": "catalog:",
     "@zotero-plugin/config": "workspace:*",
     "@zotero-plugin/core": "workspace:*",
     "@zotero-plugin/utils": "workspace:*",

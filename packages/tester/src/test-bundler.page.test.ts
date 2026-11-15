@@ -15,15 +15,29 @@ const CONTENT_DIR = ".scaffold/test/resource/content";
 const PORT = 12_345;
 
 const FIXTURE = `
+import { assert, describe, expect, it } from "zotero-plugin-scaffold/test";
+
 describe("assertions", () => {
-  it("has the chai assertions", () => {
-    expect(1 + 1).to.equal(2);
-    expect({ a: 1 }).to.deep.equal({ a: 1 });
+  it("has the jest matchers", () => {
+    expect(1 + 1).toBe(2);
+    expect({ a: 1, b: 2 }).toEqual(expect.objectContaining({ a: 1 }));
+    expect(() => {
+      throw new TypeError("boom");
+    }).toThrow(TypeError);
+  });
+
+  it("keeps chai", () => {
+    expect(1).to.equal(1);
     assert.isTrue(true);
   });
 
-  it("fails with a chai message", () => {
-    expect({ a: 1 }).to.deep.equal({ a: 2 });
+  it("fails with a jest message", () => {
+    expect({ a: 1 }).toEqual({ a: 2 });
+  });
+
+  it("declares two assertions but makes one", () => {
+    expect.assertions(2);
+    expect(1).toBe(1);
   });
 });
 `;
@@ -67,6 +81,7 @@ function createPage(options: { withReporter: boolean; exitOnFinish?: boolean }) 
   const order: string[] = [];
   const runnerListeners: Record<string, Listener[]> = {};
   const tests: { title: string; fn: () => void }[] = [];
+  const hooks: { type: string; fn: () => void }[] = [];
 
   const sandbox = {
     console,
@@ -74,6 +89,8 @@ function createPage(options: { withReporter: boolean; exitOnFinish?: boolean }) 
     EventTarget: globalThis.EventTarget,
     describe: (_title: string, fn: () => void) => fn(),
     it: (title: string, fn: () => void) => tests.push({ title, fn }),
+    beforeEach: (fn: () => void) => hooks.push({ type: "beforeEach", fn }),
+    afterEach: (fn: () => void) => hooks.push({ type: "afterEach", fn }),
     document: {
       getElementById: () => ({ textContent: "" }),
     },
@@ -125,6 +142,7 @@ function createPage(options: { withReporter: boolean; exitOnFinish?: boolean }) 
 
   return {
     emit,
+    hooks,
     order,
     requests,
     runnerListeners,
@@ -133,9 +151,10 @@ function createPage(options: { withReporter: boolean; exitOnFinish?: boolean }) 
   };
 }
 
-/** Runs one test, returning the outcome. */
-async function runTest(test: { title: string; fn: () => void }) {
+/** Runs one test with the mocha hooks around it, returning the outcome. */
+async function runTest(test: { title: string; fn: () => void }, hooks: { type: string; fn: () => void }[]) {
   const result: string[] = [];
+  hooks.filter(hook => hook.type === "beforeEach").forEach(hook => hook.fn());
 
   try {
     test.fn();
@@ -144,6 +163,15 @@ async function runTest(test: { title: string; fn: () => void }) {
   catch (error) {
     result.push(`fail: ${(error as Error).message}`);
   }
+
+  hooks.filter(hook => hook.type === "afterEach").forEach((hook) => {
+    try {
+      hook.fn();
+    }
+    catch (error) {
+      result.push(`afterEach: ${(error as Error).message}`);
+    }
+  });
 
   return result;
 }
@@ -179,15 +207,19 @@ describe.skipIf(!existsSync(join(PAGE_RUNTIME_DIR, "test-api.js")))("the generat
     const page = createPage({ withReporter: false });
 
     runInNewContext(await readFile(join(CONTENT_DIR, "test-api.js"), "utf-8"), page.sandbox);
-
-    expect(typeof page.sandbox.expect).toBe("function");
-    expect(typeof (page.sandbox.assert as { isTrue: unknown }).isTrue).toBe("function");
-
     runInNewContext(await readFile(join(CONTENT_DIR, "units/example.spec.js"), "utf-8"), page.sandbox);
 
-    expect(await runTest(page.tests[0])).toEqual(["pass"]);
-    expect(await runTest(page.tests[1])).toEqual([
+    // The Mocha hooks of `mocha-setup.js` check `expect.assertions()`
+    runInNewContext(await readFile(join(CONTENT_DIR, "mocha-setup.js"), "utf-8"), page.sandbox);
+
+    expect(await runTest(page.tests[0], page.hooks)).toEqual(["pass"]);
+    expect(await runTest(page.tests[1], page.hooks)).toEqual(["pass"]);
+    expect(await runTest(page.tests[2], page.hooks)).toEqual([
       "fail: expected { a: 1 } to deeply equal { a: 2 }",
+    ]);
+    expect(await runTest(page.tests[3], page.hooks)).toEqual([
+      "pass",
+      "afterEach: expected number of assertions to be 2, but got 1",
     ]);
   });
 
