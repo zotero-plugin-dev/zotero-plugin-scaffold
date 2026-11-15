@@ -8,8 +8,8 @@
  * of them can collide with a name of the plugin under test.
  *
  * It is also the seam for the libraries behind it: this interface is the single
- * place which says that `@vitest/spy` contributes the mock members, and that a
- * future `@sinonjs/fake-timers` contributes the timer members. The test runtime
+ * place which says that `@vitest/spy` contributes the mock members, and that
+ * `@sinonjs/fake-timers` contributes the timer members. The test runtime
  * builds the object from those libraries, the shim only reads it back off
  * `globalThis.__TEST_ZO__`, so no test bundle inlines any of them.
  *
@@ -19,8 +19,14 @@
  * @see https://vitest.dev/api/vi
  */
 import type * as SpyTypes from "@vitest/spy";
+import type { ZoTimers } from "./zo-timers.js";
 
-export interface Zo {
+/**
+ * The timer members are declared in `src/zo-timers.ts`, next to the wrapper
+ * which implements them over `@sinonjs/fake-timers`, and merged in here so that
+ * `zo` stays one interface for the shim and the runtime.
+ */
+export interface Zo extends ZoTimers {
   /**
    * Create a spy, same as `vi.fn()`.
    *

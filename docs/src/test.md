@@ -47,7 +47,7 @@ describe("Startup", () => {
 });
 ```
 
-The entry point exposes Mocha's `bdd` interface (`describe`, `context`, `xdescribe`, `xcontext`, `it`, `specify`, `xit`, `xspecify`, `before`, `after`, `beforeEach`, `afterEach`) together with Vitest's `expect`, Chai's `assert`, the `chai` namespace (also the default export) for `chai.use(plugin)`, and the `zo` namespace for spies.
+The entry point exposes Mocha's `bdd` interface (`describe`, `context`, `xdescribe`, `xcontext`, `it`, `specify`, `xit`, `xspecify`, `before`, `after`, `beforeEach`, `afterEach`) together with Vitest's `expect`, Chai's `assert`, the `chai` namespace (also the default export) for `chai.use(plugin)`, and the `zo` namespace for spies and fake timers.
 
 `expect` is the same one Vitest uses: Chai plus [`@vitest/expect`](https://www.npmjs.com/package/@vitest/expect)'s plugins, so the Jest matchers (`toBe`, `toEqual`, `toThrow`, `toContain`, …), the asymmetric matchers (`expect.any`, `expect.objectContaining`, …), `expect.extend`, `expect.addEqualityTesters`, `expect.assertions(n)` and `expect.hasAssertions()` all work. Chai's own assertions keep working on it as well (`expect(1).to.equal(1)`).
 
@@ -103,7 +103,59 @@ Not available:
 
 A mock without an explicit name reports as `vi.fn()` in failure messages, which is the library's default and expected.
 
-Fake timers (`zo.useFakeTimers()`, `zo.advanceTimersByTime()`, …) are not available yet. When they land they join the same `zo` namespace.
+### Fake timers
+
+Fake timers come from [`@sinonjs/fake-timers`](https://www.npmjs.com/package/@sinonjs/fake-timers), the library behind Vitest's `vi.useFakeTimers()`, and join the same `zo` namespace:
+
+```ts
+import { describe, expect, it, zo } from "zotero-plugin-scaffold/test";
+
+describe("Debounce", () => {
+  it("waits for the delay to pass", () => {
+    zo.useFakeTimers();
+
+    const save = zo.fn();
+    const debouncedSave = () => {
+      setTimeout(save, 1000);
+    };
+
+    debouncedSave();
+    expect(save).not.toHaveBeenCalled();
+
+    zo.advanceTimersByTime(1000);
+    expect(save).toHaveBeenCalledOnce();
+  });
+});
+```
+
+The namespace holds `useFakeTimers`, `useRealTimers`, `advanceTimersByTime`, `advanceTimersByTimeAsync`, `runAllTimers`, `runAllTimersAsync` and `getTimerCount`, and behaves like `vi` (see [Vitest's `vi` docs](https://vitest.dev/api/vi)): `Date` and every timer of the page are frozen until the test moves them, `advanceTimersByTimeAsync()` / `runAllTimersAsync()` also settle the promises the timer callbacks await, and the `advance*` / `run*` / `getTimerCount` members throw when timers are not faked. The rest of `vi`'s timer API (`runOnlyPendingTimers`, `setSystemTime`, …) is not exposed yet; ask for the member you need and it joins the list.
+
+`zo.useFakeTimers(config?)` takes a [`@sinonjs/fake-timers` config](https://github.com/sinonjs/fake-timers#config), so `toFake`, `now` or `loopLimit` can be set per test. Without a config it fakes every timer the page has (except `nextTick` / `queueMicrotask`), starts at the real time, ignores timers the page does not have, clears the native timers left behind on uninstall, and stops `runAllTimers()` after 10000 timers — the defaults Vitest uses.
+
+One option is not in that config: `global`, the object the clock is installed on. Pass the window the code under test schedules on when it is not the test page — Zotero's progress notification, for example, closes itself with `win.setTimeout`, and a page clock cannot drive it:
+
+```ts
+zo.useFakeTimers({
+  global: progressWindow,
+  toFake: ["setTimeout", "clearTimeout"],
+  shouldClearNativeTimers: true,
+});
+
+await zo.advanceTimersByTimeAsync(5000);
+expect(progressWindow.closed).toBe(true);
+zo.useRealTimers();
+```
+
+It is the same thing `sinon.useFakeTimers({ global: win })` does, so a suite migrating from Sinon keeps its call shape; `@sinonjs/fake-timers` itself used to spell it `target` and now exposes it as `withGlobal()`.
+
+::: warning Fake timers are uninstalled for you
+Unlike spies, a fake clock is undone automatically after every test: a leaked clock freezes the timers of the whole Zotero window, which breaks the reporter, Zotero itself and every later test. `zo.useRealTimers()` is still there for a test which wants the real time back in the middle of it.
+:::
+
+Two things to keep in mind, both properties of fake timers in any browser:
+
+- The install is window-wide, not per test: while it is active, Zotero's own `setTimeout` / `Date` work is frozen as well, not just the code under test. Keep faking inside the test that needs it.
+- Mocha's test timeout is a real timer started before the hooks run, so a hung test still fails on time; `runAllTimers()` on a timer which keeps rescheduling itself throws instead of looping forever.
 
 ### Running Tests
 

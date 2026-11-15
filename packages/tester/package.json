@@ -55,6 +55,7 @@
     "build:tsc": "tsc --noEmit"
   },
   "dependencies": {
+    "@sinonjs/fake-timers": "catalog:",
     "@types/chai": "catalog:",
     "@types/mocha": "catalog:",
     "@vitest/expect": "catalog:",

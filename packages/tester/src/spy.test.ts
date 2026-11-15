@@ -27,6 +27,8 @@ g.chai ??= {
 };
 g.expect ??= jestExpect;
 g.assert ??= {};
+// The timers are inert stubs: this suite is about the spies, and installing a
+// clock on `globalThis` would freeze Vitest's own timers.
 g.__TEST_ZO__ ??= {
   fn: spy.fn,
   spyOn: spy.spyOn,
@@ -34,6 +36,13 @@ g.__TEST_ZO__ ??= {
   clearAllMocks: spy.clearAllMocks,
   resetAllMocks: spy.resetAllMocks,
   restoreAllMocks: spy.restoreAllMocks,
+  useFakeTimers: () => {},
+  useRealTimers: () => {},
+  advanceTimersByTime: () => {},
+  advanceTimersByTimeAsync: async () => {},
+  runAllTimers: () => {},
+  runAllTimersAsync: async () => {},
+  getTimerCount: () => 0,
 } satisfies Zo;
 
 const { zo } = await import("./api/index.js");

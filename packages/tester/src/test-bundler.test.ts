@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { build } from "esbuild";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateHtml, serializeTestOptions } from "./test-bundler-template/index.js";
-import { createTestApiPlugin, findImpactedTests, resolveRuntimeEntry } from "./test-bundler.js";
-import { VITEST_EXPECT_MARKER, VITEST_SPY_MARKER } from "./test-markers.js";
+import { createNodeBuiltinStubPlugin, createTestApiPlugin, findImpactedTests, resolveRuntimeEntry } from "./test-bundler.js";
+import { FAKE_TIMERS_MARKER, VITEST_EXPECT_MARKER, VITEST_SPY_MARKER } from "./test-markers.js";
 
 describe("findImpactedTests", () => {
   const mockMetafileOutputs = {
@@ -131,9 +131,57 @@ describe("sample", () => {
     expect(text).not.toContain(VITEST_EXPECT_MARKER);
     // Nor `@vitest/spy`, see `VITEST_SPY_MARKER`.
     expect(text).not.toContain(VITEST_SPY_MARKER);
+    // Nor `@sinonjs/fake-timers`, see `FAKE_TIMERS_MARKER`.
+    expect(text).not.toContain(FAKE_TIMERS_MARKER);
     // A test bundle is user code plus the shim reads, far below the size of
-    // the libraries themselves (the runtime is ~700KB, see the test below).
+    // the libraries themselves (the runtime is ~800KB, see the test below).
     expect(text.length).toBeLessThan(10_000);
+  });
+
+  it("stubs the node builtins the browser build cannot resolve", async () => {
+    const builtinsEntry = join(dir, "builtins.cjs");
+    await writeFile(
+      builtinsEntry,
+      "module.exports = { a: require(\"util\"), b: require(\"node:util\") };",
+      "utf8",
+    );
+
+    const result = await build({
+      entryPoints: [builtinsEntry],
+      bundle: true,
+      format: "iife",
+      platform: "browser",
+      target: "firefox115",
+      write: false,
+      logLevel: "silent",
+      absWorkingDir: dir,
+      plugins: [
+        createNodeBuiltinStubPlugin(),
+      ],
+    });
+
+    const text = result.outputFiles.map(file => file.text).join("\n");
+    // The stub is empty, and no unresolved `require` is left in the bundle.
+    expect(text).not.toMatch(/require\(["'](?:node:)?util["']\)/);
+  });
+
+  it("fails the build on a node builtin it does not stub", async () => {
+    const fsEntry = join(dir, "fs.cjs");
+    await writeFile(fsEntry, "module.exports = require(\"fs\");", "utf8");
+
+    await expect(build({
+      entryPoints: [fsEntry],
+      bundle: true,
+      format: "iife",
+      platform: "browser",
+      target: "firefox115",
+      write: false,
+      logLevel: "silent",
+      absWorkingDir: dir,
+      plugins: [
+        createNodeBuiltinStubPlugin(),
+      ],
+    })).rejects.toThrow(/Could not resolve "fs"/);
   });
 
   it("bundles the test runtime together with the libraries", async () => {
@@ -147,6 +195,9 @@ describe("sample", () => {
       target: "firefox115",
       write: false,
       logLevel: "silent",
+      plugins: [
+        createNodeBuiltinStubPlugin(),
+      ],
     });
 
     const text = result.outputFiles.map(file => file.text).join("\n");
@@ -154,8 +205,10 @@ describe("sample", () => {
     expect(text).toContain("Mocha");
     // ...including `@vitest/expect`, see `VITEST_EXPECT_MARKER`.
     expect(text).toContain(VITEST_EXPECT_MARKER);
-    // ...and `@vitest/spy`, see `VITEST_SPY_MARKER`.
+    // ...`@vitest/spy`, see `VITEST_SPY_MARKER`...
     expect(text).toContain(VITEST_SPY_MARKER);
+    // ...and `@sinonjs/fake-timers`, see `FAKE_TIMERS_MARKER`.
+    expect(text).toContain(FAKE_TIMERS_MARKER);
     expect(text.length).toBeGreaterThan(100_000);
     // ...bundled as a self-executing script, not as an ES module.
     expect(text).not.toMatch(/^import\s/m);

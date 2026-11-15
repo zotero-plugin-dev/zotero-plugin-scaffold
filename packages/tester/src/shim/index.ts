@@ -45,8 +45,9 @@ type TestGlobals = typeof globalThis & {
   assert: typeof ChaiTypes.assert;
   /**
    * The `zo` namespace object, installed by the test runtime. It is assembled
-   * there from the libraries behind it (`@vitest/spy`, later fake timers), the
-   * shim only reads it back under the type of `src/zo.ts`.
+   * there from the libraries behind it (`@vitest/spy` and
+   * `@sinonjs/fake-timers`), the shim only reads it back under the type of
+   * `src/zo.ts`.
    */
   __TEST_ZO__: Zo;
 };
@@ -81,9 +82,9 @@ export default chai;
  * The `zo` namespace, the stand-in for Vitest's `vi`.
  *
  * A single object instead of one export per factory: `zo.fn()`,
- * `zo.spyOn()` and the timer members a future fake-timers integration adds are
- * one discoverable surface, and they cannot collide with the names of the
- * plugin under test.
+ * `zo.spyOn()` and the timer members (`zo.useFakeTimers()`, …) are one
+ * discoverable surface, and they cannot collide with the names of the plugin
+ * under test.
  *
  * @see ./zo.js
  */

@@ -29,8 +29,10 @@ describe("test API registry", () => {
     };
     g.expect ??= () => {};
     g.assert ??= {};
-    // The real libraries: the shim only reads the object, so stubbing it with
-    // the library itself keeps this test about the export surface.
+    // The real libraries, so that the assertions below run against them;
+    // the timers are inert stubs because this suite never fakes anything
+    // (installing a clock on `globalThis` would freeze Vitest itself, see
+    // `zo-timers.test.ts`).
     g.__TEST_ZO__ ??= {
       fn: spy.fn,
       spyOn: spy.spyOn,
@@ -38,6 +40,13 @@ describe("test API registry", () => {
       clearAllMocks: spy.clearAllMocks,
       resetAllMocks: spy.resetAllMocks,
       restoreAllMocks: spy.restoreAllMocks,
+      useFakeTimers: () => {},
+      useRealTimers: () => {},
+      advanceTimersByTime: () => {},
+      advanceTimersByTimeAsync: async () => {},
+      runAllTimers: () => {},
+      runAllTimersAsync: async () => {},
+      getTimerCount: () => 0,
     } satisfies Zo;
 
     const shim = await import("./shim/index.js");
