@@ -19,6 +19,8 @@ catalog:
   "@fluent/syntax": ^0.19.0
   "@octokit/rest": ^22.0.1
   "@swc/core": ^1.16.22
+  "@types/chai": ^5.2.3
+  "@types/mocha": ^10.0.10
   adm-zip: ^0.6.1
   bumpp: ^12.3.0
   c12: 4.0.0-rc.4
@@ -41,9 +43,7 @@ catalogs:
     "@antfu/eslint-config": ^10.0.0
     "@commander-js/extra-typings": ^15.0.0
     "@shikijs/vitepress-twoslash": ^4.6.0
-    "@types/chai": ^5.2.3
     "@types/fs-extra": ^11.0.4
-    "@types/mocha": ^10.0.10
     "@types/node": ^26.6.6
     "@typescript/native": npm:typescript@^7.0.2
     eslint: ^10.14.0

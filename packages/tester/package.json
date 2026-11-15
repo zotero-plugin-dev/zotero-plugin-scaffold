@@ -55,6 +55,8 @@
     "build:tsc": "tsc --noEmit"
   },
   "dependencies": {
+    "@types/chai": "catalog:",
+    "@types/mocha": "catalog:",
     "@zotero-plugin/config": "workspace:*",
     "@zotero-plugin/core": "workspace:*",
     "@zotero-plugin/utils": "workspace:*",
@@ -68,9 +70,7 @@
     "xvfb-ts": "catalog:"
   },
   "devDependencies": {
-    "@types/chai": "catalog:dev",
     "@types/fs-extra": "catalog:dev",
-    "@types/mocha": "catalog:dev",
     "@types/node": "catalog:dev",
     "tsdown": "catalog:dev",
     "typescript": "catalog:dev",

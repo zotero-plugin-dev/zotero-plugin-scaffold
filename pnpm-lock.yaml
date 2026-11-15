@@ -173,6 +173,12 @@ catalogs:
     '@swc/core':
       specifier: ^1.16.22
       version: 1.16.22
+    '@types/chai':
+      specifier: ^5.2.3
+      version: 5.2.3
+    '@types/mocha':
+      specifier: ^10.0.10
+      version: 10.0.10
     adm-zip:
       specifier: ^0.6.1
       version: 0.6.1
@@ -231,15 +237,9 @@ catalogs:
     '@shikijs/vitepress-twoslash':
       specifier: ^4.6.0
       version: 4.6.0
-    '@types/chai':
-      specifier: ^5.2.3
-      version: 5.2.3
     '@types/fs-extra':
       specifier: ^11.0.4
       version: 11.0.4
-    '@types/mocha':
-      specifier: ^10.0.10
-      version: 10.0.10
     '@types/node':
       specifier: ^26.6.6
       version: 26.6.6
@@ -543,6 +543,12 @@ importers:
 
   packages/tester:
     dependencies:
+      '@types/chai':
+        specifier: 'catalog:'
+        version: 5.2.3
+      '@types/mocha':
+        specifier: 'catalog:'
+        version: 10.0.10
       '@zotero-plugin/config':
         specifier: workspace:*
         version: link:../config
@@ -577,15 +583,9 @@ importers:
         specifier: 'catalog:'
         version: 1.1.1
     devDependencies:
-      '@types/chai':
-        specifier: catalog:dev
-        version: 5.2.3
       '@types/fs-extra':
         specifier: catalog:dev
         version: 11.0.4
-      '@types/mocha':
-        specifier: catalog:dev
-        version: 10.0.10
       '@types/node':
         specifier: catalog:dev
         version: 26.6.6
