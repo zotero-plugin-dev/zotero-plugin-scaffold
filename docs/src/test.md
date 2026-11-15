@@ -1,6 +1,6 @@
 # Testing
 
-This module facilitates testing Zotero plugins in a live Zotero environment using [Mocha](https://mochajs.org/) and [Chai](https://www.chaijs.com/).
+This module facilitates testing Zotero plugins in a live Zotero environment using [Mocha](https://mochajs.org/) and Vitest's [`expect`](https://vitest.dev/api/expect) (Jest-style assertions on top of [Chai](https://www.chaijs.com/)).
 
 ## Why Use This Approach?
 
@@ -35,7 +35,8 @@ describe("Example Test", () => {
   });
 
   it("should pass", () => {
-    expect(1 + 1).to.equal(2);
+    expect(1 + 1).toBe(2);
+    expect({ a: 1 }).toEqual({ a: 1 });
   });
 });
 
@@ -46,7 +47,13 @@ describe("Startup", () => {
 });
 ```
 
-The entry point exposes Mocha's `bdd` interface (`describe`, `context`, `xdescribe`, `xcontext`, `it`, `specify`, `xit`, `xspecify`, `before`, `after`, `beforeEach`, `afterEach`) together with Chai's `expect`, `assert` and the `chai` namespace (also the default export) for `chai.use(plugin)`.
+The entry point exposes Mocha's `bdd` interface (`describe`, `context`, `xdescribe`, `xcontext`, `it`, `specify`, `xit`, `xspecify`, `before`, `after`, `beforeEach`, `afterEach`) together with Vitest's `expect`, Chai's `assert` and the `chai` namespace (also the default export) for `chai.use(plugin)`.
+
+`expect` is the same one Vitest uses: Chai plus [`@vitest/expect`](https://www.npmjs.com/package/@vitest/expect)'s plugins, so the Jest matchers (`toBe`, `toEqual`, `toThrow`, `toContain`, …), the asymmetric matchers (`expect.any`, `expect.objectContaining`, …), `expect.extend`, `expect.addEqualityTesters`, `expect.assertions(n)` and `expect.hasAssertions()` all work. Chai's own assertions keep working on it as well (`expect(1).to.equal(1)`).
+
+Snapshots, mocking (`vi`), `expect.soft` and `expect.poll` are not available, since they need Vitest's own runner; the latter two throw a descriptive error instead of silently passing.
+
+`expect.assertions(n)` and `expect.hasAssertions()` are verified at the end of each test, like Vitest does.
 
 ### Running Tests
 

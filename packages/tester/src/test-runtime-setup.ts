@@ -17,6 +17,7 @@
  */
 import type { TestRuntimeOptions } from "./types.js";
 import * as chai from "chai";
+import { createAssertionStateChecks, createExpect } from "./expect.js";
 // Side-effect import of the official browser build of mocha: it attaches
 // `window.mocha` / `window.Mocha` by itself. A bare `import "mocha"` would go
 // through `browser-entry.js`, which pulls Node's `stream` / `util` in and
@@ -47,12 +48,27 @@ mocha.setup({
 });
 
 // Keep the bare globals of existing tests working (`expect(...)`,
-// `assert.isTrue(...)`, `chai.use(plugin)`). Three plain assignments on purpose:
-// `@types/chai` types the members, so a chai upgrade that renames one of them
-// fails the build instead of mounting `undefined`.
-window.expect = chai.expect;
+// `assert.isTrue(...)`, `chai.use(plugin)`). `expect` is the Jest-style one of
+// `./expect.ts`; the other two are plain chai assignments on purpose, so that
+// a chai upgrade which renames one of them fails the build instead of mounting
+// `undefined`.
+const expect = createExpect();
+window.expect = expect;
 window.assert = chai.assert;
 window.chai = chai;
+
+// `expect.assertions()` / `expect.hasAssertions()` are verified by the runner
+// in Vitest, here Mocha has to do it: the state is reset before every test and
+// checked afterwards.
+const assertionState = createAssertionStateChecks(expect);
+
+beforeEach(() => {
+  assertionState.reset();
+});
+
+afterEach(() => {
+  assertionState.verify();
+});
 
 async function send(data: unknown): Promise<unknown> {
   const req = await Zotero.HTTP.request(

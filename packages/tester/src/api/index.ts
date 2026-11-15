@@ -29,3 +29,4 @@ export {
   xspecify,
 } from "../shim/index.js";
 export { default } from "../shim/index.js";
+export type { Expect } from "../shim/index.js";
