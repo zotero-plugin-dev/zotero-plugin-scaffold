@@ -70,9 +70,6 @@ export class Tester extends Base<TestContext> {
 
   async watch(): Promise<void> {
     const source = toArray(this.ctx.source).map(p => resolve(p));
-    // A test file is not a source file, even when it sits next to the sources:
-    // it never enters the plugin bundle, because the plugin is built from its
-    // own entry points and the assets. Only its suffix can tell.
     function isSource(_path: string) {
       const path = resolve(_path);
       if (isTestFileName(path))
@@ -90,14 +87,11 @@ export class Tester extends Base<TestContext> {
         onChange: async (path) => {
           if (isSource(path)) {
             await this.builder.run();
-            // The units inline the sources, so they change with the plugin.
             await this.testBundler?.regenerate(path);
             await this.zotero?.reloadAllPlugins();
             return;
           }
 
-          // A test file, or a helper a unit embeds: the metafile says which
-          // units must be re-run, and a change nothing reaches needs none.
           if (await this.testBundler?.regenerate(path))
             await this.zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
         },
@@ -110,8 +104,6 @@ export class Tester extends Base<TestContext> {
           }
 
           if (isTestFileName(path)) {
-            // A new test file is a new entry point, which only a freshly
-            // created esbuild context knows about.
             await this.testBundler?.generate();
             await this.zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
           }
