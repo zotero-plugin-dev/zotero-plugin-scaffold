@@ -3,6 +3,7 @@ export type { LogLevelType } from "./logger.js";
 export { LOG_LEVEL, Logger, logger } from "./logger.js";
 export { getMimeTypeByFileName } from "./mime.js";
 export { is32BitNumber } from "./number.js";
+export { toPosix } from "./path.js";
 export { ExitSignals, isRunning, whenExit } from "./process.js";
 export { dateFormat, parseRepoUrl, template, toArray } from "./string.js";
 export type {
@@ -11,4 +12,4 @@ export type {
   RecursivePickOptional,
   RecursiveRequired,
 } from "./types.js";
-export { watch } from "./watcher.js";
+export { toWatchPath, toWatchPaths, watch } from "./watcher.js";
