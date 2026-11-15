@@ -1,5 +1,5 @@
 import type { Stats } from "node:fs";
-import { isAbsolute, relative } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 import chokidar from "chokidar";
 import { debounce } from "es-toolkit";
 import { isDynamicPattern } from "tinyglobby";
@@ -35,28 +35,46 @@ export function toWatchPath(target: string): string {
  * watching the project root makes the source directory redundant, and chokidar
  * would report its changes twice.
  *
+ * The duplicate is decided on the absolute path, so `src`, `./src`, `src/` and
+ * the absolute spelling of either are one target. Deciding it on the string
+ * would let two such targets cover each other and both be dropped, leaving the
+ * watcher with nothing to watch.
+ *
  * @param targets files, directories or globs.
  */
 export function toWatchPaths(targets: string | string[]): string[] {
-  const paths = [
-    ...new Set(toArray(targets).map(toWatchPath)),
-  ];
+  // The key decides identity, the value is what chokidar receives.
+  const byKey = new Map<string, string>();
+  for (const target of toArray(targets)) {
+    const path = toWatchPath(target);
+    const key = resolve(path);
+    if (!byKey.has(key))
+      byKey.set(key, path);
+  }
 
-  return paths.filter((path) => {
-    return !paths.some(other => other !== path && isInside(path, other));
-  });
+  const paths = [
+    ...byKey.values(),
+  ];
+  return paths.filter(path =>
+    !paths.some(other => other !== path && isInside(resolve(path), resolve(other))),
+  );
 }
 
 /**
- * Whether a path lies inside a directory, the directory itself included.
+ * Whether a path lies strictly inside a directory.
+ *
+ * The directory itself is not inside itself: `toWatchPaths()` has already
+ * collapsed two targets that name the same path, so a remaining equality would
+ * mean a pair that covers each other, and both would be dropped.
  *
  * @param path the path to test.
  * @param directory the directory that may contain it.
  */
 function isInside(path: string, directory: string): boolean {
   const relativePath = relative(directory, path);
-  return relativePath === ""
-    || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+  return relativePath !== ""
+    && !relativePath.startsWith("..")
+    && !isAbsolute(relativePath);
 }
 
 export function watch(

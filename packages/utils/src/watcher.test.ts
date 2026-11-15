@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { toPosix } from "./path.js";
 import { toWatchPath, toWatchPaths } from "./watcher.js";
@@ -47,5 +48,21 @@ describe("toWatchPath", () => {
     // chokidar would report its changes twice.
     expect(toWatchPaths(["src", "**/*.spec.ts"])).toEqual(["."]);
     expect(toWatchPaths(["test", "test/unit/**/*.spec.ts"])).toEqual(["test"]);
+  });
+
+  it("keeps one target when the same directory is spelled differently", () => {
+    // Both targets would cover each other, and dropping both would leave the
+    // watcher with nothing to watch.
+    expect(toWatchPaths(["src", "./src"])).toEqual(["src"]);
+    expect(toWatchPaths(["src", "src/"])).toEqual(["src"]);
+    expect(toWatchPaths([".", "./"])).toEqual(["."]);
+    expect(toWatchPaths(["test", "test/unit", "./test"])).toEqual(["test"]);
+  });
+
+  it("keeps a relative and an absolute spelling as one target", () => {
+    const absolute = resolve("src");
+
+    expect(toWatchPaths(["src", absolute])).toHaveLength(1);
+    expect(toWatchPaths([absolute, "src/**/*.spec.ts"])).toHaveLength(1);
   });
 });
