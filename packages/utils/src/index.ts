@@ -1,4 +1,3 @@
-export { saveResource } from "./file.js";
 export { checkGitIgnore } from "./gitignore.js";
 export type { LogLevelType } from "./logger.js";
 export { LOG_LEVEL, Logger, logger } from "./logger.js";

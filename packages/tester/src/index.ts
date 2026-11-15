@@ -208,4 +208,4 @@ export { TESTER_BASE_PATH, TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID,
 export { prepareHeadless } from "./headless.js";
 export { TestHttpReporter } from "./http-reporter.js";
 export { TestBundler } from "./test-bundler.js";
-export type { TestConfig, TestContext, TestHooks, TestUserConfig } from "./types.js";
+export type { TestConfig, TestContext, TestHooks, TestRuntimeOptions, TestUserConfig } from "./types.js";

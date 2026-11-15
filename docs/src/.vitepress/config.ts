@@ -35,6 +35,12 @@ export default defineConfig({
           { text: "ESLint", link: "/eslint" },
         ],
       },
+      {
+        text: "Migration",
+        items: [
+          { text: "v1.0", link: "/migration/v1.0" },
+        ],
+      },
     ],
 
     socialLinks: [

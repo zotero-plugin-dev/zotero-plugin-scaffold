@@ -22,22 +22,18 @@ Ensure `zotero-plugin-scaffold` is installed first. Then add a `test` script to 
 }
 ```
 
-### Install Mocha and Chai
-
-Install `mocha` and `chai` as development dependencies to avoid potential conflicts:
-
-```bash
-npm install -D mocha chai @types/mocha @types/chai
-```
-
-If Scaffold detects a local Mocha installation, it uses it; otherwise, it fetches the latest version from NPM. Cached versions are stored in `.scaffold/cache`, which can be deleted to force updates.
-
 ### Writing Test Cases
 
-Write test cases using [Mocha](https://mochajs.org/) and [Chai](https://www.chaijs.com/) syntax in `test/*.{spec,test}.{js,ts}`:
+Write test cases in `test/*.{spec,test}.{js,ts}` and import the test API from `zotero-plugin-scaffold/test`:
 
-```js
+```ts
+import { assert, before, describe, expect, it } from "zotero-plugin-scaffold/test";
+
 describe("Example Test", () => {
+  before(() => {
+    // runs once before the suite
+  });
+
   it("should pass", () => {
     expect(1 + 1).to.equal(2);
   });
@@ -49,6 +45,8 @@ describe("Startup", () => {
   });
 });
 ```
+
+The entry point exposes Mocha's `bdd` interface (`describe`, `context`, `xdescribe`, `xcontext`, `it`, `specify`, `xit`, `xspecify`, `before`, `after`, `beforeEach`, `afterEach`) together with Chai's `expect`, `assert` and the `chai` namespace (also the default export) for `chai.use(plugin)`.
 
 ### Running Tests
 
