@@ -1,16 +1,17 @@
 import { isAbsolute, normalize, relative, resolve } from "node:path";
 import process from "node:process";
-import { toPosix } from "@zotero-plugin/utils";
+import { toArray, toPosix } from "@zotero-plugin/utils";
 import { glob } from "tinyglobby";
 
 /**
- * Resolution of `test.include` and `test.exclude`, and of the positional
- * arguments of the `test` command.
+ * Resolution of `test.entries`, `test.exclude` and the positional arguments of
+ * the `test` command.
  *
- * `include` and `exclude` are lists of globs relative to the project root, like
- * in Vitest and Rstest. The positional arguments are filters applied on top of
- * them, with the matching rules of the same engines: a case-insensitive
- * substring of the root-relative path, or an absolute path used as a prefix.
+ * `entries` names the directories that hold the test files, `exclude` drops
+ * some of the files they select. The positional arguments are filters applied
+ * on top of that, with the matching rules of Vitest and Rstest: a
+ * case-insensitive substring of the root-relative path, or an absolute path
+ * used as a prefix.
  */
 
 /**
@@ -22,23 +23,11 @@ import { glob } from "tinyglobby";
 export const TEST_FILE_GLOB = "**/*.{spec,test}.[jt]s";
 
 /**
- * Whether a pattern names files itself, i.e. is a glob or a path ending in a
- * script file, instead of a directory.
- *
- * @param entry one entry of `test.include` or `test.exclude`.
- */
-export function isFilePattern(entry: string): boolean {
-  // `[` starts a character class in a glob, hence the escaped class below.
-  return /[*?[\]{}!]/.test(entry) || /\.[cm]?[jt]sx?$/.test(entry);
-}
-
-/**
  * Whether a file name follows the convention of a test file, i.e. ends in
  * `.spec.` or `.test.` with a script extension.
  *
- * The watch mode uses it to decide whether a file below `source` can be a test,
- * which needs no glob matching per event. `test.include` still decides which
- * tests a run selects.
+ * The watch mode uses it to decide whether a file below `source` can be a test;
+ * `test.entries` still decides which tests a run selects.
  *
  * @param file a file name or a path.
  */
@@ -47,49 +36,38 @@ export function isTestFileName(file: string): boolean {
 }
 
 /**
- * Turn a directory into the glob that matches its test files.
+ * The glob that selects the test files of one entry.
  *
- * `test.include` takes globs, while the deprecated `test.entries` named
- * directories; the migration uses this to keep such a configuration running the
- * same files.
- *
- * @param entry a directory, a test file or a glob.
- * @returns The glob to run.
+ * @param entry a directory of `test.entries`.
  */
-export function toTestFileGlob(entry: string): string {
+function toTestFileGlob(entry: string): string {
   // A glob is written with `/` on every platform, and Windows accepts `\` in a
   // path, so the separators are normalized before the pattern is built.
-  const pattern = toPosix(entry);
-
-  return isFilePattern(pattern)
-    ? pattern
-    : `${pattern.replace(/\/+$/, "")}/${TEST_FILE_GLOB}`;
+  return `${toPosix(entry).replace(/\/+$/, "")}/${TEST_FILE_GLOB}`;
 }
 
 /**
- * Resolve `test.include` and `test.exclude` into the paths of the test files
- * to run.
+ * Resolve `test.entries` and `test.exclude` into the paths of the test files to
+ * run.
  *
- * The result is sorted and de-duplicated, so that overlapping patterns bundle
+ * The result is sorted and de-duplicated, so that overlapping directories bundle
  * every file exactly once. Globs skip hidden entries, like in tinyglobby, so a
- * test file inside a dot directory is only selected by a pattern that names
- * that directory.
+ * test file inside a dot directory is only selected by an entry that starts
+ * inside it.
  *
- * @param include `test.include` as configured, or the positional CLI arguments.
+ * @param entries `test.entries` as configured.
  * @param exclude `test.exclude` as configured.
- * @param root the directory the patterns are relative to, the project root.
+ * @param root the directory the entries are relative to, the project root.
  * @returns The paths of the matched test files, relative to `root`.
  */
 export async function resolveTestEntries(
-  include: string[],
+  entries: string | string[],
   exclude: string[] = [],
   root?: string,
 ): Promise<string[]> {
-  const files = await glob(include.map(toPosix), {
+  const files = await glob(toArray(entries).map(toTestFileGlob), {
     absolute: false,
     cwd: root,
-    // A pattern that names a directory must not pull in every file below it.
-    expandDirectories: false,
     ignore: exclude.map(toPosix),
   });
 
@@ -157,7 +135,7 @@ function normalizeExactPathMatch(path: string): string {
  *   so that `test/unit/` does not also match `test/unit2/`.
  *
  * A filter is *not* a glob: `test/**\/*.spec.ts` matches nothing, exactly like in
- * Vitest and Rstest, where narrowing by pattern is done by `include`.
+ * Vitest and Rstest, where narrowing by pattern is done by the configuration.
  *
  * @param filters the positional arguments of the `test` command.
  * @param root the directory the filters are relative to, the project root.
@@ -214,7 +192,7 @@ export function createTestFileFilter(
  * Keep the test files selected by the positional arguments of the `test`
  * command, see `createTestFileFilter()`.
  *
- * @param files the test files `include` and `exclude` selected.
+ * @param files the test files `entries` and `exclude` selected.
  * @param filters the positional arguments of the `test` command.
  * @param root the directory the filters are relative to, the project root.
  */

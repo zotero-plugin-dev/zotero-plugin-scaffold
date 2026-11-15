@@ -65,7 +65,7 @@ import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
 export default defineConfig({
   test: {
-    include: ["**/*.{spec,test}.[jt]s"],
+    entries: ["test"],
     exclude: ["**/node_modules/**", "**/.git/**"],
     filter: [],
     prefs: {},
@@ -84,18 +84,17 @@ export default defineConfig({
 
 ### Which Tests Run
 
-`test.include` selects the test files to run and `test.exclude` drops some of them again, like the options of the same name in Vitest and Rstest. Both take a list of globs, relative to the project root:
+`test.entries` names the directories that hold the test files, starting from the project root. Every `*.spec.*` and `*.test.*` file below them runs, in alphabetical order.
 
-- `include` defaults to every test file of the project, `**/*.{spec,test}.[jt]s`;
-- `exclude` defaults to `["**/node_modules/**", "**/.git/**"]`, and always contains the build directory (`dist`).
+`test.exclude` then drops some of those files, like the option of the same name in Vitest and Rstest. It takes globs, relative to the project root, and defaults to `["**/node_modules/**", "**/.git/**"]` plus the build directory (`dist`).
 
 ```ts twoslash
 import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
 export default defineConfig({
   test: {
-    include: ["test/**/*.spec.ts", "integration/**/*.spec.ts"],
-    // Skipped after the include selected them.
+    entries: ["test", "integration"],
+    // Skipped after the entries selected them.
     exclude: ["test/legacy/**", "**/*.slow.spec.ts"]
   }
 });
@@ -123,7 +122,7 @@ zotero-plugin test /home/me/plugin/test/unit
 zotero-plugin test '"test/prefs.spec.ts"'
 ```
 
-`test.include` and `test.exclude` still decide which files exist; the filters — `test.filter`, filled by the positional arguments — narrow that down. They are not globs (use `test.include` for that), and an unquoted filter is not a path: it is the substring that Vitest and Rstest also compare against, so `zotero-plugin test test/unit` also matches `test/unit2/`. Include a trailing slash when the fragment has to be a directory: `test/unit/`. Wrap the filter in quotes when it has to be one exact path.
+`test.entries` and `test.exclude` still decide which files exist; the filters — `test.filter`, filled by the positional arguments — narrow that down. They are not globs, and an unquoted filter is not a path: it is the substring that Vitest and Rstest also compare against, so `zotero-plugin test test/unit` also matches `test/unit2/`. Include a trailing slash when the fragment has to be a directory: `test/unit/`. Wrap the filter in quotes when it has to be one exact path.
 
 ### Delay Running
 

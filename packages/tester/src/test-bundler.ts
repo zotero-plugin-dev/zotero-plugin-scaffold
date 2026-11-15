@@ -207,22 +207,22 @@ export class TestBundler {
   }
 
   private async bundleTests(): Promise<void> {
-    // `include` and `exclude` are globs, resolved here because esbuild only
-    // supports `*` and `**` in an entry point glob, and because the positional
-    // arguments of the CLI narrow the result down afterwards.
+    // `entries` and `exclude` are resolved here because esbuild only supports
+    // `*` and `**` in an entry point glob, and because the positional arguments
+    // of the CLI narrow the result down afterwards.
     // https://esbuild.github.io/api/#glob-style-entry-points
-    const selected = await resolveTestEntries(this.ctx.test.include, this.ctx.test.exclude);
+    const selected = await resolveTestEntries(this.ctx.test.entries, this.ctx.test.exclude);
     const filters = this.ctx.test.filter;
     const entryPoints = filterTestFiles(selected, filters);
 
     if (entryPoints.length === 0) {
-      // Say whether the filters or the patterns themselves selected nothing.
+      // Say whether the filters or the entries themselves selected nothing.
       if (selected.length > 0 && filters.length > 0)
-        throw new Error(`No test file matched ${filters.join(", ")}; test.include selected ${selected.length} file(s).`);
+        throw new Error(`No test file matched ${filters.join(", ")}; test.entries selected ${selected.length} file(s).`);
 
       const exclude = toArray(this.ctx.test.exclude);
       throw new Error(
-        `No test file matched ${toArray(this.ctx.test.include).join(", ")}`
+        `No test file matched ${toArray(this.ctx.test.entries).join(", ")}`
         + `${
           exclude.length > 0
             ? ` after excluding ${exclude.join(", ")}`
@@ -268,7 +268,7 @@ export class TestBundler {
     if (testFiles.length === 0) {
       // Going through the metafile instead of globbing the output directory
       // keeps stale units of a wider earlier run out of the page, e.g. after
-      // narrowing `test.include`.
+      // narrowing `test.entries`.
       testFiles = this.units;
     }
     const html = generateHtml(options, testFiles);

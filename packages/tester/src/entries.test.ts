@@ -3,47 +3,21 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTestFileFilter, filterTestFiles, isFilePattern, isQuotedFilter, isTestFileName, resolveTestEntries, TEST_FILE_GLOB, toTestFileGlob, unquoteFilter } from "./entries.js";
+import { createTestFileFilter, filterTestFiles, isQuotedFilter, isTestFileName, resolveTestEntries, unquoteFilter } from "./entries.js";
 
-describe("isFilePattern", () => {
-  it("treats a glob as a file pattern", () => {
-    expect(isFilePattern("test/**/*.spec.ts")).toBe(true);
-    expect(isFilePattern("test/*.spec.ts")).toBe(true);
-    expect(isFilePattern("test/[ab].spec.ts")).toBe(true);
-    expect(isFilePattern("test/{a,b}/*.ts")).toBe(true);
-    expect(isFilePattern("!test/legacy/**")).toBe(true);
+describe("isTestFileName", () => {
+  it("recognizes the two conventions", () => {
+    expect(isTestFileName("test/prefs.spec.ts")).toBe(true);
+    expect(isTestFileName("src/prefs.test.js")).toBe(true);
+    expect(isTestFileName("src/a.spec.tsx")).toBe(true);
+    expect(isTestFileName("src/a.test.mts")).toBe(true);
   });
 
-  it("treats a path naming a script file as a file pattern", () => {
-    expect(isFilePattern("test/prefs.spec.ts")).toBe(true);
-    expect(isFilePattern("test/prefs.spec.js")).toBe(true);
-    expect(isFilePattern("test/prefs.test.mjs")).toBe(true);
-    expect(isFilePattern("/abs/test/prefs.spec.tsx")).toBe(true);
-  });
-
-  it("treats a directory as a directory", () => {
-    expect(isFilePattern("test")).toBe(false);
-    expect(isFilePattern("test/")).toBe(false);
-    expect(isFilePattern("src/test/unit")).toBe(false);
-  });
-});
-
-describe("toTestFileGlob", () => {
-  it("expands a directory to its test files", () => {
-    expect(toTestFileGlob("test")).toBe(`test/${TEST_FILE_GLOB}`);
-    expect(toTestFileGlob("test/unit/")).toBe(`test/unit/${TEST_FILE_GLOB}`);
-  });
-
-  it("keeps a glob and a file as they are", () => {
-    expect(toTestFileGlob("test/unit/**/*.spec.ts")).toBe("test/unit/**/*.spec.ts");
-    expect(toTestFileGlob("test/prefs.spec.ts")).toBe("test/prefs.spec.ts");
-  });
-
-  it("normalizes the separators of a Windows path", () => {
-    // A glob is written with `/` everywhere; a `\` would be an escape.
-    expect(toTestFileGlob(String.raw`test\unit`)).toBe(`test/unit/${TEST_FILE_GLOB}`);
-    expect(toTestFileGlob("test\\unit\\")).toBe(`test/unit/${TEST_FILE_GLOB}`);
-    expect(toTestFileGlob(String.raw`test\unit\*.spec.ts`)).toBe("test/unit/*.spec.ts");
+  it("requires the suffix to end the name", () => {
+    expect(isTestFileName("src/testing.ts")).toBe(false);
+    expect(isTestFileName("src/spec.ts")).toBe(false);
+    expect(isTestFileName("src/prefs.spec.ts.md")).toBe(false);
+    expect(isTestFileName("src/prefs.ts")).toBe(false);
   });
 });
 
@@ -116,7 +90,8 @@ describe("createTestFileFilter", () => {
   });
 
   it("does not treat a filter as a glob", () => {
-    // Like Vitest and Rstest, which filter by substring and leave globs to `include`.
+    // Like Vitest and Rstest, which filter by substring and leave globs to the
+    // configuration.
     expect(matches("test/prefs.spec.ts", ["test/**/*.spec.ts"])).toBe(false);
     expect(matches("test/prefs.spec.ts", ["^test/"])).toBe(false);
   });
@@ -146,51 +121,45 @@ describe("filterTestFiles", () => {
   });
 });
 
-describe("resolveTestEntries", () => { // Relative to the package, so the expectations do not depend on the cwd of
+describe("resolveTestEntries", () => {
+  // Relative to the package, so the expectations do not depend on the cwd of
   // the test runner.
   const root = fileURLToPath(new URL("..", import.meta.url));
 
-  it("matches the test files of a glob", async () => {
-    const files = await resolveTestEntries(["src/*.test.ts"], [], root);
+  it("matches the test files of a directory", async () => {
+    const files = await resolveTestEntries(["src"], [], root);
 
     expect(files).toContain("src/test-bundler.test.ts");
+    expect(files).toContain("src/config.test.ts");
     // Only the test files: the sources next to them are not part of the run.
     expect(files.every(file => /\.test\.[jt]s$/.test(file))).toBe(true);
     // Paths are normalized to posix, so a bundle path is stable on every platform.
     expect(files.every(file => !file.includes("\\"))).toBe(true);
   });
 
-  it("matches every test file of the project", async () => {
-    const files = await resolveTestEntries([TEST_FILE_GLOB], [], root);
-
-    expect(files).toContain("src/test-bundler.test.ts");
-    expect(files).toContain("src/config.test.ts");
+  it("takes a single directory as well as a list", async () => {
+    expect(await resolveTestEntries("src", [], root)).toEqual(await resolveTestEntries(["src"], [], root));
   });
 
   it("drops the files that exclude matches", async () => {
-    const files = await resolveTestEntries(["src/*.test.ts"], ["src/test-bundler.test.ts"], root);
+    const files = await resolveTestEntries(["src"], ["src/test-bundler.test.ts"], root);
 
     expect(files).not.toContain("src/test-bundler.test.ts");
     expect(files).toContain("src/config.test.ts");
   });
 
-  it("de-duplicates overlapping include patterns and sorts them", async () => {
-    const files = await resolveTestEntries(["src/*.test.ts", "src/test-bundler.test.ts"], [], root);
+  it("de-duplicates overlapping directories and sorts them", async () => {
+    const files = await resolveTestEntries(["src", "./src", "src/"], [], root);
 
     expect(files).toEqual([
       ...new Set(files),
     ].sort());
-    expect(new Set(files).size).toBe(files.length);
-  });
-
-  it("does not expand a directory pattern into every file below it", async () => {
-    // Aligned with Vitest and Rstest: `include` takes globs, not directories.
-    expect(await resolveTestEntries(["src"], [], root)).toEqual([]);
+    expect(files).toEqual(await resolveTestEntries(["src"], [], root));
   });
 
   it("returns an empty list when nothing matches", async () => {
-    expect(await resolveTestEntries(["src/nothing-here.spec.ts"], [], root)).toEqual([]);
-    expect(await resolveTestEntries(["src/*.test.ts"], ["src/**"], root)).toEqual([]);
+    expect(await resolveTestEntries(["nothing-here"], [], root)).toEqual([]);
+    expect(await resolveTestEntries(["src"], ["src/**"], root)).toEqual([]);
   });
 });
 
@@ -201,39 +170,39 @@ describe("resolveTestEntries on a fixture", () => {
     dir = await mkdtemp(join(tmpdir(), "scaffold-test-entries-"));
     await mkdir(join(dir, "test"), { recursive: true });
     await mkdir(join(dir, ".hidden"), { recursive: true });
+    await mkdir(join(dir, "test", "legacy"), { recursive: true });
     await writeFile(join(dir, "test", "a.spec.ts"), "");
-    await writeFile(join(dir, ".hidden", "b.spec.ts"), "");
+    await writeFile(join(dir, "test", "legacy", "b.spec.ts"), "");
+    await writeFile(join(dir, ".hidden", "c.spec.ts"), "");
   });
 
   afterAll(async () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("skips hidden directories, like the globs of Vitest and Rstest", async () => {
-    const files = await resolveTestEntries([TEST_FILE_GLOB], [], dir);
+  it("walks below the directories it is given", async () => {
+    expect(await resolveTestEntries(["test"], [], dir)).toEqual([
+      "test/a.spec.ts",
+      "test/legacy/b.spec.ts",
+    ]);
+  });
 
-    expect(files).toEqual(["test/a.spec.ts"]);
+  it("skips hidden directories, like the globs of tinyglobby", async () => {
+    // The project root is a directory like any other, so the dot directory
+    // below it stays out of the run.
+    expect(await resolveTestEntries(["."], [], dir)).toEqual([
+      "test/a.spec.ts",
+      "test/legacy/b.spec.ts",
+    ]);
   });
 
   it("accepts the separators of a Windows path", async () => {
-    // A `\\` in a glob is an escape, so the separators are normalized first.
-    expect(await resolveTestEntries([String.raw`test\*.spec.ts`], [], dir)).toEqual(["test/a.spec.ts"]);
-    expect(await resolveTestEntries([TEST_FILE_GLOB], [String.raw`test\**`], dir)).toEqual([]);
-  });
-});
-
-describe("isTestFileName", () => {
-  it("recognizes the two conventions", () => {
-    expect(isTestFileName("test/prefs.spec.ts")).toBe(true);
-    expect(isTestFileName("src/prefs.test.js")).toBe(true);
-    expect(isTestFileName("src/a.spec.tsx")).toBe(true);
-    expect(isTestFileName("src/a.test.mts")).toBe(true);
-  });
-
-  it("requires the suffix to end the name", () => {
-    expect(isTestFileName("src/testing.ts")).toBe(false);
-    expect(isTestFileName("src/spec.ts")).toBe(false);
-    expect(isTestFileName("src/prefs.spec.ts.md")).toBe(false);
-    expect(isTestFileName("src/prefs.ts")).toBe(false);
+    expect(await resolveTestEntries(["test\\"], [], dir)).toEqual([
+      "test/a.spec.ts",
+      "test/legacy/b.spec.ts",
+    ]);
+    expect(await resolveTestEntries(["test\\legacy"], [], dir)).toEqual([
+      "test/legacy/b.spec.ts",
+    ]);
   });
 });
