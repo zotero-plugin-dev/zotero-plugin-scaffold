@@ -2,7 +2,7 @@ import type { ConfigTransform } from "@zotero-plugin/config";
 import type { TestConfig } from "./types.js";
 import { relative, resolve } from "node:path";
 import process from "node:process";
-import { logger, toArray, toPosix } from "@zotero-plugin/utils";
+import { toArray, toPosix } from "@zotero-plugin/utils";
 import { TEST_FILE_GLOB, toTestFileGlob } from "./entries.js";
 
 export const testDefaults: TestConfig = {
@@ -35,7 +35,6 @@ export const testTransform: ConfigTransform = (config) => {
   const test = config.test as TestConfig;
 
   if (test.entries !== undefined) {
-    logger.warn("The `test.entries` option is deprecated. Use `test.include` instead.");
     // `entries` named directories, which its successor only accepts as globs.
     test.include = [
       ...test.include,

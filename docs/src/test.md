@@ -89,8 +89,6 @@ export default defineConfig({
 - `include` defaults to every test file of the project, `**/*.{spec,test}.[jt]s`;
 - `exclude` defaults to `["**/node_modules/**", "**/.git/**"]`, and always contains the build directory (`dist`).
 
-Test files are `*.spec.js`, `*.spec.ts`, `*.test.js` and `*.test.ts`. Overlapping patterns bundle every file once.
-
 ```ts twoslash
 import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
@@ -126,8 +124,6 @@ zotero-plugin test '"test/prefs.spec.ts"'
 ```
 
 `test.include` and `test.exclude` still decide which files exist; the filters — `test.filter`, filled by the positional arguments — narrow that down. They are not globs (use `test.include` for that), and an unquoted filter is not a path: it is the substring that Vitest and Rstest also compare against, so `zotero-plugin test test/unit` also matches `test/unit2/`. Include a trailing slash when the fragment has to be a directory: `test/unit/`. Wrap the filter in quotes when it has to be one exact path.
-
-Files that are not selected are neither bundled nor loaded, so a narrowed run also starts faster than a full one. These select _test files_. To run a single test case inside a file, use `.only()`.
 
 ### Delay Running
 

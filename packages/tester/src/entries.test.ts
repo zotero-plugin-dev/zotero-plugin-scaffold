@@ -1,7 +1,9 @@
-import { resolve } from "node:path";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-import { createTestFileFilter, filterTestFiles, isFilePattern, isQuotedFilter, resolveTestEntries, TEST_FILE_GLOB, toTestFileGlob, unquoteFilter } from "./entries.js";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createTestFileFilter, filterTestFiles, isFilePattern, isQuotedFilter, isTestFileName, resolveTestEntries, TEST_FILE_GLOB, toTestFileGlob, unquoteFilter } from "./entries.js";
 
 describe("isFilePattern", () => {
   it("treats a glob as a file pattern", () => {
@@ -35,6 +37,13 @@ describe("toTestFileGlob", () => {
   it("keeps a glob and a file as they are", () => {
     expect(toTestFileGlob("test/unit/**/*.spec.ts")).toBe("test/unit/**/*.spec.ts");
     expect(toTestFileGlob("test/prefs.spec.ts")).toBe("test/prefs.spec.ts");
+  });
+
+  it("normalizes the separators of a Windows path", () => {
+    // A glob is written with `/` everywhere; a `\` would be an escape.
+    expect(toTestFileGlob(String.raw`test\unit`)).toBe(`test/unit/${TEST_FILE_GLOB}`);
+    expect(toTestFileGlob("test\\unit\\")).toBe(`test/unit/${TEST_FILE_GLOB}`);
+    expect(toTestFileGlob(String.raw`test\unit\*.spec.ts`)).toBe("test/unit/*.spec.ts");
   });
 });
 
@@ -94,6 +103,18 @@ describe("createTestFileFilter", () => {
     expect(matches("test/prefs-extra.spec.ts", ["prefs"])).toBe(true);
   });
 
+  it("matches an exact path however it is spelled", () => {
+    // `node:path` folds `./`, `//` and `..` before the comparison.
+    for (const filter of [
+      `"test/prefs.spec.ts"`,
+      `"./test/prefs.spec.ts"`,
+      `"test//prefs.spec.ts"`,
+      `"test/unit/../prefs.spec.ts"`,
+    ]) {
+      expect(matches("test/prefs.spec.ts", [filter])).toBe(true);
+    }
+  });
+
   it("does not treat a filter as a glob", () => {
     // Like Vitest and Rstest, which filter by substring and leave globs to `include`.
     expect(matches("test/prefs.spec.ts", ["test/**/*.spec.ts"])).toBe(false);
@@ -125,8 +146,7 @@ describe("filterTestFiles", () => {
   });
 });
 
-describe("resolveTestEntries", () => {
-  // Relative to the package, so the expectations do not depend on the cwd of
+describe("resolveTestEntries", () => { // Relative to the package, so the expectations do not depend on the cwd of
   // the test runner.
   const root = fileURLToPath(new URL("..", import.meta.url));
 
@@ -171,5 +191,49 @@ describe("resolveTestEntries", () => {
   it("returns an empty list when nothing matches", async () => {
     expect(await resolveTestEntries(["src/nothing-here.spec.ts"], [], root)).toEqual([]);
     expect(await resolveTestEntries(["src/*.test.ts"], ["src/**"], root)).toEqual([]);
+  });
+});
+
+describe("resolveTestEntries on a fixture", () => {
+  let dir: string;
+
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), "scaffold-test-entries-"));
+    await mkdir(join(dir, "test"), { recursive: true });
+    await mkdir(join(dir, ".hidden"), { recursive: true });
+    await writeFile(join(dir, "test", "a.spec.ts"), "");
+    await writeFile(join(dir, ".hidden", "b.spec.ts"), "");
+  });
+
+  afterAll(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("skips hidden directories, like the globs of Vitest and Rstest", async () => {
+    const files = await resolveTestEntries([TEST_FILE_GLOB], [], dir);
+
+    expect(files).toEqual(["test/a.spec.ts"]);
+  });
+
+  it("accepts the separators of a Windows path", async () => {
+    // A `\\` in a glob is an escape, so the separators are normalized first.
+    expect(await resolveTestEntries([String.raw`test\*.spec.ts`], [], dir)).toEqual(["test/a.spec.ts"]);
+    expect(await resolveTestEntries([TEST_FILE_GLOB], [String.raw`test\**`], dir)).toEqual([]);
+  });
+});
+
+describe("isTestFileName", () => {
+  it("recognizes the two conventions", () => {
+    expect(isTestFileName("test/prefs.spec.ts")).toBe(true);
+    expect(isTestFileName("src/prefs.test.js")).toBe(true);
+    expect(isTestFileName("src/a.spec.tsx")).toBe(true);
+    expect(isTestFileName("src/a.test.mts")).toBe(true);
+  });
+
+  it("requires the suffix to end the name", () => {
+    expect(isTestFileName("src/testing.ts")).toBe(false);
+    expect(isTestFileName("src/spec.ts")).toBe(false);
+    expect(isTestFileName("src/prefs.spec.ts.md")).toBe(false);
+    expect(isTestFileName("src/prefs.ts")).toBe(false);
   });
 });

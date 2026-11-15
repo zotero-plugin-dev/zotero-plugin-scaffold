@@ -13,6 +13,9 @@ export interface TestConfig {
    *
    * The files are bundled in alphabetical order.
    *
+   * Globs skip hidden entries, so a test file inside a dot directory is only
+   * selected when the pattern names that directory itself.
+   *
    * The positional arguments of `zotero-plugin test` do not change this list:
    * they are `filter`, which narrows it down for one run.
    *

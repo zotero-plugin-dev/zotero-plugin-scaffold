@@ -9,6 +9,7 @@ import { ZoteroRunner } from "@zotero-plugin/zotero-runner";
 import { emptyDir } from "fs-extra/esm";
 import { isAgent, isCI } from "std-env";
 import { TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PROFILE_DIR } from "./constant.js";
+import { isTestFileName } from "./entries.js";
 import { prepareHeadless } from "./headless.js";
 import { TestHttpReporter } from "./http-reporter.js";
 import { TestBundler } from "./test-bundler.js";
@@ -69,11 +70,14 @@ export class Tester extends Base<TestContext> {
 
   async watch(): Promise<void> {
     const source = toArray(this.ctx.source).map(p => resolve(p));
-    // Only the source directories decide here; a change to a test file falls
-    // into the `else` branch below, and `watch()` reduces an `include` glob to
-    // the directory it starts in, which is what chokidar can watch.
+    // A test file is not a source file, even when it sits next to the sources:
+    // it never enters the plugin bundle, because the plugin is built from its
+    // own entry points and the assets. Only its suffix can tell, since
+    // `test.include` is free to select whatever the user wants.
     function isSource(_path: string) {
       const path = resolve(_path);
+      if (isTestFileName(path))
+        return false;
       return source.some(s => path === s || path.startsWith(`${s}/`) || path.startsWith(`${s}\\`));
     }
 
@@ -87,21 +91,28 @@ export class Tester extends Base<TestContext> {
         onChange: async (path) => {
           if (isSource(path)) {
             await this.builder.run();
+            // The units inline the sources, so they change with the plugin.
             await this.testBundler?.regenerate(path);
             await this.zotero?.reloadAllPlugins();
+            return;
           }
-          else {
-            await this.testBundler?.regenerate(path);
+
+          // A test file, or a helper a unit embeds: the metafile says which
+          // units must be re-run, and a change nothing reaches needs none.
+          if (await this.testBundler?.regenerate(path))
             await this.zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
-          }
         },
         onAdd: async (path) => {
           if (isSource(path)) {
             await this.builder.run();
             await this.testBundler?.regenerate(path);
             await this.zotero?.reloadAllPlugins();
+            return;
           }
-          else {
+
+          if (isTestFileName(path)) {
+            // A new test file is a new entry point, which only a freshly
+            // created esbuild context knows about.
             await this.testBundler?.generate();
             await this.zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
           }
@@ -208,7 +219,7 @@ export class Tester extends Base<TestContext> {
 
 export { testDefaults, testTransform } from "./config.js";
 export { TESTER_BASE_PATH, TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PLUGIN_REF, TESTER_PROFILE_DIR } from "./constant.js";
-export { createTestFileFilter, filterTestFiles, isFilePattern, isQuotedFilter, resolveTestEntries, TEST_FILE_GLOB, toTestFileGlob, unquoteFilter } from "./entries.js";
+export { createTestFileFilter, filterTestFiles, isFilePattern, isQuotedFilter, isTestFileName, resolveTestEntries, TEST_FILE_GLOB, toTestFileGlob, unquoteFilter } from "./entries.js";
 export { prepareHeadless } from "./headless.js";
 export { TestHttpReporter } from "./http-reporter.js";
 export { TestBundler } from "./test-bundler.js";

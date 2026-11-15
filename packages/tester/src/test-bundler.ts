@@ -138,17 +138,29 @@ export class TestBundler {
     await this.createTestHtml();
   }
 
-  async regenerate(changedFile: string): Promise<void> {
+  /**
+   * Re-bundle the tests after a change and rewrite the test page.
+   *
+   * @param changedFile the file that changed.
+   * @returns Whether the page was rewritten, and therefore asks to be reloaded.
+   * A change that no unit embeds leaves the page, and the selection, as it is:
+   * re-running the tests for it would not tell anything new.
+   */
+  async regenerate(changedFile: string): Promise<boolean> {
     // re-bundle tests
     const esbuildResult = await this.esbuildContext?.rebuild();
 
     // get affected tests
     const tests = findImpactedTests(changedFile, esbuildResult?.metafile);
 
+    if (tests.length === 0)
+      return false;
+
     // this.generateTestPage
     //   options
     //   html
     await this.createTestHtml(tests);
+    return true;
   }
 
   private async generateTestResources(): Promise<void> {
@@ -250,11 +262,13 @@ export class TestBundler {
     };
 
     // html
+    // Without a selection the page loads every unit of the last bundle, which
+    // is what a full `generate()` wants.
     let testFiles = tests;
     if (testFiles.length === 0) {
-      // Every unit of the last bundle. Going through the metafile instead of
-      // globbing the output directory keeps stale units of a wider earlier run
-      // out of the page, e.g. after narrowing `test.include`.
+      // Going through the metafile instead of globbing the output directory
+      // keeps stale units of a wider earlier run out of the page, e.g. after
+      // narrowing `test.include`.
       testFiles = this.units;
     }
     const html = generateHtml(options, testFiles);

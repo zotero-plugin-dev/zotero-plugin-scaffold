@@ -1,4 +1,4 @@
-import { isAbsolute, relative, resolve } from "node:path";
+import { isAbsolute, normalize, relative, resolve } from "node:path";
 import process from "node:process";
 import { toPosix } from "@zotero-plugin/utils";
 import { glob } from "tinyglobby";
@@ -33,6 +33,20 @@ export function isFilePattern(entry: string): boolean {
 }
 
 /**
+ * Whether a file name follows the convention of a test file, i.e. ends in
+ * `.spec.` or `.test.` with a script extension.
+ *
+ * The watch mode uses it to decide whether a file below `source` can be a test,
+ * which needs no glob matching per event. `test.include` still decides which
+ * tests a run selects.
+ *
+ * @param file a file name or a path.
+ */
+export function isTestFileName(file: string): boolean {
+  return /\.(?:spec|test)\.[cm]?[jt]sx?$/.test(file);
+}
+
+/**
  * Turn a directory into the glob that matches its test files.
  *
  * `test.include` takes globs, while the deprecated `test.entries` named
@@ -43,9 +57,13 @@ export function isFilePattern(entry: string): boolean {
  * @returns The glob to run.
  */
 export function toTestFileGlob(entry: string): string {
-  return isFilePattern(entry)
-    ? entry
-    : `${entry.replace(/\/+$/, "")}/${TEST_FILE_GLOB}`;
+  // A glob is written with `/` on every platform, and Windows accepts `\` in a
+  // path, so the separators are normalized before the pattern is built.
+  const pattern = toPosix(entry);
+
+  return isFilePattern(pattern)
+    ? pattern
+    : `${pattern.replace(/\/+$/, "")}/${TEST_FILE_GLOB}`;
 }
 
 /**
@@ -53,7 +71,9 @@ export function toTestFileGlob(entry: string): string {
  * to run.
  *
  * The result is sorted and de-duplicated, so that overlapping patterns bundle
- * every file exactly once.
+ * every file exactly once. Globs skip hidden entries, like in tinyglobby, so a
+ * test file inside a dot directory is only selected by a pattern that names
+ * that directory.
  *
  * @param include `test.include` as configured, or the positional CLI arguments.
  * @param exclude `test.exclude` as configured.
@@ -65,12 +85,12 @@ export async function resolveTestEntries(
   exclude: string[] = [],
   root?: string,
 ): Promise<string[]> {
-  const files = await glob(include, {
+  const files = await glob(include.map(toPosix), {
     absolute: false,
     cwd: root,
     // A pattern that names a directory must not pull in every file below it.
     expandDirectories: false,
-    ignore: exclude,
+    ignore: exclude.map(toPosix),
   });
 
   return [
@@ -110,10 +130,14 @@ export function unquoteFilter(filter: string): string {
  * Like Rstest, the comparison stays case-sensitive on POSIX systems: an exact
  * filter asks for a path, and two paths that only differ in case are two files.
  *
+ * `node:path` folds the same segments `pathe` would (`./`, `//`, `..`), so the
+ * quoting rule needs no extra dependency; the separators are made POSIX, which
+ * `pathe` does implicitly.
+ *
  * @param path a file path.
  */
 function normalizeExactPathMatch(path: string): string {
-  const normalized = toPosix(path);
+  const normalized = toPosix(normalize(path));
   return process.platform === "win32"
     ? normalized.toLowerCase()
     : normalized;
