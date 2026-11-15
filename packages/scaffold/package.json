@@ -46,7 +46,11 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "zotero-plugin": "./bin/zotero-plugin.mjs"
+    "zotero-plugin": "./bin/zotero-plugin.mjs",
+    "zotest": "./bin/zotest.mjs",
+    "zodev": "./bin/zodev.mjs",
+    "zobuild": "./bin/zobuild.mjs",
+    "zorelease": "./bin/zorelease.mjs"
   },
   "files": [
     "bin",
