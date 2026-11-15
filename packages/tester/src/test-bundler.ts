@@ -6,9 +6,9 @@ import { fileURLToPath } from "node:url";
 import { logger, toArray } from "@zotero-plugin/utils";
 import { build, context } from "esbuild";
 import { outputFile, outputJSON } from "fs-extra/esm";
-import { glob } from "tinyglobby";
 import { TEST_API_IDS } from "./apis.js";
 import { TESTER_PLUGIN_DIR } from "./constant.js";
+import { createTestFileFilter, resolveTestEntries } from "./entries.js";
 import { generateBootstrap, generateHtml, generateManifest } from "./test-bundler-template/index.js";
 
 /**
@@ -109,6 +109,14 @@ export function createTestApiPlugin(): Plugin {
 
 export class TestBundler {
   private esbuildContext?: BuildContext;
+  /**
+   * The units of the last bundle, relative to `content/`, e.g.
+   * `units/prefs.spec.js`. It is the authoritative list of what the test page
+   * may load: the bundle is built from the filtered entry points, so a stale
+   * file left in `content/units` can never end up in the page.
+   */
+  private units: string[] = [];
+
   constructor(
     private ctx: TestContext,
     private port: number,
@@ -130,6 +138,11 @@ export class TestBundler {
     await this.createTestHtml();
   }
 
+  /**
+   * Re-bundle the tests after a change and rewrite the test page.
+   *
+   * @param changedFile the file that changed.
+   */
   async regenerate(changedFile: string): Promise<void> {
     // re-bundle tests
     const esbuildResult = await this.esbuildContext?.rebuild();
@@ -187,12 +200,29 @@ export class TestBundler {
   }
 
   private async bundleTests(): Promise<void> {
-    const testDirs = toArray(this.ctx.test.entries);
-    // Because esbuild only support `*` and `**`，
-    // so we need to glob ourselves.
+    // `entries` and `exclude` are resolved here because esbuild only supports
+    // `*` and `**` in an entry point glob, and because the positional arguments
+    // of the CLI narrow the result down afterwards.
     // https://esbuild.github.io/api/#glob-style-entry-points
-    const entryPoints = (await Promise.all(testDirs.map(dir => glob(`${dir}/**/*.{spec,test}.[jt]s`))))
-      .flat();
+    const selected = await resolveTestEntries(this.ctx.test.entries, this.ctx.test.exclude);
+    const filters = this.ctx.test.filter;
+    const entryPoints = selected.filter(createTestFileFilter(filters));
+
+    if (entryPoints.length === 0) {
+      // Say whether the filters or the entries themselves selected nothing.
+      if (selected.length > 0 && filters.length > 0)
+        throw new Error(`No test file matched ${filters.join(", ")}; test.entries selected ${selected.length} file(s).`);
+
+      const exclude = toArray(this.ctx.test.exclude);
+      throw new Error(
+        `No test file matched ${toArray(this.ctx.test.entries).join(", ")}`
+        + `${
+          exclude.length > 0
+            ? ` after excluding ${exclude.join(", ")}`
+            : ""
+        }.`,
+      );
+    }
 
     // Bundle all test files, including both JavaScript and TypeScript.
     // The test API plugin is only attached here: the test runtime needs to
@@ -208,7 +238,11 @@ export class TestBundler {
         createTestApiPlugin(),
       ],
     });
-    await this.esbuildContext.rebuild();
+    const result = await this.esbuildContext.rebuild();
+    this.units = Object.keys(result.metafile?.outputs ?? {})
+      .map(output => output.replace(`${TESTER_PLUGIN_DIR}/content/`, ""))
+      .map(output => output.replaceAll(/\\/g, "/"))
+      .sort();
   }
 
   private async createTestHtml(tests: string[] = []): Promise<void> {
@@ -223,7 +257,10 @@ export class TestBundler {
     // html
     let testFiles = tests;
     if (testFiles.length === 0) {
-      testFiles = (await glob(`**/*.{spec,test}.js`, { cwd: `${TESTER_PLUGIN_DIR}/content` })).sort();
+      // Every unit of the last bundle. Going through the metafile instead of
+      // globbing the output directory keeps stale units of a wider earlier run
+      // out of the page, e.g. after narrowing `test.entries`.
+      testFiles = this.units;
     }
     const html = generateHtml(options, testFiles);
     await outputFile(`${TESTER_PLUGIN_DIR}/content/index.xhtml`, html);

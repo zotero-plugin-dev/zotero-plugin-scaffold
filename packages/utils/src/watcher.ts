@@ -6,7 +6,7 @@ import { toArray } from "./string.js";
 
 export function watch(
   source: string | string[],
-  ignore: string | string[] | RegExp | RegExp[],
+  ignore: string | RegExp | (string | RegExp)[],
   event: {
     onReady?: () => any;
     onChange: (path: string) => any | Promise<any>;

@@ -63,15 +63,17 @@ async function main(presetCommand?: string) {
 
   cli.command("test")
     .description("Run tests")
+    .argument("[filters...]", "Only run the test files whose path contains any of the filters")
     .option("--abort-on-fail", "Abort the test suite on first failure")
     .option("--exit-on-finish", "Exit the test suite after all tests have run")
     .option("--no-watch", "Exit the test suite after all tests have run")
-    .action(async (options) => {
+    .action(async (filters: string[], options) => {
       process.env.NODE_ENV = "test";
       await runCommand(Tester, {
         test: {
           abortOnFail: options.abortOnFail,
           watch: !options.exitOnFinish && options.watch,
+          ...(filters.length > 0 && { filter: filters }),
         },
       });
     });

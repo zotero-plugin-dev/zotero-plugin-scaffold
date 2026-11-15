@@ -9,6 +9,7 @@ import { ZoteroRunner } from "@zotero-plugin/zotero-runner";
 import { emptyDir } from "fs-extra/esm";
 import { isAgent, isCI } from "std-env";
 import { TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PROFILE_DIR } from "./constant.js";
+import { isTestFileName } from "./entries.js";
 import { prepareHeadless } from "./headless.js";
 import { TestHttpReporter } from "./http-reporter.js";
 import { TestBundler } from "./test-bundler.js";
@@ -69,12 +70,11 @@ export class Tester extends Base<TestContext> {
 
   async watch(): Promise<void> {
     const source = toArray(this.ctx.source).map(p => resolve(p));
-    const tests = toArray(this.ctx.test.entries).map(p => resolve(p));
     function isSource(_path: string) {
       const path = resolve(_path);
-      const isSource = source.find(s => path.match(s)) || false;
-      const _isTests = tests.find(t => path.match(t)) || false;
-      return isSource;
+      if (isTestFileName(path))
+        return false;
+      return source.some(s => path === s || path.startsWith(`${s}/`) || path.startsWith(`${s}\\`));
     }
 
     watch(
@@ -203,7 +203,7 @@ export class Tester extends Base<TestContext> {
   }
 }
 
-export { testDefaults } from "./config.js";
+export { testDefaults, testTransform } from "./config.js";
 export { TESTER_BASE_PATH, TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PLUGIN_REF, TESTER_PROFILE_DIR } from "./constant.js";
 export { prepareHeadless } from "./headless.js";
 export { TestHttpReporter } from "./http-reporter.js";

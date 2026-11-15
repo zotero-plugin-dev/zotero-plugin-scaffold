@@ -3,7 +3,7 @@ import type { Context, UserConfig } from "./types.js";
 import { baseDefaults, loadConfig as loadConfigBase } from "@zotero-plugin/config";
 import { buildDefaults, buildTransform, devServerTransform } from "@zotero-plugin/core";
 import { releaseDefaults, releaseTransform } from "@zotero-plugin/releaser";
-import { testDefaults } from "@zotero-plugin/tester";
+import { testDefaults, testTransform } from "@zotero-plugin/tester";
 
 /**
  * Default values of all command configs.
@@ -24,6 +24,7 @@ export const defaults: UserConfig = {
 export const transforms: ConfigTransform[] = [
   buildTransform,
   devServerTransform,
+  testTransform,
   releaseTransform,
 ];
 

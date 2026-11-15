@@ -4,13 +4,35 @@ import type { RecursivePartial } from "@zotero-plugin/utils";
 
 export interface TestConfig {
   /**
-   * The test source code directories, starting from the root directory of the project.
-   * All `*.spec.js` files in these directories will be executed.
-   * The files will be sorted by alphabetical order.
+   * The test source code directories, starting from the root directory of the
+   * project. All `*.spec.*` and `*.test.*` files below these directories are
+   * bundled and executed, in alphabetical order.
+   *
+   * `test.exclude` drops some of the files again, and the positional arguments
+   * of `zotero-plugin test` narrow a single run down.
    *
    * @default "test"
    */
   entries: string | string[];
+
+  /**
+   * The glob patterns to skip after `entries` selected the test files, like
+   * `exclude` in Vitest and Rstest.
+   *
+   * @default ["**\/node_modules/**", "**\/.git/**"]
+   */
+  exclude: string[];
+
+  /**
+   * Only run the test files whose path contains one of the filters, like the
+   * positional arguments of `vitest run [...filters]` and `rstest [...filters]`.
+   *
+   * The positional arguments of `zotero-plugin test` are what normally fills
+   * this list, so it is usually left empty.
+   *
+   * @default []
+   */
+  filter: string[];
 
   /**
    * The default preferences for the test.
