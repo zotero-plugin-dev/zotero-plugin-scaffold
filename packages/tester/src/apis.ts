@@ -19,9 +19,8 @@
  * registry buys nothing while costing a lookup table that can disagree with
  * itself.
  *
- * Adding a new library (e.g. `@vitest/expect`, `sinon`) should cost one
- * dependency, one registry entry and one line each in the shim and the
- * runtime.
+ * Adding a new library (e.g. `sinon`) should cost one dependency, one
+ * registry entry and one line each in the shim and the runtime.
  */
 export interface TestApiModule {
   /** The module specifier intercepted by the onResolve plugin */

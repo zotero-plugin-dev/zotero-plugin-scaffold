@@ -59,9 +59,11 @@ Snapshots, mocking (`vi`), `expect.soft` and `expect.poll` are not available, si
 To type the bare globals in your own `typings/*.d.ts`, add:
 
 ```ts
+import type { assert as chaiAssert, Expect } from "zotero-plugin-scaffold/test";
+
 declare global {
-  const expect: typeof import("zotero-plugin-scaffold/test").expect;
-  const assert: typeof import("zotero-plugin-scaffold/test").assert;
+  const expect: Expect;
+  const assert: typeof chaiAssert;
 }
 ```
 

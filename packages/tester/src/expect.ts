@@ -108,6 +108,11 @@ let chaiPluginsInstalled = false;
  * call only.
  */
 export function createExpect(): Expect {
+  // The plugins are registered on chai itself, not on the instance: `chai.use`
+  // is process wide, which is how Vitest sets it up as well. They patch
+  // `chai.Assertion`, so the `chai` namespace exported for `chai.use(plugin)`
+  // gains the Jest matchers too — intended, and the reason this is gated on a
+  // module level flag instead of running once per instance.
   if (!chaiPluginsInstalled) {
     chaiPluginsInstalled = true;
     chai.use(JestExtend);

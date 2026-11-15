@@ -8,6 +8,16 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateHtml, serializeTestOptions } from "./test-bundler-template/index.js";
 import { createTestApiPlugin, findImpactedTests, resolveRuntimeEntry } from "./test-bundler.js";
 
+/**
+ * A marker that only `@vitest/expect` itself contains: the symbol key it
+ * registers its matcher state under (`Symbol.for("$$jest-matchers-object")`).
+ *
+ * Matcher *names* (`toHaveBeenCalled`) would make the purity check below
+ * fragile: a sample suite is free to call one in a real assertion, and the
+ * check would then fail on a bundle that contains no library code at all.
+ */
+const VITEST_EXPECT_MARKER = "$$jest-matchers-object";
+
 describe("findImpactedTests", () => {
   const mockMetafileOutputs = {
     outputs: {
@@ -117,8 +127,8 @@ describe("sample", () => {
     expect(text).not.toContain("Mocha");
     expect(text).not.toContain("AssertionError");
     expect(text).not.toContain("deep-eql");
-    // Neither the jest matchers of `@vitest/expect`.
-    expect(text).not.toContain("toHaveBeenCalled");
+    // Nor `@vitest/expect`, see `VITEST_EXPECT_MARKER`.
+    expect(text).not.toContain(VITEST_EXPECT_MARKER);
     // A test bundle is user code plus the shim reads, far below the ~230KB of
     // the libraries themselves.
     expect(text.length).toBeLessThan(10_000);
@@ -140,8 +150,8 @@ describe("sample", () => {
     const text = result.outputFiles.map(file => file.text).join("\n");
     // The runtime is the one place that does contain the libraries...
     expect(text).toContain("Mocha");
-    // ...including the Jest matchers of `@vitest/expect`.
-    expect(text).toContain("toHaveBeenCalled");
+    // ...including `@vitest/expect`, see `VITEST_EXPECT_MARKER`.
+    expect(text).toContain(VITEST_EXPECT_MARKER);
     expect(text.length).toBeGreaterThan(100_000);
     // ...bundled as a self-executing script, not as an ES module.
     expect(text).not.toMatch(/^import\s/m);
