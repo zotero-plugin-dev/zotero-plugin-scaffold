@@ -10,7 +10,7 @@ import { loadConfig } from "./config.js";
 import { Builder, DevServer, Releaser, Tester } from "./index.js";
 import { updateNotifier } from "./updater.js";
 
-async function main() {
+async function main(presetCommand?: string) {
   updateNotifier(name, version);
 
   // Env variables are initialized to dev, but can be overridden by each command
@@ -23,6 +23,15 @@ async function main() {
     .version(version)
     .usage("<command> [options]");
   // .option("--config-cwd <config>", "The cwd for search configuration file");
+
+  if (presetCommand) {
+    // A short bin implies its command by name alone (`zotest --help` is
+    // `zotero-plugin test --help`), so the usage line should not repeat the
+    // command name it was given: "zotest [options]", not "zotest test [options]".
+    cli.configureHelp({
+      commandUsage: cmd => `${cli.name()} ${cmd.usage()}`.trim(),
+    });
+  }
 
   cli
     .command("build")
@@ -99,7 +108,17 @@ async function main() {
     logger.error(`Unknown command name "${cmd}".`);
   });
 
-  cli.parse();
+  // Short bins (`zotest`, `zodev`, ...) are just `zotero-plugin <command>` with the
+  // command injected in front of the user arguments, so both forms stay in sync.
+  cli.parse(
+    presetCommand
+      ? [
+          ...process.argv.slice(0, 2),
+          presetCommand,
+          ...process.argv.slice(2),
+        ]
+      : undefined,
+  );
 }
 
 type Constructor<T> = new (ctx: Context) => T;
@@ -114,8 +133,12 @@ export async function runCommand<T extends Base>(
   await instance.run();
 }
 
-export default async function mainWithErrorHandler(): Promise<void> {
-  main()
+/**
+ * @param presetCommand The subcommand implied by the invoked bin name,
+ * e.g. `zotest --no-watch` is `zotero-plugin test --no-watch`.
+ */
+export default async function mainWithErrorHandler(presetCommand?: string): Promise<void> {
+  main(presetCommand)
     .then(() => {
       checkGitIgnore();
     })
