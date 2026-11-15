@@ -12,4 +12,4 @@ export type {
   RecursivePickOptional,
   RecursiveRequired,
 } from "./types.js";
-export { toWatchPath, toWatchPaths, watch } from "./watcher.js";
+export { watch } from "./watcher.js";

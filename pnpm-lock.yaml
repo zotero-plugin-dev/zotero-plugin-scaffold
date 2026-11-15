@@ -616,9 +616,6 @@ importers:
       std-env:
         specifier: 'catalog:'
         version: 4.3.0
-      tinyglobby:
-        specifier: 'catalog:'
-        version: 0.2.17
     devDependencies:
       '@types/fs-extra':
         specifier: catalog:dev

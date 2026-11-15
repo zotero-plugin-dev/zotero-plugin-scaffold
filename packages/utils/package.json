@@ -46,8 +46,7 @@
     "chokidar": "catalog:",
     "es-toolkit": "catalog:",
     "fs-extra": "catalog:",
-    "std-env": "catalog:",
-    "tinyglobby": "catalog:"
+    "std-env": "catalog:"
   },
   "devDependencies": {
     "@types/fs-extra": "catalog:dev",
