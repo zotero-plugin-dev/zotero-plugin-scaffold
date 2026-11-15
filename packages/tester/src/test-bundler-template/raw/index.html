@@ -20,14 +20,15 @@
     <!-- Include Zotero Vars -->
     <script src="chrome://zotero/content/include.js"></script>
 
-    <!-- Mocha and Chai Libraries -->
+    <!-- Prebuilt page runtime: mocha, then chai + expect -->
     <script src="mocha.js"></script>
-    <script src="chai.js"></script>
+    <script src="test-api.js"></script>
 
-    <!-- Setup Mocha -->
+    <!-- Test configuration, read by mocha-setup.js -->
     <script>
-      __SETUP_CODE__;
+      window.__scaffoldConfig = __CONFIG__;
     </script>
+    <script src="mocha-setup.js"></script>
 
     <!-- Unit tests -->
     __TEST_FILES__

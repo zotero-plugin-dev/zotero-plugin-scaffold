@@ -43,12 +43,16 @@
     "build:tsc": "tsc --noEmit"
   },
   "dependencies": {
+    "@types/chai": "catalog:",
+    "@types/mocha": "catalog:",
     "@zotero-plugin/config": "workspace:*",
     "@zotero-plugin/core": "workspace:*",
     "@zotero-plugin/utils": "workspace:*",
     "@zotero-plugin/zotero-runner": "workspace:*",
+    "chai": "catalog:",
     "esbuild": "catalog:",
     "fs-extra": "catalog:",
+    "mocha": "catalog:",
     "std-env": "catalog:",
     "tinyglobby": "catalog:",
     "xvfb-ts": "catalog:"

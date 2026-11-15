@@ -22,15 +22,9 @@ Ensure `zotero-plugin-scaffold` is installed first. Then add a `test` script to 
 }
 ```
 
-### Install Mocha and Chai
+### Assertions
 
-Install `mocha` and `chai` as development dependencies to avoid potential conflicts:
-
-```bash
-npm install -D mocha chai @types/mocha @types/chai
-```
-
-If Scaffold detects a local Mocha installation, it uses it; otherwise, it fetches the latest version from NPM. Cached versions are stored in `.scaffold/cache`, which can be deleted to force updates.
+`mocha` and `chai` are direct dependencies of Scaffold, nothing needs to be installed in your plugin project, and nothing is downloaded at runtime: Mocha's browser build, Chai and the test page's own setup script are prebuilt when Scaffold is published and only copied into the test plugin when the tests run.
 
 ### Writing Test Cases
 
@@ -48,6 +42,12 @@ describe("Startup", () => {
     assert.isNotEmpty(Zotero[MyPlugin]);
   });
 });
+```
+
+`describe`, `it`, `expect` and `assert` are globals of the test page, so nothing has to be imported. Everything a test file does import is bundled together with the file, so normal `import` statements work as usual:
+
+```ts
+import { MyPlugin } from "../src/index"; // your plugin's code
 ```
 
 ### Running Tests
