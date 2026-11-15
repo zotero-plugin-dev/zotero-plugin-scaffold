@@ -2,18 +2,6 @@ import type { ZoTimers } from "./zo-timers.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { createZoTimers } from "./zo-timers.js";
 
-/**
- * `src/zo-timers.ts` is a wrapper, so this suite covers the wrapper: which
- * clock is installed where, what `useRealTimers()` restores, the defaults, and
- * the error the members throw without a clock. That a fake clock freezes time
- * and that `tickAsync()` awaits async timers is `@sinonjs/fake-timers`' job, and
- * `test-runtime.test.ts` exercises it once through the path a user takes.
- *
- * `createZoTimers(global)` takes the object whose timers are faked, so this
- * suite never hands it `globalThis`: installing a clock there fakes the timers
- * of the Vitest runner itself and the run hangs.
- */
-
 /** A plain object with the timers a page has, and no `process` / microtasks. */
 function createHost(): Record<string, unknown> & {
   setTimeout: typeof setTimeout;
