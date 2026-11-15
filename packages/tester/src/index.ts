@@ -205,7 +205,6 @@ export class Tester extends Base<TestContext> {
 
 export { testDefaults, testTransform } from "./config.js";
 export { TESTER_BASE_PATH, TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PLUGIN_REF, TESTER_PROFILE_DIR } from "./constant.js";
-export { createTestFileFilter, filterTestFiles, isQuotedFilter, isTestFileName, resolveTestEntries, TEST_FILE_GLOB, unquoteFilter } from "./entries.js";
 export { prepareHeadless } from "./headless.js";
 export { TestHttpReporter } from "./http-reporter.js";
 export { TestBundler } from "./test-bundler.js";

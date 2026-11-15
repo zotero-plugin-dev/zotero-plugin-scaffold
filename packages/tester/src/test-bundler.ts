@@ -8,7 +8,7 @@ import { build, context } from "esbuild";
 import { outputFile, outputJSON } from "fs-extra/esm";
 import { TEST_API_IDS } from "./apis.js";
 import { TESTER_PLUGIN_DIR } from "./constant.js";
-import { filterTestFiles, resolveTestEntries } from "./entries.js";
+import { createTestFileFilter, resolveTestEntries } from "./entries.js";
 import { generateBootstrap, generateHtml, generateManifest } from "./test-bundler-template/index.js";
 
 /**
@@ -206,7 +206,7 @@ export class TestBundler {
     // https://esbuild.github.io/api/#glob-style-entry-points
     const selected = await resolveTestEntries(this.ctx.test.entries, this.ctx.test.exclude);
     const filters = this.ctx.test.filter;
-    const entryPoints = filterTestFiles(selected, filters);
+    const entryPoints = selected.filter(createTestFileFilter(filters));
 
     if (entryPoints.length === 0) {
       // Say whether the filters or the entries themselves selected nothing.

@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTestFileFilter, filterTestFiles, isQuotedFilter, isTestFileName, resolveTestEntries, unquoteFilter } from "./entries.js";
+import { createTestFileFilter, isTestFileName, resolveTestEntries } from "./entries.js";
 
 describe("isTestFileName", () => {
   it("recognizes the two conventions", () => {
@@ -69,6 +69,7 @@ describe("createTestFileFilter", () => {
   it("treats a quoted filter as an exact path", () => {
     // The convention of Rstest; the shell removes one layer of quotes.
     expect(matches("test/prefs.spec.ts", [`"test/prefs.spec.ts"`])).toBe(true);
+    expect(matches("test/prefs.spec.ts", [`'test/prefs.spec.ts'`])).toBe(true);
     // An absolute path works too, spelled the way the platform resolves it.
     expect(matches("test/prefs.spec.ts", [`"${resolve("/project", "test/prefs.spec.ts")}"`])).toBe(true);
     // A substring would also match, but an exact path must not.
@@ -89,35 +90,17 @@ describe("createTestFileFilter", () => {
     }
   });
 
+  it("requires matching quotes around the whole filter", () => {
+    // A half-quoted filter is not an exact path, and matches nothing here.
+    expect(matches("test/prefs.spec.ts", [`"test/prefs.spec.ts'`])).toBe(false);
+    expect(matches("test/prefs.spec.ts", ["\""])).toBe(false);
+  });
+
   it("does not treat a filter as a glob", () => {
     // Like Vitest and Rstest, which filter by substring and leave globs to the
     // configuration.
     expect(matches("test/prefs.spec.ts", ["test/**/*.spec.ts"])).toBe(false);
     expect(matches("test/prefs.spec.ts", ["^test/"])).toBe(false);
-  });
-});
-
-describe("isQuotedFilter", () => {
-  it("recognizes both quote styles", () => {
-    expect(isQuotedFilter(`'"test/a.spec.ts"'`)).toBe(true);
-    expect(isQuotedFilter("\"test/a.spec.ts\"")).toBe(true);
-    expect(isQuotedFilter("'test/a.spec.ts'")).toBe(true);
-  });
-
-  it("requires matching quotes around the whole filter", () => {
-    expect(isQuotedFilter("test/a.spec.ts")).toBe(false);
-    expect(isQuotedFilter(`"test/a.spec.ts'`)).toBe(false);
-    expect(isQuotedFilter(`"`)).toBe(false);
-    expect(unquoteFilter(`"test/a.spec.ts"`)).toBe("test/a.spec.ts");
-  });
-});
-
-describe("filterTestFiles", () => {
-  it("keeps the input order and drops the files that do not match", () => {
-    const files = ["test/b.spec.ts", "test/a.spec.ts", "test/api.spec.ts"];
-
-    expect(filterTestFiles(files, ["api"], "/project")).toEqual(["test/api.spec.ts"]);
-    expect(filterTestFiles(files, [], "/project")).toEqual(files);
   });
 });
 
