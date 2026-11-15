@@ -52,16 +52,24 @@ export const TEST_API_MODULES: TestApiModule[] = [
   },
   {
     id: "chai",
-    // `expect` / `assert` are also mounted on `globalThis` to keep bare
-    // globals of existing tests working; `use` / `config` / `chai` / `default`
-    // expose the chai namespace so that `chai.use(plugin)` keeps working.
+    // `assert` is also mounted on `globalThis` to keep bare globals of existing
+    // tests working; `use` / `config` / `chai` / `default` expose the chai
+    // namespace so that `chai.use(plugin)` keeps working.
     exports: [
-      "expect",
       "assert",
       "use",
       "config",
       "chai",
       "default",
+    ],
+  },
+  {
+    id: "@vitest/expect",
+    // Jest-style `expect`, created from `@vitest/expect` on top of chai by
+    // `src/expect.ts` and mounted on `globalThis` by the test runtime. It
+    // replaces chai's plain `expect` in the test API surface.
+    exports: [
+      "expect",
     ],
   },
 ];

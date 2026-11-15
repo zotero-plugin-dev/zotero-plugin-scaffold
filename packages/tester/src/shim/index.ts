@@ -17,13 +17,16 @@
  * - every `export const` carries an explicit type annotation (TS9010);
  * - `@types/chai` does not declare global `expect` / `assert` (TS7017), so
  *   they are read through an assertion on `globalThis`;
- * - the chai side is annotated with type queries (`typeof ChaiTypes.expect`)
- *   while the mocha side uses interface types (`MochaTypes.SuiteFunction`):
- *   `@types/chai` only exports those members as values, it has no
- *   `ExpectStatic` / `AssertStatic` / `Config` interface to name.
+ * - the chai side is annotated with type queries (`typeof ChaiTypes.assert`)
+ *   and the Jest-style `expect` with the `Expect` interface of
+ *   `src/expect.ts`, while the mocha side uses interface types
+ *   (`MochaTypes.SuiteFunction`): `@types/chai` only exports those members as
+ *   values, it has no `AssertStatic` / `Config` interface to name.
  */
+
 import type * as ChaiTypes from "chai";
 import type * as MochaTypes from "mocha";
+import type { Expect } from "../expect.js";
 
 if (typeof (globalThis as { Zotero?: unknown }).Zotero === "undefined") {
   throw new Error(
@@ -34,7 +37,7 @@ if (typeof (globalThis as { Zotero?: unknown }).Zotero === "undefined") {
 
 type TestGlobals = typeof globalThis & {
   chai: typeof ChaiTypes;
-  expect: typeof ChaiTypes.expect;
+  expect: Expect;
   assert: typeof ChaiTypes.assert;
 };
 const g = globalThis as TestGlobals;
@@ -52,7 +55,7 @@ export const after: MochaTypes.HookFunction<MochaTypes.Hook> = globalThis.after;
 export const beforeEach: MochaTypes.HookFunction<MochaTypes.Hook> = globalThis.beforeEach;
 export const afterEach: MochaTypes.HookFunction<MochaTypes.Hook> = globalThis.afterEach;
 
-export const expect: typeof ChaiTypes.expect = g.expect;
+export const expect: Expect = g.expect;
 export const assert: typeof ChaiTypes.assert = g.assert;
 // chai namespace re-export, so that `chai.use(plugin)` keeps working.
 // It is exposed both as a named export (in line with the facade) and as the
@@ -63,3 +66,7 @@ export const config: typeof ChaiTypes.config = g.chai.config;
 // (TS9039, private name), so it goes through an annotated constant.
 export const chai: typeof ChaiTypes = g.chai;
 export default chai;
+
+// The type of the Jest-style `expect`, for consumers which declare the bare
+// globals themselves (`const expect: Expect`).
+export type { Expect } from "../expect.js";

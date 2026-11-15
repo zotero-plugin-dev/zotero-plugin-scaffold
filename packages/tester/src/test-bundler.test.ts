@@ -74,7 +74,8 @@ describe("test bundle purity", () => {
 
 describe("sample", () => {
   it("adds", () => {
-    expect(1 + 1).to.equal(2);
+    expect(1 + 1).toBe(2);
+    expect({ a: 1 }).toEqual({ a: 1 });
   });
 });
 `;
@@ -116,6 +117,8 @@ describe("sample", () => {
     expect(text).not.toContain("Mocha");
     expect(text).not.toContain("AssertionError");
     expect(text).not.toContain("deep-eql");
+    // Neither the jest matchers of `@vitest/expect`.
+    expect(text).not.toContain("toHaveBeenCalled");
     // A test bundle is user code plus the shim reads, far below the ~230KB of
     // the libraries themselves.
     expect(text.length).toBeLessThan(10_000);
@@ -137,6 +140,8 @@ describe("sample", () => {
     const text = result.outputFiles.map(file => file.text).join("\n");
     // The runtime is the one place that does contain the libraries...
     expect(text).toContain("Mocha");
+    // ...including the Jest matchers of `@vitest/expect`.
+    expect(text).toContain("toHaveBeenCalled");
     expect(text.length).toBeGreaterThan(100_000);
     // ...bundled as a self-executing script, not as an ES module.
     expect(text).not.toMatch(/^import\s/m);

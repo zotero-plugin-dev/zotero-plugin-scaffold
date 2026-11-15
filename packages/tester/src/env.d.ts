@@ -18,13 +18,13 @@ declare global {
     /** Injected by `index.xhtml` right before `test-runtime.js` is loaded. */
     __TEST_OPTIONS__?: TestRuntimeOptions;
     /**
-     * The chai globals installed by `test-runtime-setup.ts`. All three are
+     * The test globals installed by `test-runtime-setup.ts`. All three are
      * optional from the type system's point of view: they only exist once the
      * test runtime has run, and they are bare globals kept for old tests — new
      * code imports the test API (`zotero-plugin-scaffold/test`) instead.
      * @deprecated Import `expect` from the test API.
      */
-    expect?: import("chai").ExpectStatic;
+    expect?: import("./expect.js").Expect;
     /** @deprecated Import `assert` from the test API. */
     assert?: import("chai").AssertStatic;
     /** @deprecated Import `chai` from the test API. */
