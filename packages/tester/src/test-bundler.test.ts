@@ -129,8 +129,8 @@ describe("sample", () => {
     expect(text).not.toContain("deep-eql");
     // Nor `@vitest/expect`, see `VITEST_EXPECT_MARKER`.
     expect(text).not.toContain(VITEST_EXPECT_MARKER);
-    // A test bundle is user code plus the shim reads, far below the ~230KB of
-    // the libraries themselves.
+    // A test bundle is user code plus the shim reads, far below the size of
+    // the libraries themselves (the runtime is ~700KB, see the test below).
     expect(text.length).toBeLessThan(10_000);
   });
 
