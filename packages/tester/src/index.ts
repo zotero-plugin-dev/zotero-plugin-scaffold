@@ -78,10 +78,7 @@ export class Tester extends Base<TestContext> {
     }
 
     watch(
-      [
-        ...toArray(this.ctx.source),
-        ...toArray(this.ctx.test.entries),
-      ],
+      [this.ctx.source, this.ctx.test.entries].flat(),
       this.ctx.watchIgnore,
       {
         onChange: async (path) => {
@@ -89,21 +86,19 @@ export class Tester extends Base<TestContext> {
             await this.builder.run();
             await this.testBundler?.regenerate(path);
             await this.zotero?.reloadAllPlugins();
-            return;
           }
-
-          if (await this.testBundler?.regenerate(path))
+          else {
+            await this.testBundler?.regenerate(path);
             await this.zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
+          }
         },
         onAdd: async (path) => {
           if (isSource(path)) {
             await this.builder.run();
             await this.testBundler?.regenerate(path);
             await this.zotero?.reloadAllPlugins();
-            return;
           }
-
-          if (isTestFileName(path)) {
+          else {
             await this.testBundler?.generate();
             await this.zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
           }
