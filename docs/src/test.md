@@ -65,7 +65,9 @@ import { defineConfig } from "zotero-plugin-scaffold";
 // ---cut---
 export default defineConfig({
   test: {
-    entries: ["test"],
+    include: ["**/*.{spec,test}.[jt]s"],
+    exclude: ["**/node_modules/**", "**/.git/**"],
+    filter: [],
     prefs: {},
     mocha: {
       timeout: 10000
@@ -80,11 +82,52 @@ export default defineConfig({
 });
 ```
 
-### Source of Tests
+### Which Tests Run
 
-The `test.entries` option allows you to configure the source directories for test files.
+`test.include` selects the test files to run and `test.exclude` drops some of them again, like the options of the same name in Vitest and Rstest. Both take a list of globs, relative to the project root:
 
-Test files must have filenames ending with `.spec.js` or `.spec.ts` to be recognized and executed.
+- `include` defaults to every test file of the project, `**/*.{spec,test}.[jt]s`;
+- `exclude` defaults to `["**/node_modules/**", "**/.git/**"]`, and always contains the build directory (`dist`).
+
+Test files are `*.spec.js`, `*.spec.ts`, `*.test.js` and `*.test.ts`. Overlapping patterns bundle every file once.
+
+```ts twoslash
+import { defineConfig } from "zotero-plugin-scaffold";
+// ---cut---
+export default defineConfig({
+  test: {
+    include: ["test/**/*.spec.ts", "integration/**/*.spec.ts"],
+    // Skipped after the include selected them.
+    exclude: ["test/legacy/**", "**/*.slow.spec.ts"]
+  }
+});
+```
+
+### Run Only Some Tests
+
+Pass filters as positional arguments of `zotero-plugin test`, like `vitest run [...filters]` and `rstest [...filters]`. A filter is a case-insensitive fragment of the path of the test file, so a file name, a directory or part of a path all work:
+
+```bash
+# Every test file whose path contains "prefs", e.g. test/prefs.spec.ts
+zotero-plugin test prefs
+
+# Every test file in a directory, plus test/unit2/ — a filter is a fragment
+zotero-plugin test test/unit
+
+# A fragment of a path
+zotero-plugin test api/zotero
+
+# An absolute path, matched as a prefix
+zotero-plugin test /home/me/plugin/test/unit
+
+# One exact path: the quotes have to reach the command, so wrap them once more
+# for the shell (cmd and PowerShell need their own escaping)
+zotero-plugin test '"test/prefs.spec.ts"'
+```
+
+`test.include` and `test.exclude` still decide which files exist; the filters — `test.filter`, filled by the positional arguments — narrow that down. They are not globs (use `test.include` for that), and an unquoted filter is not a path: it is the substring that Vitest and Rstest also compare against, so `zotero-plugin test test/unit` also matches `test/unit2/`. Include a trailing slash when the fragment has to be a directory: `test/unit/`. Wrap the filter in quotes when it has to be one exact path.
+
+Files that are not selected are neither bundled nor loaded, so a narrowed run also starts faster than a full one. These select _test files_. To run a single test case inside a file, use `.only()`.
 
 ### Delay Running
 
@@ -108,10 +151,14 @@ Watch mode is disabled automatically when tests run in CI or inside an AI coding
 You can override configuration settings with CLI parameters. Use `zotero-plugin test --help` to view available options:
 
 ```bash
-$ pnpm zotero-plugin test --help
-Usage: cli test [options]
+$ zotero-plugin test --help
+Usage: cli test [options] [filters...]
 
 Run tests
+
+Arguments:
+  filters           Only run the test files whose path contains any of the
+                    filters
 
 Options:
   --abort-on-fail   Abort the test suite on first failure

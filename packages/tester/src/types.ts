@@ -4,13 +4,47 @@ import type { RecursivePartial } from "@zotero-plugin/utils";
 
 export interface TestConfig {
   /**
-   * The test source code directories, starting from the root directory of the project.
-   * All `*.spec.js` files in these directories will be executed.
-   * The files will be sorted by alphabetical order.
+   * The glob patterns of the test files to run, relative to the root directory
+   * of the project, like `include` in Vitest and Rstest:
    *
-   * @default "test"
+   * - `**\/*.{spec,test}.[jt]s` — every test file of the project;
+   * - `test/**\/*.spec.ts` — the test files of one directory;
+   * - `test/prefs.spec.ts` — exactly that file.
+   *
+   * The files are bundled in alphabetical order.
+   *
+   * The positional arguments of `zotero-plugin test` do not change this list:
+   * they are `filter`, which narrows it down for one run.
+   *
+   * @default ["**\/*.{spec,test}.[jt]s"]
    */
-  entries: string | string[];
+  include: string[];
+
+  /**
+   * The glob patterns to skip after `include` selected the test files, like
+   * `exclude` in Vitest and Rstest.
+   *
+   * @default ["**\/node_modules/**", "**\/.git/**"]
+   */
+  exclude: string[];
+
+  /**
+   * Only run the test files whose path contains one of the filters, like the
+   * positional arguments of `vitest run [...filters]` and `rstest [...filters]`.
+   *
+   * The positional arguments of `zotero-plugin test` are what normally fills
+   * this list, so it is usually left empty.
+   *
+   * @default []
+   */
+  filter: string[];
+
+  /**
+   * Former name of `include`.
+   *
+   * @deprecated Use `include`.
+   */
+  entries?: string | string[];
 
   /**
    * The default preferences for the test.

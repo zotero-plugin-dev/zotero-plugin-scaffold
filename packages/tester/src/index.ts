@@ -69,16 +69,19 @@ export class Tester extends Base<TestContext> {
 
   async watch(): Promise<void> {
     const source = toArray(this.ctx.source).map(p => resolve(p));
-    const tests = toArray(this.ctx.test.entries).map(p => resolve(p));
+    // Only the source directories decide here; a change to a test file falls
+    // into the `else` branch below, and `watch()` reduces an `include` glob to
+    // the directory it starts in, which is what chokidar can watch.
     function isSource(_path: string) {
       const path = resolve(_path);
-      const isSource = source.find(s => path.match(s)) || false;
-      const _isTests = tests.find(t => path.match(t)) || false;
-      return isSource;
+      return source.some(s => path === s || path.startsWith(`${s}/`) || path.startsWith(`${s}\\`));
     }
 
     watch(
-      [this.ctx.source, this.ctx.test.entries].flat(),
+      [
+        ...toArray(this.ctx.source),
+        ...toArray(this.ctx.test.include),
+      ],
       this.ctx.watchIgnore,
       {
         onChange: async (path) => {
@@ -203,8 +206,9 @@ export class Tester extends Base<TestContext> {
   }
 }
 
-export { testDefaults } from "./config.js";
+export { testDefaults, testTransform } from "./config.js";
 export { TESTER_BASE_PATH, TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PLUGIN_REF, TESTER_PROFILE_DIR } from "./constant.js";
+export { createTestFileFilter, filterTestFiles, isFilePattern, isQuotedFilter, resolveTestEntries, TEST_FILE_GLOB, toTestFileGlob, unquoteFilter } from "./entries.js";
 export { prepareHeadless } from "./headless.js";
 export { TestHttpReporter } from "./http-reporter.js";
 export { TestBundler } from "./test-bundler.js";
