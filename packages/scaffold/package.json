@@ -36,6 +36,10 @@
     "./vendor": {
       "types": "./dist/vendor.d.ts",
       "import": "./dist/vendor.js"
+    },
+    "./test": {
+      "types": "./dist/test.d.ts",
+      "import": "./dist/test.js"
     }
   },
   "main": "./dist/index.js",

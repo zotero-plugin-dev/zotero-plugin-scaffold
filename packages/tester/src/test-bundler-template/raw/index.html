@@ -20,14 +20,13 @@
     <!-- Include Zotero Vars -->
     <script src="chrome://zotero/content/include.js"></script>
 
-    <!-- Mocha and Chai Libraries -->
-    <script src="mocha.js"></script>
-    <script src="chai.js"></script>
-
-    <!-- Setup Mocha -->
+    <!-- Test runtime options, injected on every run -->
     <script>
-      __SETUP_CODE__;
+      __TEST_OPTIONS__;
     </script>
+
+    <!-- Test runtime: mocha and chai, rebuilt on every run -->
+    <script src="test-runtime.js"></script>
 
     <!-- Unit tests -->
     __TEST_FILES__

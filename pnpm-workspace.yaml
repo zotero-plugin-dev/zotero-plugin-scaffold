@@ -22,6 +22,7 @@ catalog:
   adm-zip: ^0.6.1
   bumpp: ^12.3.0
   c12: 4.0.0-rc.4
+  chai: ^6.3.0
   changelogen: ^0.6.2
   chokidar: ^6.0.0
   commander: ^15.0.0
@@ -29,6 +30,7 @@ catalog:
   esbuild: ^0.28.2
   fs-extra: ^11.4.1
   hookable: ^6.1.2
+  mocha: ^12.0.3
   std-env: ^4.3.0
   tiny-update-notifier: ^2.0.2
   tinyglobby: ^0.2.17
@@ -39,7 +41,9 @@ catalogs:
     "@antfu/eslint-config": ^10.0.0
     "@commander-js/extra-typings": ^15.0.0
     "@shikijs/vitepress-twoslash": ^4.6.0
+    "@types/chai": ^5.2.3
     "@types/fs-extra": ^11.0.4
+    "@types/mocha": ^10.0.10
     "@types/node": ^26.6.6
     "@typescript/native": npm:typescript@^7.0.2
     eslint: ^10.14.0

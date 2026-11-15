@@ -1,13 +1,111 @@
-import type { BuildContext, BuildResult } from "esbuild";
-import type { TestContext } from "./types.js";
+import type { BuildContext, BuildResult, Plugin } from "esbuild";
+import type { TestContext, TestRuntimeOptions } from "./types.js";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { CACHE_DIR } from "@zotero-plugin/config";
-import { logger, saveResource, toArray } from "@zotero-plugin/utils";
-import { context } from "esbuild";
-import { copy, outputFile, outputJSON, pathExists } from "fs-extra/esm";
+import { fileURLToPath } from "node:url";
+import { logger, toArray } from "@zotero-plugin/utils";
+import { build, context } from "esbuild";
+import { outputFile, outputJSON } from "fs-extra/esm";
 import { glob } from "tinyglobby";
+import { TEST_API_IDS } from "./apis.js";
 import { TESTER_PLUGIN_DIR } from "./constant.js";
-import { generateBootstrap, generateHtml, generateManifest, generateMochaSetup } from "./test-bundler-template/index.js";
+import { generateBootstrap, generateHtml, generateManifest } from "./test-bundler-template/index.js";
+
+/**
+ * Module specifiers that resolve to the test API shim in addition to the ones
+ * of the registry: the public entry points users actually import.
+ */
+const EXTRA_TEST_API_IDS: string[] = [
+  "zotero-plugin-scaffold/test",
+  "@zotero-plugin/tester/api",
+];
+
+const TESTER_PACKAGE_NAME = "@zotero-plugin/tester";
+
+/** Every specifier that is redirected to the shim. */
+const TEST_API_SPECIFIERS: string[] = [
+  ...TEST_API_IDS,
+  ...EXTRA_TEST_API_IDS,
+];
+
+/**
+ * Resolve an entry point shipped by this package.
+ *
+ * It goes through the package self-reference (`exports`), so it resolves to
+ * the published `dist` layout. When the bundler runs from the TypeScript
+ * sources (unit tests, before a build), the `dist` file does not exist yet, so
+ * fall back to the sibling source file.
+ *
+ * @param specifier the self-referencing specifier, e.g. `@zotero-plugin/tester/shim`
+ * @param distRelative the path of the file relative to the built module
+ */
+function resolveOwnEntry(specifier: string, distRelative: string): string {
+  try {
+    const resolved = fileURLToPath(import.meta.resolve(specifier));
+    if (existsSync(resolved))
+      return resolved;
+  }
+  catch {
+    // The self-reference is unavailable, try the source fallback below.
+  }
+
+  for (const candidate of [
+    distRelative,
+    distRelative.replace(/\.js$/, ".ts"),
+  ]) {
+    const file = fileURLToPath(new URL(candidate, import.meta.url));
+    if (existsSync(file))
+      return file;
+  }
+
+  throw new Error(`Cannot resolve ${specifier}. Is ${TESTER_PACKAGE_NAME} built?`);
+}
+
+/** The absolute path of the shim, i.e. the target of the redirects below. */
+export function resolveShimPath(): string {
+  return resolveOwnEntry(`${TESTER_PACKAGE_NAME}/shim`, "./shim/index.js");
+}
+
+/** The absolute path of the test runtime entry, see `buildTestRuntime()`. */
+export function resolveRuntimeEntry(): string {
+  return resolveOwnEntry(`${TESTER_PACKAGE_NAME}/runtime-setup`, "./test-runtime-setup.js");
+}
+
+/**
+ * Whether a bare import specifier belongs to the test API and must therefore be
+ * redirected to the shim.
+ */
+export function isTestApiSpecifier(id: string): boolean {
+  return TEST_API_SPECIFIERS.some(m => id === m || id.startsWith(`${m}/`));
+}
+
+/**
+ * Redirect the test library specifiers to the shim.
+ *
+ * The shim only reads the globals the prebuilt test runtime installed, so the
+ * test bundles stay free of mocha/chai code (~230KB less, and — more
+ * importantly — no second, un-set-up copy of mocha whose suites would never
+ * be run).
+ *
+ * `alias` cannot express this: it is prefix concatenation
+ * (`mocha` → `<shim>/mocha.js` for `import "mocha/mocha.js"`), and the
+ * dynamically generated shims of future integrations need virtual modules,
+ * which only `onLoad` can provide.
+ */
+export function createTestApiPlugin(): Plugin {
+  const shimPath = resolveShimPath();
+
+  return {
+    name: "zotero-plugin-test-api",
+    setup(build) {
+      build.onResolve({ filter: /^[^./]/ }, (args) => {
+        if (isTestApiSpecifier(args.path))
+          return { path: shimPath };
+        return null;
+      });
+    },
+  };
+}
 
 export class TestBundler {
   private esbuildContext?: BuildContext;
@@ -20,14 +118,14 @@ export class TestBundler {
 
   async generate(): Promise<void> {
     // this.generatePluginRes
-    //   bootstrape
+    //   bootstrap
     //   manifest
-    //   copy lib
+    //   test runtime
     //   bundle tests
     await this.generateTestResources();
 
     // this.generateTestPage
-    //   mocha setup
+    //   options
     //   html
     await this.createTestHtml();
   }
@@ -40,13 +138,13 @@ export class TestBundler {
     const tests = findImpactedTests(changedFile, esbuildResult?.metafile);
 
     // this.generateTestPage
-    //   mocha setup
+    //   options
     //   html
     await this.createTestHtml(tests);
   }
 
-  private async generateTestResources() {
-    // bootstrape
+  private async generateTestResources(): Promise<void> {
+    // bootstrap
     const manifest = generateManifest();
     await outputJSON(`${TESTER_PLUGIN_DIR}/manifest.json`, manifest, { spaces: 2 });
 
@@ -58,89 +156,76 @@ export class TestBundler {
     });
     await outputFile(`${TESTER_PLUGIN_DIR}/bootstrap.js`, bootstrap);
 
-    // copy lib
-    await this.copyTestLibraries();
+    // test runtime (mocha + chai)
+    await this.buildTestRuntime();
 
     // bundle tests
     await this.bundleTests();
   }
 
-  private async copyTestLibraries() {
-    // Save mocha and chai packages
-    const pkgs: {
-      name: string;
-      remote: string;
-      local: string;
-    }[] = [
-      {
-        name: "mocha.js",
-        local: "node_modules/mocha/mocha.js",
-        remote: "https://cdn.jsdelivr.net/npm/mocha/mocha.js",
-      },
-      {
-        name: "chai.js",
-        // local: "node_modules/chai/chai.js",
-        local: "", // chai packages install from npm do not support browser
-        remote: "https://www.chaijs.com/chai.js",
-      },
-    ];
+  /**
+   * Build the test runtime into `content/test-runtime.js`.
+   *
+   * It is rebuilt on every test run: esbuild takes a few milliseconds, which is
+   * much cheaper than the cache-key / content-hash / atomic-write management a
+   * cache would need. The dynamic part (options) is decoupled from this file
+   * and injected into `index.xhtml` instead.
+   */
+  private async buildTestRuntime(): Promise<void> {
+    const entry = resolveRuntimeEntry();
+    logger.debug(`Building test runtime from ${entry}`);
 
-    await Promise.all(pkgs.map(async (pkg) => {
-      const targetPath = `${TESTER_PLUGIN_DIR}/content/${pkg.name}`;
-
-      if (pkg.local && await pathExists(pkg.local)) {
-        logger.debug(`Local ${pkg.name} package found`);
-        await copy(pkg.local, targetPath);
-        return;
-      }
-
-      const cachePath = `${CACHE_DIR}/${pkg.name}`;
-      if (await pathExists(`${cachePath}`)) {
-        logger.debug(`Cache ${pkg.name} package found`);
-        await copy(cachePath, targetPath);
-        return;
-      }
-
-      logger.info(`No local ${pkg.name} found, we recommend you install ${pkg.name} package locally.`);
-      await saveResource(pkg.remote, `${CACHE_DIR}/${pkg.name}`);
-      await copy(cachePath, targetPath);
-    }));
+    await build({
+      entryPoints: [entry],
+      outfile: `${TESTER_PLUGIN_DIR}/content/test-runtime.js`,
+      bundle: true,
+      format: "iife",
+      platform: "browser",
+      target: "firefox115",
+      logLevel: "silent",
+    });
   }
 
-  private async bundleTests() {
+  private async bundleTests(): Promise<void> {
     const testDirs = toArray(this.ctx.test.entries);
     // Because esbuild only support `*` and `**`，
-    // so we need glob ourselves.
+    // so we need to glob ourselves.
     // https://esbuild.github.io/api/#glob-style-entry-points
     const entryPoints = (await Promise.all(testDirs.map(dir => glob(`${dir}/**/*.{spec,test}.[jt]s`))))
       .flat();
 
-    // Bundle all test files, including both JavaScript and TypeScript
+    // Bundle all test files, including both JavaScript and TypeScript.
+    // The test API plugin is only attached here: the test runtime needs to
+    // resolve mocha/chai for real.
     this.esbuildContext = await context({
       entryPoints,
       outdir: `${TESTER_PLUGIN_DIR}/content/units`,
       bundle: true,
+      platform: "browser",
       target: "firefox115",
       metafile: true,
+      plugins: [
+        createTestApiPlugin(),
+      ],
     });
     await this.esbuildContext.rebuild();
   }
 
-  private async createTestHtml(tests: string[] = []) {
-    // mocha setup
-    const setupCode = generateMochaSetup({
+  private async createTestHtml(tests: string[] = []): Promise<void> {
+    // runtime options
+    const options: TestRuntimeOptions = {
       timeout: this.ctx.test.mocha.timeout,
       port: this.port,
       abortOnFail: this.ctx.test.abortOnFail,
       exitOnFinish: !this.ctx.test.watch,
-    });
+    };
 
     // html
     let testFiles = tests;
     if (testFiles.length === 0) {
       testFiles = (await glob(`**/*.{spec,test}.js`, { cwd: `${TESTER_PLUGIN_DIR}/content` })).sort();
     }
-    const html = generateHtml(setupCode, testFiles);
+    const html = generateHtml(options, testFiles);
     await outputFile(`${TESTER_PLUGIN_DIR}/content/index.xhtml`, html);
   }
 }

@@ -104,6 +104,24 @@ export interface TestUserConfig {
 }
 
 /**
+ * The options handed to the prebuilt test runtime (`test-runtime.js`).
+ *
+ * They are generated on every test run and injected into `index.xhtml` as
+ * `window.__TEST_OPTIONS__`, so that the prebuilt runtime stays independent
+ * of the resolved configuration.
+ */
+export interface TestRuntimeOptions {
+  /** The timeout of a single test, in milliseconds. */
+  timeout: number;
+  /** The port of the local HTTP server that receives the test results. */
+  port: number;
+  /** Abort the run on the first failure. */
+  abortOnFail: boolean;
+  /** Quit Zotero when the run finished. */
+  exitOnFinish: boolean;
+}
+
+/**
  * The context of the test command.
  *
  * It only takes `build` and `test`, so the test command is decoupled from the

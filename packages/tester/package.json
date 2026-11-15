@@ -28,6 +28,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./api": {
+      "types": "./dist/api/index.d.ts",
+      "import": "./dist/api/index.js"
+    },
+    "./shim": {
+      "types": "./dist/shim/index.d.ts",
+      "import": "./dist/shim/index.js"
+    },
+    "./runtime-setup": {
+      "types": "./dist/test-runtime-setup.d.ts",
+      "import": "./dist/test-runtime-setup.js"
     }
   },
   "main": "./dist/index.js",
@@ -47,14 +59,18 @@
     "@zotero-plugin/core": "workspace:*",
     "@zotero-plugin/utils": "workspace:*",
     "@zotero-plugin/zotero-runner": "workspace:*",
+    "chai": "catalog:",
     "esbuild": "catalog:",
     "fs-extra": "catalog:",
+    "mocha": "catalog:",
     "std-env": "catalog:",
     "tinyglobby": "catalog:",
     "xvfb-ts": "catalog:"
   },
   "devDependencies": {
+    "@types/chai": "catalog:dev",
     "@types/fs-extra": "catalog:dev",
+    "@types/mocha": "catalog:dev",
     "@types/node": "catalog:dev",
     "tsdown": "catalog:dev",
     "typescript": "catalog:dev",

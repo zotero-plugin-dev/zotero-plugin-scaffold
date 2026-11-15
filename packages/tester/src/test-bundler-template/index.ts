@@ -1,8 +1,8 @@
+import type { TestRuntimeOptions } from "../types.js";
 import { TESTER_PLUGIN_ID, TESTER_PLUGIN_REF } from "../constant.js";
 import bootstrapRaw from "./raw/bootstrap.js?raw";
 import htmlRaw from "./raw/index.html?raw";
 import manifestRaw from "./raw/manifest.json?raw";
-import mochaSetupRaw from "./raw/mocha-setup.js?raw";
 
 export function generateManifest(): Record<string, unknown> {
   const manifestStr = manifestRaw
@@ -24,25 +24,29 @@ export function generateBootstrap(options: {
 }
 
 export function generateHtml(
-  setupCode: string,
+  options: TestRuntimeOptions,
   testFiles: string[],
 ): string {
   const tests = testFiles.map(f => `<script src="${f}"></script>`).join("\n    ");
 
   return htmlRaw
-    .replaceAll("__TEST_FILES__", tests)
-    .replaceAll("__SETUP_CODE__", setupCode);
+    .replaceAll("__TEST_OPTIONS__", serializeTestOptions(options))
+    .replaceAll("__TEST_FILES__", tests);
 }
 
-export function generateMochaSetup(options: {
-  port: number;
-  timeout: number;
-  abortOnFail: boolean;
-  exitOnFinish: boolean;
-}): string {
-  return mochaSetupRaw
-    .replaceAll("__TIMEOUT__", String(options.timeout || 10000))
-    .replaceAll("__PORT__", String(options.port))
-    .replaceAll("__ABORT_ON_FAIL__", String(options.abortOnFail))
-    .replaceAll("__EXIT_ON_FINISH__", String(options.exitOnFinish ? "true" : "false"));
+/**
+ * Serialize the runtime options as the inline script body of the test page.
+ *
+ * The page is an XHTML document, so `<`, `>` and `&` must not appear raw in the
+ * inline script — they would break the XML parse and with it the whole runner
+ * page. The escapes are the JavaScript unicode escapes of the JSON text, so the
+ * parsed value is unchanged.
+ */
+export function serializeTestOptions(options: TestRuntimeOptions): string {
+  const json = JSON.stringify(options)
+    .replaceAll("<", "\\u003c")
+    .replaceAll(">", "\\u003e")
+    .replaceAll("&", "\\u0026");
+
+  return `window.__TEST_OPTIONS__ = ${json};`;
 }
