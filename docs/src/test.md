@@ -55,20 +55,6 @@ Snapshots, mocking (`vi`), `expect.soft` and `expect.poll` are not available, si
 
 `expect.assertions(n)` and `expect.hasAssertions()` are verified at the end of each test, like Vitest does.
 
-::: tip
-To type the bare globals in your own `typings/*.d.ts`, add:
-
-```ts
-import type { assert as chaiAssert, Expect } from "zotero-plugin-scaffold/test";
-
-declare global {
-  const expect: Expect;
-  const assert: typeof chaiAssert;
-}
-```
-
-:::
-
 ### Running Tests
 
 Run the tests using:
