@@ -58,6 +58,7 @@
     "@types/chai": "catalog:",
     "@types/mocha": "catalog:",
     "@vitest/expect": "catalog:",
+    "@vitest/spy": "catalog:",
     "@zotero-plugin/config": "workspace:*",
     "@zotero-plugin/core": "workspace:*",
     "@zotero-plugin/utils": "workspace:*",

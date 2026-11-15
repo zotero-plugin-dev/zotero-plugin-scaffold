@@ -182,6 +182,9 @@ catalogs:
     '@vitest/expect':
       specifier: ^5.1.0
       version: 5.1.0
+    '@vitest/spy':
+      specifier: ^5.1.0
+      version: 5.1.0
     adm-zip:
       specifier: ^0.6.1
       version: 0.6.1
@@ -553,6 +556,9 @@ importers:
         specifier: 'catalog:'
         version: 10.0.10
       '@vitest/expect':
+        specifier: 'catalog:'
+        version: 5.1.0
+      '@vitest/spy':
         specifier: 'catalog:'
         version: 5.1.0
       '@zotero-plugin/config':

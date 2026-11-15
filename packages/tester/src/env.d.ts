@@ -18,6 +18,14 @@ declare global {
     /** Injected by `index.xhtml` right before `test-runtime.js` is loaded. */
     __TEST_OPTIONS__?: TestRuntimeOptions;
     /**
+     * The `zo` namespace (the stand-in for Vitest's `vi`), installed by
+     * `test-runtime-setup.ts`. Optional for the same reason as the test globals
+     * below: it only exists once the test runtime has run. The shim
+     * (`src/shim/index.ts`) is the only reader; new code imports `zo` from the
+     * test API instead.
+     */
+    __TEST_ZO__?: import("./zo.js").Zo;
+    /**
      * The test globals installed by `test-runtime-setup.ts`. All three are
      * optional from the type system's point of view: they only exist once the
      * test runtime has run, and they are bare globals kept for old tests — new

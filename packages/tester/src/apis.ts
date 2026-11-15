@@ -19,13 +19,23 @@
  * registry buys nothing while costing a lookup table that can disagree with
  * itself.
  *
- * Adding a new library (e.g. `sinon`) should cost one dependency, one
- * registry entry and one line each in the shim and the runtime.
+ * A module whose exports are collected into the `zo` namespace (`src/zo.ts`)
+ * names that namespace in `namespace` instead of exporting the members flat: the
+ * facade then exposes one `zo`, and every member a namespace module contributes
+ * is reached as `zo.<name>`.
+ *
+ * Adding a new library (e.g. `@sinonjs/fake-timers`) should cost one dependency,
+ * one registry entry and one line each in the shim and the runtime.
  */
 export interface TestApiModule {
   /** The module specifier intercepted by the onResolve plugin */
   id: string;
-  /** The export names of the shim, i.e. the test API surface */
+  /**
+   * The namespace the exports are collected into, if any. `undefined` means the
+   * exports are top-level members of the test API themselves.
+   */
+  namespace?: string;
+  /** The export names, either of the test API surface or of the namespace */
   exports: string[];
 }
 
@@ -71,12 +81,58 @@ export const TEST_API_MODULES: TestApiModule[] = [
       "expect",
     ],
   },
+  {
+    id: "@vitest/spy",
+    // The stand-in for Vitest's `vi`, which belongs to the Vitest runner and
+    // stays unavailable. Its factories create the spies the `toHaveBeenCalled*`
+    // matchers above assert on; a future `@sinonjs/fake-timers` contributes its
+    // timer members to the same namespace.
+    namespace: "zo",
+    exports: [
+      "fn",
+      "spyOn",
+      "isMockFunction",
+      "clearAllMocks",
+      "resetAllMocks",
+      "restoreAllMocks",
+    ],
+  },
 ];
 
 /** All module ids intercepted by the onResolve plugin. */
 export const TEST_API_IDS: string[] = TEST_API_MODULES.map(m => m.id);
 
-/** The union of all export names, i.e. the expected shim surface. */
+/**
+ * The top-level members of the test API: the exports of every module which does
+ * not belong to a namespace.
+ */
 export const TEST_API_EXPORTS: string[] = [
-  ...new Set(TEST_API_MODULES.flatMap(m => m.exports)),
+  ...new Set(
+    TEST_API_MODULES.filter(m => !m.namespace).flatMap(m => m.exports),
+  ),
 ];
+
+/** The names of the namespaces the test API exposes, e.g. `zo`. */
+export const TEST_API_NAMESPACES: string[] = [
+  ...new Set(
+    TEST_API_MODULES.map(m => m.namespace).filter(name => name !== undefined),
+  ),
+];
+
+/**
+ * The expected members of one namespace, keyed by namespace name.
+ */
+export function testApiNamespaceMembers(): Record<string, string[]> {
+  const members: Record<string, string[]> = {};
+  for (const api of TEST_API_MODULES) {
+    if (!api.namespace)
+      continue;
+    members[api.namespace] = [
+      ...new Set([
+        ...(members[api.namespace] ?? []),
+        ...api.exports,
+      ]),
+    ].sort();
+  }
+  return members;
+}

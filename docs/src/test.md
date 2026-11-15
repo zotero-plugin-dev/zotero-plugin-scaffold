@@ -47,13 +47,63 @@ describe("Startup", () => {
 });
 ```
 
-The entry point exposes Mocha's `bdd` interface (`describe`, `context`, `xdescribe`, `xcontext`, `it`, `specify`, `xit`, `xspecify`, `before`, `after`, `beforeEach`, `afterEach`) together with Vitest's `expect`, Chai's `assert` and the `chai` namespace (also the default export) for `chai.use(plugin)`.
+The entry point exposes Mocha's `bdd` interface (`describe`, `context`, `xdescribe`, `xcontext`, `it`, `specify`, `xit`, `xspecify`, `before`, `after`, `beforeEach`, `afterEach`) together with Vitest's `expect`, Chai's `assert`, the `chai` namespace (also the default export) for `chai.use(plugin)`, and the `zo` namespace for spies.
 
 `expect` is the same one Vitest uses: Chai plus [`@vitest/expect`](https://www.npmjs.com/package/@vitest/expect)'s plugins, so the Jest matchers (`toBe`, `toEqual`, `toThrow`, `toContain`, …), the asymmetric matchers (`expect.any`, `expect.objectContaining`, …), `expect.extend`, `expect.addEqualityTesters`, `expect.assertions(n)` and `expect.hasAssertions()` all work. Chai's own assertions keep working on it as well (`expect(1).to.equal(1)`).
 
-Snapshots, mocking (`vi`), `expect.soft` and `expect.poll` are not available, since they need Vitest's own runner; the latter two throw a descriptive error instead of silently passing.
-
 `expect.assertions(n)` and `expect.hasAssertions()` are verified at the end of each test, like Vitest does.
+
+### Spies
+
+Spies come from [`@vitest/spy`](https://www.npmjs.com/package/@vitest/spy), the library behind Vitest's `vi.fn()` / `vi.spyOn()`, collected into a `zo` namespace — the stand-in for Vitest's `vi`. All twelve spy matchers work:
+
+```ts
+import { afterEach, describe, expect, it, zo } from "zotero-plugin-scaffold/test";
+
+describe("Spies", () => {
+  // Nothing restores spies automatically, see below.
+  afterEach(() => {
+    zo.restoreAllMocks();
+  });
+
+  it("records calls", () => {
+    const callback = zo.fn();
+    callback("a", 1);
+
+    expect(callback).toHaveBeenCalledOnce();
+    expect(callback).toHaveBeenCalledWith("a", 1);
+  });
+
+  it("wraps an existing method", () => {
+    const service = {
+      greet: (name: string) => `hi ${name}`
+    };
+    const greet = zo.spyOn(service, "greet");
+
+    service.greet("world");
+    expect(greet).toHaveBeenCalledWith("world");
+  });
+});
+```
+
+The namespace holds `fn`, `spyOn`, `isMockFunction`, `clearAllMocks`, `resetAllMocks` and `restoreAllMocks`, mirroring `vi`.
+
+`toHaveBeenCalled`, `toBeCalled`, `toHaveBeenCalledTimes`, `toBeCalledTimes`, `toHaveBeenCalledWith`, `toBeCalledWith`, `toHaveBeenCalledOnce`, `toHaveBeenCalledExactlyOnceWith`, `toHaveBeenLastCalledWith`, `toHaveBeenNthCalledWith`, `toHaveBeenCalledBefore` and `toHaveBeenCalledAfter` are all available. Passing anything that is not a spy throws instead of passing silently.
+
+::: warning Restore spies yourself
+Unlike Vitest, Scaffold does not reset spies between tests: a `zo.spyOn(obj, "method")` keeps the object patched for every later test in the run. Add `afterEach(() => zo.restoreAllMocks())` to the suites that use `spyOn()`. (A root-level `beforeEach` hook would be the other option, but Mocha discards the remaining tests when a root hook throws, so a single mistake would hide the rest of the run.)
+:::
+
+Not available:
+
+- `vi` itself, which belongs to the Vitest runner; `zo` covers what it can do here.
+- `vi.mock()` / `vi.unmock()`, which need a runner and an ESM module graph to patch; there is none inside a Zotero page. `zo.spyOn(obj, "method")` works on existing object methods only, so it usually cannot replace a binding of an imported module.
+- `vi.stubGlobal()` / `vi.stubEnv()`, which patch the page's globals and environment; assign them yourself and undo it in `afterEach`.
+- Snapshots, `expect.soft` and `expect.poll`, which all need Vitest's runner; the latter two throw a descriptive error instead of silently passing.
+
+A mock without an explicit name reports as `vi.fn()` in failure messages, which is the library's default and expected.
+
+Fake timers (`zo.useFakeTimers()`, `zo.advanceTimersByTime()`, …) are not available yet. When they land they join the same `zo` namespace.
 
 ### Running Tests
 
