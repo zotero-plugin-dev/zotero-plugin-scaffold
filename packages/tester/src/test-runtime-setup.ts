@@ -20,6 +20,7 @@ import type { Zo } from "./zo.js";
 import * as spy from "@vitest/spy";
 import * as chai from "chai";
 import { createAssertionStateChecks, createExpect } from "./expect.js";
+import { createZoTimers } from "./zo-timers.js";
 // Side-effect import of the official browser build of mocha: it attaches
 // `window.mocha` / `window.Mocha` by itself. A bare `import "mocha"` would go
 // through `browser-entry.js`, which pulls Node's `stream` / `util` in and
@@ -65,8 +66,8 @@ window.chai = chai;
 // globals).
 // Note that nothing resets these mocks automatically: a `spyOn()` leaks into
 // later tests unless the test suite calls `afterEach(zo.restoreAllMocks)`
-// itself, see `docs/src/test.md`. A future fake-timers integration adds its
-// members next to the mocks in this object.
+// itself, see `docs/src/test.md`. Fake timers are the exception, see the
+// `afterEach` hook below.
 const zo: Zo = {
   fn: spy.fn,
   spyOn: spy.spyOn,
@@ -74,6 +75,9 @@ const zo: Zo = {
   clearAllMocks: spy.clearAllMocks,
   resetAllMocks: spy.resetAllMocks,
   restoreAllMocks: spy.restoreAllMocks,
+  // `window` rather than `globalThis`: the timers of the page are the ones the
+  // plugin under test uses, and the wrapper keeps its own snapshot of them.
+  ...createZoTimers(window),
 };
 window.__TEST_ZO__ = zo;
 
@@ -81,6 +85,24 @@ window.__TEST_ZO__ = zo;
 // in Vitest, here Mocha has to do it: the state is reset before every test and
 // checked afterwards.
 const assertionState = createAssertionStateChecks(expect);
+
+// A leaked spy patches one object; a leaked fake clock freezes every timer of
+// the window, i.e. the test reporter, Zotero's own delayed work and every later
+// test. So fake timers are the one thing undone here, which is a deliberate
+// departure from "nothing is reset automatically" (see `docs/src/test.md`).
+// The hook runs before the assertion check, and it never throws: a throwing
+// root hook makes Mocha discard the rest of the run (RFC-0003).
+afterEach(() => {
+  try {
+    zo.useRealTimers();
+  }
+  catch {
+    // `useRealTimers()` is a no-op when nothing was faked, so this is only
+    // reachable if the library itself fails to uninstall; there is nothing
+    // useful a test could do about that, and the next test's clock matters
+    // more than the error.
+  }
+});
 
 beforeEach(() => {
   assertionState.reset();

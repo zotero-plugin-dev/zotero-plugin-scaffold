@@ -22,6 +22,7 @@ export default defineConfig({
       /^chai(\/|$)/,
       /^@vitest\/expect(\/|$)/,
       /^@vitest\/spy(\/|$)/,
+      /^@sinonjs\/fake-timers(\/|$)/,
     ],
   },
 });

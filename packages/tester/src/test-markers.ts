@@ -6,9 +6,9 @@
  * test is free to call `toHaveBeenCalled()` or `vi.fn()` in an assertion, and
  * the check would then pass on a bundle that contains no library code at all.
  *
- * They are shared because two test files check the same pair of libraries from
- * opposite sides: the purity test of the test bundles, and the runtime test
- * which evaluates the real `test-runtime.js`.
+ * They are shared because three test files check the same libraries from
+ * opposite sides: the purity test of the test bundles, the purity test of the
+ * prebuilt runtime, and the runtime test which evaluates it.
  */
 
 /**
@@ -22,3 +22,9 @@ export const VITEST_EXPECT_MARKER: string = "$$jest-matchers-object";
  * `@vitest/expect` does not contain it.
  */
 export const VITEST_SPY_MARKER: string = "MOCK_FINALIZER";
+
+/**
+ * A field of the `Clock` state of `@sinonjs/fake-timers`, which only exists for
+ * running under Node's `timers` modules. Nothing a test writes contains it.
+ */
+export const FAKE_TIMERS_MARKER: string = "timersPromisesModuleMethods";

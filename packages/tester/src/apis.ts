@@ -24,8 +24,9 @@
  * facade then exposes one `zo`, and every member a namespace module contributes
  * is reached as `zo.<name>`.
  *
- * Adding a new library (e.g. `@sinonjs/fake-timers`) should cost one dependency,
- * one registry entry and one line each in the shim and the runtime.
+ * Adding a new library costs one dependency, one registry entry and one line
+ * each in the shim and the runtime: `@sinonjs/fake-timers` joined that way, and
+ * needed no shim line at all because `zo` is a single object there.
  */
 export interface TestApiModule {
   /** The module specifier intercepted by the onResolve plugin */
@@ -85,8 +86,8 @@ export const TEST_API_MODULES: TestApiModule[] = [
     id: "@vitest/spy",
     // The stand-in for Vitest's `vi`, which belongs to the Vitest runner and
     // stays unavailable. Its factories create the spies the `toHaveBeenCalled*`
-    // matchers above assert on; a future `@sinonjs/fake-timers` contributes its
-    // timer members to the same namespace.
+    // matchers above assert on; the timers of `@sinonjs/fake-timers` below are
+    // the second library to contribute to the same namespace.
     namespace: "zo",
     exports: [
       "fn",
@@ -95,6 +96,19 @@ export const TEST_API_MODULES: TestApiModule[] = [
       "clearAllMocks",
       "resetAllMocks",
       "restoreAllMocks",
+    ],
+  },
+  {
+    id: "@sinonjs/fake-timers",
+    namespace: "zo",
+    exports: [
+      "useFakeTimers",
+      "useRealTimers",
+      "advanceTimersByTime",
+      "advanceTimersByTimeAsync",
+      "runAllTimers",
+      "runAllTimersAsync",
+      "getTimerCount",
     ],
   },
 ];

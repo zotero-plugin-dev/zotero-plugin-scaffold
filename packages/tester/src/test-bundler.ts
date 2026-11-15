@@ -107,6 +107,33 @@ export function createTestApiPlugin(): Plugin {
   };
 }
 
+/**
+ * Stub the one Node builtin the test libraries require behind a Node-only
+ * guard.
+ *
+ * `@sinonjs/fake-timers` reads `require("util").promisify` when the global it
+ * is handed has a `process` (`src/fake-timers-src.js`, next to the `hrtime` /
+ * `nextTick` probes). A Zotero page has no `process`, so the line never runs,
+ * but esbuild resolves imports at build time and fails on `util` for
+ * `platform: browser`. Its `browser` field already maps the other builtins it
+ * touches (`vm`, `timers`) to empty modules; `util` is the one it misses.
+ */
+export function createNodeBuiltinStubPlugin(): Plugin {
+  return {
+    name: "zotero-plugin-test-node-builtin-stub",
+    setup(build) {
+      build.onResolve({ filter: /^(?:node:)?util$/ }, () => ({
+        path: "util",
+        namespace: "zotero-plugin-node-builtin-stub",
+      }));
+      build.onLoad({ filter: /.*/, namespace: "zotero-plugin-node-builtin-stub" }, () => ({
+        contents: "export default undefined;",
+        loader: "js",
+      }));
+    },
+  };
+}
+
 export class TestBundler {
   private esbuildContext?: BuildContext;
   /**
@@ -196,6 +223,9 @@ export class TestBundler {
       platform: "browser",
       target: "firefox115",
       logLevel: "silent",
+      plugins: [
+        createNodeBuiltinStubPlugin(),
+      ],
     });
   }
 
