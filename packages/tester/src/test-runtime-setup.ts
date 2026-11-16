@@ -1,26 +1,21 @@
 /**
- * The prebuilt test runtime.
+ * The prebuilt test runtime: bundled by `buildTestRuntime()` into
+ * `content/test-runtime.js` and loaded before the test units
+ * (`include.js → __TEST_OPTIONS__ → test-runtime.js → units/*.js → mocha.run()`).
  *
- * It is bundled by `buildTestRuntime()` (esbuild, iife, firefox115) into
- * `content/test-runtime.js` on every test run, and loaded by `index.xhtml`
- * before the test units:
+ * It owns the *only* mocha/chai code in the Zotero profile: test bundles import
+ * `zotero-plugin-scaffold/test`, which the bundler redirects to the shim.
+ * `window.__TEST_OPTIONS__` is written by `index.xhtml` itself, see `generateHtml()`.
  *
- *   include.js → __TEST_OPTIONS__ → test-runtime.js → units/*.js → mocha.run()
- *
- * It owns the *only* mocha/chai code that ends up in the Zotero profile: the
- * test bundles themselves import `zotero-plugin-scaffold/test`, which the
- * bundler redirects to the shim (`src/shim/index.ts`) instead of inlining a
- * second copy of mocha/chai.
- *
- * Dynamic options are decoupled from this prebuilt file: `index.xhtml` writes
- * `window.__TEST_OPTIONS__` itself, see `generateHtml()`.
+ * It is the one page-side module outside `src/integrations/` (RFC-0006 §6): it is
+ * the entry `resolveRuntimeEntry()` points at, so only the library wiring moved.
  */
+import type { Zo } from "./integrations/zo.js";
 import type { TestRuntimeOptions } from "./types.js";
-import type { Zo } from "./zo.js";
-import * as spy from "@vitest/spy";
 import * as chai from "chai";
-import { createAssertionStateChecks, createExpect } from "./expect.js";
-import { createZoTimers } from "./zo-timers.js";
+import { createAssertionStateChecks, createExpect } from "./integrations/expect.js";
+import { createZoSpy } from "./integrations/zo-spy.js";
+import { createZoTimers } from "./integrations/zo-timers.js";
 // Side-effect import of the official browser build of mocha: it attaches
 // `window.mocha` / `window.Mocha` by itself. A bare `import "mocha"` would go
 // through `browser-entry.js`, which pulls Node's `stream` / `util` in and
@@ -52,31 +47,21 @@ mocha.setup({
 
 // Keep the bare globals of existing tests working (`expect(...)`,
 // `assert.isTrue(...)`, `chai.use(plugin)`). `expect` is the Jest-style one of
-// `./expect.ts`; the other two are plain chai assignments on purpose, so that
-// a chai upgrade which renames one of them fails the build instead of mounting
-// `undefined`.
+// `./integrations/expect.ts`; the other two are plain chai assignments on
+// purpose, so that a chai upgrade which renames one fails the build instead of
+// mounting `undefined`.
 const expect = createExpect();
 window.expect = expect;
 window.assert = chai.assert;
 window.chai = chai;
-// The `zo` namespace, the stand-in for Vitest's `vi`: one object, assembled
-// here from the libraries behind it. The shim reads it from here, so the spies a
-// test creates and the matchers which assert on them share one library
-// instance. It is *not* spread over `globalThis` (no bare `fn` / `spyOn`
-// globals).
-// Note that nothing resets these mocks automatically: a `spyOn()` leaks into
-// later tests unless the test suite calls `afterEach(zo.restoreAllMocks)`
-// itself, see `docs/src/test.md`. Fake timers are the exception, see the
-// `afterEach` hook below.
+// The `zo` namespace, assembled here from the libraries behind it, read back by
+// the shim. It is *not* spread over `globalThis`. Nothing resets its mocks
+// automatically (`spyOn()` leaks until the suite restores them, see
+// `docs/src/test.md`); fake timers are the exception, see the hook below.
 const zo: Zo = {
-  fn: spy.fn,
-  spyOn: spy.spyOn,
-  isMockFunction: spy.isMockFunction,
-  clearAllMocks: spy.clearAllMocks,
-  resetAllMocks: spy.resetAllMocks,
-  restoreAllMocks: spy.restoreAllMocks,
-  // `window` rather than `globalThis`: the timers of the page are the ones the
-  // plugin under test uses, and the wrapper keeps its own snapshot of them.
+  ...createZoSpy(),
+  // `window` rather than `globalThis`: the page's timers are the ones the plugin
+  // under test uses.
   ...createZoTimers(window),
 };
 window.__TEST_ZO__ = zo;

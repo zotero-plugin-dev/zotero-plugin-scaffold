@@ -1,12 +1,8 @@
 import type { TestRuntimeOptions } from "./types.js";
 
 /**
- * Host globals available inside the Zotero test runtime.
- *
- * `src/test-runtime-setup.ts` is a real TypeScript module (it used to be a
- * string template), so the Zotero globals it touches have to be declared.
- * The mocha `describe` / `it` globals are already declared by
- * `@types/mocha`, hence they are not repeated here.
+ * Host globals available inside the Zotero test runtime. The mocha `describe` /
+ * `it` globals come from `@types/mocha` and are not repeated here.
  */
 declare global {
   /** The Zotero host object, only the parts the runtime uses. */
@@ -24,7 +20,7 @@ declare global {
      * (`src/shim/index.ts`) is the only reader; new code imports `zo` from the
      * test API instead.
      */
-    __TEST_ZO__?: import("./zo.js").Zo;
+    __TEST_ZO__?: import("./integrations/zo.js").Zo;
     /**
      * The test globals installed by `test-runtime-setup.ts`. All three are
      * optional from the type system's point of view: they only exist once the
@@ -32,7 +28,7 @@ declare global {
      * code imports the test API (`zotero-plugin-scaffold/test`) instead.
      * @deprecated Import `expect` from the test API.
      */
-    expect?: import("./expect.js").Expect;
+    expect?: import("./integrations/expect.js").Expect;
     /** @deprecated Import `assert` from the test API. */
     assert?: import("chai").AssertStatic;
     /** @deprecated Import `chai` from the test API. */

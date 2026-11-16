@@ -1,5 +1,6 @@
+import { assert } from "chai";
 import { describe, expect, it } from "vitest";
-import { assert, createAssertionStateChecks, createExpect } from "./expect.js";
+import { createAssertionStateChecks, createExpect } from "./expect.js";
 
 const jestExpect = createExpect();
 

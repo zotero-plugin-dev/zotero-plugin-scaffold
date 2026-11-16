@@ -1,24 +1,11 @@
 /**
- * The fake timers behind the timer members of the `zo` namespace.
+ * The timer members of `zo`, built on `@sinonjs/fake-timers`: a trimmed version of
+ * Vitest's `FakeTimers` (state on top of `withGlobal()`), not an implementation.
  *
- * The library is [`@sinonjs/fake-timers`](https://github.com/sinonjs/fake-timers),
- * the one Vitest and Jest use: it swaps `setTimeout` / `setInterval` / `Date` on
- * a given object for a clock the test controls. This file is the trimmed
- * equivalent of Vitest's `FakeTimers` class (jest's `LegacyFakeTimers`), i.e.
- * ~100 lines of state on top of `withGlobal()`, not an implementation.
- *
- * The `global` is a parameter instead of `globalThis` on purpose: the test
- * runtime passes `window` (the Zotero page), while the unit tests pass a plain
- * object that carries real timers. Installing on `globalThis` inside a unit test
- * would fake the timers of the Vitest runner itself and hang the run.
- *
- * A test may hand `useFakeTimers()` a `global` as well: a plugin which schedules
- * a delay on another window (Zotero's progress notification calls
- * `win.setTimeout`, a XUL window, not the test page) can only be driven by a
- * clock installed on that window. `@sinonjs/fake-timers` used to call this
- * option `target` and removed it in v15 in favour of `withGlobal()`; `global` is
- * the name Sinon's own wrapper uses, so a suite migrating from
- * `sinon.useFakeTimers({ global: win })` keeps its shape.
+ * The clock target is a parameter rather than `globalThis` on purpose: the
+ * runtime passes the page's `window`, while a unit test must pass its own object
+ * — faking `globalThis` inside a test fakes the Vitest runner's timers and hangs
+ * the run.
  *
  * @see https://vitest.dev/api/vi#vi-usefaketimers
  */
@@ -26,20 +13,14 @@ import type { Clock, Config, FakeMethod, FakeTimers, GlobalObject } from "@sinon
 import { withGlobal } from "@sinonjs/fake-timers";
 
 /**
- * The options of `zo.useFakeTimers()`: the `@sinonjs/fake-timers` config plus
- * the object the clock is installed on.
+ * The options of `zo.useFakeTimers()`: the `@sinonjs/fake-timers` config plus the
+ * object the clock is installed on.
  */
 export interface ZoTimersConfig extends Config {
   /**
-   * The object whose timers are faked, instead of the test page's `window`.
-   *
-   * Pass the window the code under test schedules its timers on, e.g. a Zotero
-   * progress window whose `setTimeout` the plugin calls. A clock installed on
-   * the page does not affect any other window.
-   *
-   * It is our name for `withGlobal(target)` of `@sinonjs/fake-timers` (v15
-   * removed the `config.target` it used to have), spelled the way Sinon spells
-   * it in `sinon.useFakeTimers({ global })`.
+   * The object whose timers are faked, instead of the test page's `window`: pass
+   * the window the code under test schedules on (e.g. a Zotero progress window),
+   * since a clock installed on the page does not affect any other window.
    *
    * @default window (the test page)
    */
@@ -48,7 +29,7 @@ export interface ZoTimersConfig extends Config {
 
 /**
  * The timer members of `zo`, i.e. what this module contributes to the
- * namespace. `Zo` (`src/zo.ts`) extends it.
+ * namespace. `Zo` (`./zo.ts`) extends it.
  */
 export interface ZoTimers {
   /**
