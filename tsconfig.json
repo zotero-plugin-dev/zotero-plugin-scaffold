@@ -2,14 +2,15 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
-    "outDir": "dist"
+    "types": ["node"],
+    "outDir": "dist",
+    // Only the packages emit declarations, so root-level config files
+    // (tsdown.config.ts, vitest.config.ts) don't need it.
+    "isolatedDeclarations": false
   },
   "include": [
-    "packages/*/src",
-    "packages/*/types",
-    "typings",
-    "test/e2e/fixtures",
-    "test/e2e/tests"
+    "*.ts",
+    "typings"
   ],
   "exclude": [
     "**/dist/**",
