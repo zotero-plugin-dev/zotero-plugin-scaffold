@@ -337,6 +337,15 @@ export interface DevServerUserConfig {
    * devServer 所需的配置。
    */
   devServer?: RecursivePartial<DevServerConfig>;
+
+  /**
+   * Configurations required to run the dev server.
+   *
+   * devServer 所需的配置。
+   *
+   * @deprecated Use devServer instead.
+   */
+  server?: RecursivePartial<DevServerConfig>;
 }
 
 /**
