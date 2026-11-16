@@ -1,51 +1,31 @@
 import type { Zo } from "./zo.js";
-import * as spy from "@vitest/spy";
+import * as chai from "chai";
 import { afterEach, describe, expect, it } from "vitest";
 import { createExpect } from "./expect.js";
+import { createZoSpy } from "./zo-spy.js";
+import { createZoTimers } from "./zo-timers.js";
 
 /**
- * The `zo` namespace, exercised through the public facade — i.e. the exact path
- * a test file takes (`zotero-plugin-scaffold/test` → shim → the object the test
- * runtime installs).
- *
- * The runtime cannot run here, so the globals the shim reads are stubbed the
- * same way `apis.test.ts` does it: this keeps the test about the spy behaviour
- * and the shim plumbing, while `test-runtime.test.ts` runs the real runtime
- * bundle in a VM and covers the installation itself.
- *
- * The stubs have to happen before the (dynamic) facade import: the shim reads
- * its globals at module evaluation time.
+ * The `zo` namespace exercised through the public facade — the path a test file
+ * takes (`zotero-plugin-scaffold/test` → shim → the object the runtime installs).
+ * The runtime itself is covered by `test-runtime.test.ts` in a VM; here only the
+ * globals it would install are stubbed, before the dynamic facade import.
  */
 const jestExpect = createExpect();
 const g = globalThis as unknown as Record<string, unknown>;
 g.Zotero ??= {};
-g.chai ??= {
-  assert: () => {},
-  config: {},
-  expect: () => {},
-  use: () => {},
-};
+// Real chai and real assemblies, so the fixture cannot drift from the shim's
+// contract; the timers get a throwaway target rather than `globalThis`, or a
+// leaked clock would freeze the Vitest worker.
+g.chai ??= chai;
 g.expect ??= jestExpect;
-g.assert ??= {};
-// The timers are inert stubs: this suite is about the spies, and installing a
-// clock on `globalThis` would freeze Vitest's own timers.
+g.assert ??= chai.assert;
 g.__TEST_ZO__ ??= {
-  fn: spy.fn,
-  spyOn: spy.spyOn,
-  isMockFunction: spy.isMockFunction,
-  clearAllMocks: spy.clearAllMocks,
-  resetAllMocks: spy.resetAllMocks,
-  restoreAllMocks: spy.restoreAllMocks,
-  useFakeTimers: () => {},
-  useRealTimers: () => {},
-  advanceTimersByTime: () => {},
-  advanceTimersByTimeAsync: async () => {},
-  runAllTimers: () => {},
-  runAllTimersAsync: async () => {},
-  getTimerCount: () => 0,
+  ...createZoSpy(),
+  ...createZoTimers({}),
 } satisfies Zo;
 
-const { zo } = await import("./api/index.js");
+const { zo } = await import("../api/index.js");
 
 /**
  * Nothing resets these mocks automatically (see `docs/src/test.md`), so the

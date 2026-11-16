@@ -1,32 +1,20 @@
 /**
- * The API registry of the test runtime.
+ * The API registry: the single source of truth for the export set of the facade
+ * (`src/api/index.ts`) and the shim (`src/shim/index.ts`), and for the specifiers
+ * intercepted by the `onResolve` plugin in `test-bundler.ts`.
  *
- * It is the single source of truth for two things that used to be spread over
- * the code base:
+ * Both are published static files, so "derived from the registry" means *hand
+ * written and guarded by `apis.test.ts`*, not generated at build time. The
+ * globals the runtime installs are not listed here: they are plain assignments
+ * in `test-runtime-setup.ts` whose types come from `@types/chai`.
  *
- * 1. the export set of the public facade (`src/api/index.ts`) and of the
- *    bundler shim (`src/shim/index.ts`),
- * 2. the specifier set intercepted by the esbuild `onResolve` plugin in
- *    `test-bundler.ts`.
+ * A module whose exports are collected into the `zo` namespace
+ * (`src/integrations/zo.ts`) names it in `namespace`: the facade then exposes one
+ * `zo`, and its members are reached as `zo.<name>`.
  *
- * The facade and the shim are published static files, so "derived from the
- * registry" means *hand written, guarded by a consistency unit test*
- * (`src/apis.test.ts`) rather than generated at build time.
- *
- * The globals the runtime installs are **not** listed here: `window.expect` /
- * `window.assert` / `window.chai` in `test-runtime-setup.ts` are three plain
- * assignments whose types come from `@types/chai`, and deriving them from the
- * registry buys nothing while costing a lookup table that can disagree with
- * itself.
- *
- * A module whose exports are collected into the `zo` namespace (`src/zo.ts`)
- * names that namespace in `namespace` instead of exporting the members flat: the
- * facade then exposes one `zo`, and every member a namespace module contributes
- * is reached as `zo.<name>`.
- *
- * Adding a new library costs one dependency, one registry entry and one line
- * each in the shim and the runtime: `@sinonjs/fake-timers` joined that way, and
- * needed no shim line at all because `zo` is a single object there.
+ * Adding a library costs one dependency, one registry entry and one line each in
+ * the shim and the runtime — `@sinonjs/fake-timers` joined that way, needing no
+ * shim line at all because `zo` is a single object there.
  */
 export interface TestApiModule {
   /** The module specifier intercepted by the onResolve plugin */
@@ -76,7 +64,7 @@ export const TEST_API_MODULES: TestApiModule[] = [
   {
     id: "@vitest/expect",
     // Jest-style `expect`, created from `@vitest/expect` on top of chai by
-    // `src/expect.ts` and mounted on `globalThis` by the test runtime. It
+    // `src/integrations/expect.ts` and mounted on `globalThis` by the test runtime. It
     // replaces chai's plain `expect` in the test API surface.
     exports: [
       "expect",

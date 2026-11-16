@@ -1,36 +1,20 @@
 /**
- * The bundler shim: the target of the esbuild `onResolve` plugin.
+ * The bundler shim: the target of the esbuild `onResolve` plugin. It re-exports
+ * what the test runtime (`src/test-runtime-setup.ts`) installed as globals, so a
+ * test bundle never inlines nor re-instantiates a test library.
  *
- * It must not import any runtime value from mocha/chai — it only reads the
- * globals that the test runtime (`src/test-runtime-setup.ts`) installed, so
- * that a test bundle never inlines (nor re-instantiates) a test library.
- *
- * The types come from mocha/chai through type-only namespace imports, which
- * also keeps `@types/mocha` / `@types/chai` inside the compile program: without
- * the import, `@types/mocha`'s globals are not part of the program at all and
- * `globalThis.describe` is a TS7017 error.
- *
- * Rules this file obeys (enforced by `isolatedDeclarations`):
- *
- * - the type-only imports are aliased, otherwise they merge with the local
- *   declarations (TS2440 / TS2395);
- * - every `export const` carries an explicit type annotation (TS9010);
- * - `@types/chai` does not declare global `expect` / `assert` (TS7017), so
- *   they are read through an assertion on `globalThis`;
- * - the chai side is annotated with type queries (`typeof ChaiTypes.assert`)
- *   and the Jest-style `expect` with the `Expect` interface of
- *   `src/expect.ts`, while the mocha side uses interface types
- *   (`MochaTypes.SuiteFunction`): `@types/chai` only exports those members as
- *   values, it has no `AssertStatic` / `Config` interface to name;
- * - the `zo` namespace is one annotated `export const` of the `Zo` interface of
- *   `src/zo.ts`, so adding a member of a namespace library changes that
- *   interface and the runtime only, never this file.
+ * The type-only imports of `mocha` / `chai` also keep `@types/mocha` and
+ * `@types/chai` in the compile program (without them `globalThis.describe` is
+ * TS7017). `isolatedDeclarations` forces the rest: aliased type imports (else
+ * TS2440 / TS2395), an explicit type on every `export const` (TS9010), and reads
+ * of undeclared chai globals through an assertion on `globalThis`. A namespace
+ * library only changes its `integrations/*.ts` interface, never this file.
  */
 
 import type * as ChaiTypes from "chai";
 import type * as MochaTypes from "mocha";
-import type { Expect } from "../expect.js";
-import type { Zo } from "../zo.js";
+import type { Expect } from "../integrations/expect.js";
+import type { Zo } from "../integrations/zo.js";
 
 if (typeof (globalThis as { Zotero?: unknown }).Zotero === "undefined") {
   throw new Error(
@@ -44,10 +28,8 @@ type TestGlobals = typeof globalThis & {
   expect: Expect;
   assert: typeof ChaiTypes.assert;
   /**
-   * The `zo` namespace object, installed by the test runtime. It is assembled
-   * there from the libraries behind it (`@vitest/spy` and
-   * `@sinonjs/fake-timers`), the shim only reads it back under the type of
-   * `src/zo.ts`.
+   * The `zo` namespace object, installed by the test runtime and read back under
+   * the `Zo` interface of `integrations/zo.ts`.
    */
   __TEST_ZO__: Zo;
 };
@@ -86,12 +68,12 @@ export default chai;
  * discoverable surface, and they cannot collide with the names of the plugin
  * under test.
  *
- * @see ./zo.js
+ * @see ../integrations/zo.js
  */
 export const zo: Zo = g.__TEST_ZO__;
 
 // The type of the Jest-style `expect`, for consumers which declare the bare
 // globals themselves (`const expect: Expect`).
-export type { Expect } from "../expect.js";
+export type { Expect } from "../integrations/expect.js";
 // The type of the `zo` namespace, for consumers which declare it themselves.
-export type { Zo } from "../zo.js";
+export type { Zo } from "../integrations/zo.js";

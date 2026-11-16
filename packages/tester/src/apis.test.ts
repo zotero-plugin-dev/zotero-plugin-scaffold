@@ -1,7 +1,9 @@
-import type { Zo } from "./zo.js";
-import * as spy from "@vitest/spy";
+import type { Zo } from "./integrations/zo.js";
+import * as chai from "chai";
 import { beforeAll, describe, expect, it } from "vitest";
 import { TEST_API_EXPORTS, TEST_API_MODULES, TEST_API_NAMESPACES, testApiNamespaceMembers } from "./apis.js";
+import { createZoSpy } from "./integrations/zo-spy.js";
+import { createZoTimers } from "./integrations/zo-timers.js";
 
 /**
  * The facade (`api/`) and the shim (`shim/`) are hand-written static files
@@ -9,7 +11,7 @@ import { TEST_API_EXPORTS, TEST_API_MODULES, TEST_API_NAMESPACES, testApiNamespa
  * the three of them, plus the bundler redirect list, from drifting apart.
  *
  * A registry entry either contributes top-level members of the test API or
- * members of a namespace (`namespace: "zo"`, see `src/zo.ts`).
+ * members of a namespace (`namespace: "zo"`, see `src/integrations/zo.ts`).
  */
 describe("test API registry", () => {
   let shimExports: string[] = [];
@@ -17,36 +19,18 @@ describe("test API registry", () => {
   let shimNamespaces: Record<string, Record<string, unknown>> = {};
 
   beforeAll(async () => {
-    // The shim guards on the Zotero host object and reads the globals installed
-    // by the test runtime, so both have to be stubbed before importing it.
+    // The shim reads these globals at module evaluation, so stub them first:
+    // real chai and real assemblies, so the fixture cannot drift from the shim's
+    // contract. `expect` is never called here, hence the no-op; the timers get a
+    // throwaway target, faking the worker's clock would hang the run.
     const g = globalThis as unknown as Record<string, unknown>;
     g.Zotero ??= {};
-    g.chai ??= {
-      assert: () => {},
-      config: {},
-      expect: () => {},
-      use: () => {},
-    };
+    g.chai ??= chai;
+    g.assert ??= chai.assert;
     g.expect ??= () => {};
-    g.assert ??= {};
-    // The real libraries, so that the assertions below run against them;
-    // the timers are inert stubs because this suite never fakes anything
-    // (installing a clock on `globalThis` would freeze Vitest itself, see
-    // `zo-timers.test.ts`).
     g.__TEST_ZO__ ??= {
-      fn: spy.fn,
-      spyOn: spy.spyOn,
-      isMockFunction: spy.isMockFunction,
-      clearAllMocks: spy.clearAllMocks,
-      resetAllMocks: spy.resetAllMocks,
-      restoreAllMocks: spy.restoreAllMocks,
-      useFakeTimers: () => {},
-      useRealTimers: () => {},
-      advanceTimersByTime: () => {},
-      advanceTimersByTimeAsync: async () => {},
-      runAllTimers: () => {},
-      runAllTimersAsync: async () => {},
-      getTimerCount: () => 0,
+      ...createZoSpy(),
+      ...createZoTimers({}),
     } satisfies Zo;
 
     const shim = await import("./shim/index.js");

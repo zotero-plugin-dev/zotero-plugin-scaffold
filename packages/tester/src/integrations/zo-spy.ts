@@ -1,32 +1,14 @@
 /**
- * The `zo` namespace: the stand-in for Vitest's `vi`.
- *
- * `vi` collects everything a test needs to fake something under one name. The
- * same is true here but more so: the flat surface would grow past twenty generic
- * names (`fn`, `spyOn`, `useFakeTimers`, `advanceTimersByTime`, …) next to
- * `describe` / `expect` / `assert`, where none of them is discoverable and any
- * of them can collide with a name of the plugin under test.
- *
- * It is also the seam for the libraries behind it: this interface is the single
- * place which says that `@vitest/spy` contributes the mock members, and that
- * `@sinonjs/fake-timers` contributes the timer members. The test runtime
- * builds the object from those libraries, the shim only reads it back off
- * `globalThis.__TEST_ZO__`, so no test bundle inlines any of them.
- *
- * There is deliberately no `mock` / `unmock`: module mocking needs a runner and
- * an ESM module graph to patch, neither of which exists inside a Zotero page.
- *
- * @see https://vitest.dev/api/vi
+ * The spy members of `zo`: the `@vitest/spy` part, declared next to the
+ * assembly which contributes them (the counterpart of `./zo-timers.ts`).
  */
 import type * as SpyTypes from "@vitest/spy";
-import type { ZoTimers } from "./zo-timers.js";
+import * as spy from "@vitest/spy";
 
 /**
- * The timer members are declared in `src/zo-timers.ts`, next to the wrapper
- * which implements them over `@sinonjs/fake-timers`, and merged in here so that
- * `zo` stays one interface for the shim and the runtime.
+ * The spy members of `zo`. `Zo` (`./zo.ts`) extends it.
  */
-export interface Zo extends ZoTimers {
+export interface ZoSpy {
   /**
    * Create a spy, same as `vi.fn()`.
    *
@@ -68,4 +50,19 @@ export interface Zo extends ZoTimers {
    * @see https://vitest.dev/api/vi#vi-restoreallmocks
    */
   restoreAllMocks: typeof SpyTypes.restoreAllMocks;
+}
+
+/**
+ * Create the spy members of `zo`. `@vitest/spy` keeps its registry globally, so
+ * there is no per-instance state.
+ */
+export function createZoSpy(): ZoSpy {
+  return {
+    fn: spy.fn,
+    spyOn: spy.spyOn,
+    isMockFunction: spy.isMockFunction,
+    clearAllMocks: spy.clearAllMocks,
+    resetAllMocks: spy.resetAllMocks,
+    restoreAllMocks: spy.restoreAllMocks,
+  };
 }

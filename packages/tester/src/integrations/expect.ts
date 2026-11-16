@@ -1,22 +1,11 @@
 /**
- * The Jest-style `expect` of the test runtime.
+ * The Jest-style `expect`: Vitest's `@vitest/expect` Chai plugins on top of Chai,
+ * so that both matcher styles work in the test page (`expect(1).toBe(1)`,
+ * `expect(1).to.equal(1)`).
  *
- * Mocha provides the test structure, Chai the classic assertion styles, and
- * this module adds Vitest's `expect` on top of Chai, so that Jest matchers
- * (`toBe`, `toEqual`, `toThrow`, …) work in the test page:
- *
- * ```ts
- * expect(1 + 1).toBe(2);
- * expect(1).to.equal(1); // Chai's own assertions still work
- * ```
- *
- * It is the same recipe Vitest uses for its own `expect`: Chai plus the
- * `@vitest/expect` Chai plugins. `src/test-runtime-setup.ts` installs the
- * instance on the page, `src/shim/index.ts` only reads it, so no test bundle
- * ever contains a second copy.
- *
- * The file is bundled into `content/test-runtime.js`, it is not a published
- * entry point on its own.
+ * `src/test-runtime-setup.ts` installs the instance on the page, `src/shim/index.ts`
+ * only reads it back, so no test bundle contains a second copy. Bundled into
+ * `content/test-runtime.js`, not a published entry point on its own.
  */
 import type { ExpectStatic, MatchersObject, Tester } from "@vitest/expect";
 import {
@@ -33,13 +22,6 @@ import {
   setState,
 } from "@vitest/expect";
 
-export { chai };
-
-/**
- * Chai's assertion API, same as `chai.assert` in a plain Chai setup.
- */
-export const assert: Chai.AssertStatic = chai.assert;
-
 /**
  * The Jest-style `expect` API, Chai's own assertions are still available
  * on it (`expect(1).to.equal(1)`).
@@ -48,7 +30,7 @@ export const assert: Chai.AssertStatic = chai.assert;
  */
 export interface Expect extends ExpectStatic {
   /**
-   * Chai's `assert` interface, the same object as the exported `assert`.
+   * Chai's `assert` interface, the same object as the `assert` global.
    */
   assert: Chai.AssertStatic;
   /**
