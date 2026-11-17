@@ -18,8 +18,10 @@ function transform(
       ...test,
     },
   };
-  testTransform(config as any, {} as any, {} as any);
-  return config;
+  return {
+    ...config,
+    ...testTransform(config as any, {} as any, {} as any),
+  };
 }
 
 describe("testDefaults", () => {

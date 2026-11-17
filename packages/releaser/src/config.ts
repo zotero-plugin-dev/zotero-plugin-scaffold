@@ -1,6 +1,6 @@
 import type { ConfigTransform } from "@zotero-plugin/config";
 import type { VersionBumpRelease } from "bumpp";
-import type { ReleaseConfig } from "./types.js";
+import type { ReleaseConfig, ResolvedReleaseConfig } from "./types.js";
 import { logger, template } from "@zotero-plugin/utils";
 import { isCI } from "std-env";
 
@@ -44,26 +44,36 @@ export function isEnabled(enable: ReleaseConfig["release"]["github"]["enable"]):
   return false;
 }
 
-export const releaseTransform: ConfigTransform<ReleaseConfig> = (config, templateData) => {
-  if (!config.release?.github)
+export const releaseTransform: ConfigTransform<ReleaseConfig, ResolvedReleaseConfig> = (config, templateData) => {
+  if (!config.release)
     return;
 
-  config.release.github.repository = template(config.release.github.repository, templateData);
-
   const { release } = config;
+  const bumpp = { ...release.bumpp };
 
-  if (release.bumpp.release === "prompt" && isCI) {
+  if (bumpp.release === "prompt" && isCI) {
     logger.warn("Config `release.bumpp.release == 'prompt'` will do nothing because in CI enviroment.");
-    release.bumpp.release = templateData.version as VersionBumpRelease;
+    bumpp.release = templateData.version as VersionBumpRelease;
   }
 
-  if (release.bumpp.confirm && isCI) {
+  if (bumpp.confirm && isCI) {
     logger.warn("Config `release.bumpp.confirm` will do nothing because in CI enviroment.");
-    release.bumpp.confirm = false;
+    bumpp.confirm = false;
   }
 
-  if (isEnabled(release.github.enable) && !release.bumpp.execute) {
+  if (isEnabled(release.github.enable) && !bumpp.execute) {
     logger.warn("The current release needs to run the build after bumping the version number, please configure the build script in 'config.release.bumpp.execute'.");
-    release.bumpp.execute = "npm run build";
+    bumpp.execute = "npm run build";
   }
+
+  return {
+    release: {
+      ...release,
+      bumpp,
+      github: {
+        ...release.github,
+        repository: template(release.github.repository, templateData),
+      },
+    },
+  };
 };

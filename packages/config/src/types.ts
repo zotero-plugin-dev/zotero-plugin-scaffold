@@ -200,20 +200,23 @@ export interface TemplateData {
 /**
  * A transformation applied to the resolved configuration by a command package.
  *
- * The engine itself is agnostic of command-specific configuration; each
- * command package contributes one transform that patches its own defaults and
- * interpolates its templates.
+ * Each command package contributes one transform that resolves its own slice and
+ * returns a patch for the engine to merge, so it never mutates its input. `TPatch`
+ * is that patch's shape: declaring it as the resolved slice turns a missing
+ * normalization into a compile error.
  *
  * Hooks are discovered by convention instead of being declared here: after all
  * transforms are applied, the engine scans top-level config objects and
  * registers their `hooks` field, e.g. `build.hooks` or `devServer.hooks`.
  */
-export type ConfigTransform<TConfig extends object = any> = (
-
+export type ConfigTransform<
+  TConfig extends object = any,
+  TPatch extends Partial<TConfig> = Partial<TConfig>,
+> = (
   config: BaseConfig & TConfig,
   templateData: TemplateData,
   pkgUser: UserPackageJson,
-) => void;
+) => TPatch | void;
 
 export interface BaseContextFields {
   pkgUser: UserPackageJson;

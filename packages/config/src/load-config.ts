@@ -71,7 +71,9 @@ export async function loadConfig<
 
   // Let each command package patch its own configuration
   for (const transform of options.transforms ?? []) {
-    transform(config, templateData, pkgUser);
+    const patch = transform(config, templateData, pkgUser);
+    if (patch)
+      Object.assign(config, patch);
   }
 
   config.source = toArray<string>(config.source);
