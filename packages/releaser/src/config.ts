@@ -20,7 +20,7 @@ export const releaseDefaults: ReleaseConfig = {
     updater: "release",
     comment: false,
     releaseNote: (ctx) => {
-      return ctx.release.changelog as string;
+      return ctx.config.release.changelog as string;
     },
   },
   hooks: {},

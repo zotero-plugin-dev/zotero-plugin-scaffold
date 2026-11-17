@@ -191,8 +191,8 @@ export class TestBundler {
     // manifest
     const bootstrap = generateBootstrap({
       port: this.port,
-      startupDelay: this.ctx.test.startupDelay,
-      waitForPlugin: this.ctx.test.waitForPlugin,
+      startupDelay: this.ctx.config.test.startupDelay,
+      waitForPlugin: this.ctx.config.test.waitForPlugin,
     });
     await outputFile(`${TESTER_PLUGIN_DIR}/bootstrap.js`, bootstrap);
 
@@ -234,8 +234,8 @@ export class TestBundler {
     // `*` and `**` in an entry point glob, and because the positional arguments
     // of the CLI narrow the result down afterwards.
     // https://esbuild.github.io/api/#glob-style-entry-points
-    const selected = await resolveTestEntries(this.ctx.test.entries, this.ctx.test.exclude);
-    const filters = this.ctx.test.filter;
+    const selected = await resolveTestEntries(this.ctx.config.test.entries, this.ctx.config.test.exclude);
+    const filters = this.ctx.config.test.filter;
     const entryPoints = selected.filter(createTestFileFilter(filters));
 
     if (entryPoints.length === 0) {
@@ -243,9 +243,9 @@ export class TestBundler {
       if (selected.length > 0 && filters.length > 0)
         throw new Error(`No test file matched ${filters.join(", ")}; test.entries selected ${selected.length} file(s).`);
 
-      const exclude = toArray(this.ctx.test.exclude);
+      const exclude = toArray(this.ctx.config.test.exclude);
       throw new Error(
-        `No test file matched ${toArray(this.ctx.test.entries).join(", ")}`
+        `No test file matched ${toArray(this.ctx.config.test.entries).join(", ")}`
         + `${
           exclude.length > 0
             ? ` after excluding ${exclude.join(", ")}`
@@ -278,10 +278,10 @@ export class TestBundler {
   private async createTestHtml(tests: string[] = []): Promise<void> {
     // runtime options
     const options: TestRuntimeOptions = {
-      timeout: this.ctx.test.mocha.timeout,
+      timeout: this.ctx.config.test.mocha.timeout,
       port: this.port,
-      abortOnFail: this.ctx.test.abortOnFail,
-      exitOnFinish: !this.ctx.test.watch,
+      abortOnFail: this.ctx.config.test.abortOnFail,
+      exitOnFinish: !this.ctx.config.test.watch,
     };
 
     // html

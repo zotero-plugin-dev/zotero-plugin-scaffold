@@ -84,7 +84,7 @@ export async function loadConfig<
   }
 
   return {
-    ...config,
+    config,
     pkgUser,
     version,
     hooks,

@@ -1,6 +1,6 @@
 import { defineConfig, loadConfig } from "./config.js";
 
-export type { Context, Hooks, UserConfig } from "./types.js";
+export type { Context, Hooks, ResolvedConfig, UserConfig } from "./types.js";
 
 // Configuration engine
 export type {

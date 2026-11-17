@@ -38,7 +38,8 @@ export function generateHashSync(
 }
 
 export default async function buildUpdateJson(ctx: CoreContext): Promise<void> {
-  const { dist, xpiName, id, version, xpiDownloadLink, build } = ctx;
+  const { dist, xpiName, id, xpiDownloadLink, build } = ctx.config;
+  const { version } = ctx;
 
   const manifest = await readJSON(
     `${dist}/addon/manifest.json`,

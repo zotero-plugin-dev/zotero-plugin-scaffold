@@ -10,7 +10,7 @@ export class Bump extends ReleaseBase {
 
   async run(): Promise<void> {
     const bumppConfig: VersionBumpOptions = {
-      ...this.ctx.release.bumpp,
+      ...this.ctx.config.release.bumpp,
       push: true,
       progress: this.bumppProgress,
     };
@@ -25,10 +25,10 @@ export class Bump extends ReleaseBase {
 
     const result = await versionBump(bumppConfig);
     this.ctx.version = result.newVersion;
-    this.ctx.release.bumpp.tag = result.tag || this.ctx.release.bumpp.tag.toString().replace("%s", result.newVersion);
-    this.ctx.release.bumpp.commit = result.commit || this.ctx.release.bumpp.commit.toString().replace("%s", result.newVersion);
+    this.ctx.config.release.bumpp.tag = result.tag || this.ctx.config.release.bumpp.tag.toString().replace("%s", result.newVersion);
+    this.ctx.config.release.bumpp.commit = result.commit || this.ctx.config.release.bumpp.commit.toString().replace("%s", result.newVersion);
 
-    this.logger.debug(`The release context after bump: ", ${this.ctx.release}`);
+    this.logger.debug(`The release context after bump: ", ${this.ctx.config.release}`);
   }
 
   /**

@@ -1,4 +1,4 @@
-import type { BaseContext } from "@zotero-plugin/config";
+import type { BaseConfig, BaseContext } from "@zotero-plugin/config";
 import type { RecursivePartial } from "@zotero-plugin/utils";
 import type { VersionBumpRelease } from "bumpp";
 import type { GitCommit } from "changelogen";
@@ -231,5 +231,7 @@ export interface ReleaseUserConfig {
  * The context of the release command.
  */
 export interface ReleaseContext extends BaseContext {
-  release: ReleaseConfig;
+  config: BaseConfig & {
+    release: ReleaseConfig;
+  };
 }

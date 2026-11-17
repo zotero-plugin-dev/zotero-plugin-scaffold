@@ -27,12 +27,12 @@ export class Tester extends Base<TestContext> {
     this.builder = new Builder(ctx as unknown as CoreContext);
 
     if (isCI) {
-      this.ctx.test.headless = true;
-      this.ctx.test.watch = false;
+      this.ctx.config.test.headless = true;
+      this.ctx.config.test.watch = false;
     }
 
     if (isAgent)
-      this.ctx.test.watch = false;
+      this.ctx.config.test.watch = false;
   }
 
   async run(): Promise<void> {
@@ -63,13 +63,13 @@ export class Tester extends Base<TestContext> {
     await this.ctx.hooks.callHook("test:run", this.ctx);
 
     // Watch mode
-    if (this.ctx.test.watch) {
+    if (this.ctx.config.test.watch) {
       this.watch();
     }
   }
 
   async watch(): Promise<void> {
-    const source = toArray(this.ctx.source).map(p => resolve(p));
+    const source = toArray(this.ctx.config.source).map(p => resolve(p));
     function isSource(_path: string) {
       const path = resolve(_path);
       if (isTestFileName(path))
@@ -78,8 +78,8 @@ export class Tester extends Base<TestContext> {
     }
 
     watch(
-      [this.ctx.source, this.ctx.test.entries].flat(),
-      this.ctx.watchIgnore,
+      [this.ctx.config.source, this.ctx.config.test.entries].flat(),
+      this.ctx.config.watchIgnore,
       {
         onChange: async (path) => {
           if (isSource(path)) {
@@ -108,15 +108,15 @@ export class Tester extends Base<TestContext> {
   }
 
   async startZotero(): Promise<void> {
-    if (this.ctx.test.headless && !process.env.ZOTERO_SETUP_COMPLETE) {
+    if (this.ctx.config.test.headless && !process.env.ZOTERO_SETUP_COMPLETE) {
       await prepareHeadless();
     }
 
     this.zotero = new ZoteroRunner({
       binary: {
         path: this.zoteroBinPath,
-        devtools: this.ctx.test.devtools,
-        args: this.ctx.test.startArgs,
+        devtools: this.ctx.config.test.devtools,
+        args: this.ctx.config.test.startArgs,
       },
       profile: {
         path: TESTER_PROFILE_DIR,
@@ -126,8 +126,8 @@ export class Tester extends Base<TestContext> {
       plugins: {
         list: [
           {
-            id: this.ctx.id,
-            sourceDir: join(this.ctx.dist, "addon"),
+            id: this.ctx.config.id,
+            sourceDir: join(this.ctx.config.dist, "addon"),
           },
           {
             id: TESTER_PLUGIN_ID,
@@ -199,7 +199,7 @@ export class Tester extends Base<TestContext> {
       "extensions.zoteroOpenOfficeIntegration.skipInstallation": true,
     };
 
-    return Object.assign(defaultPref, this.ctx.test.prefs || {});
+    return Object.assign(defaultPref, this.ctx.config.test.prefs || {});
   }
 }
 

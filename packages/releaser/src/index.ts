@@ -22,29 +22,30 @@ export class Releaser extends Base<ReleaseContext> {
   async run(): Promise<void> {
     const t = new Date();
 
-    const { release, version } = this.ctx;
+    const { release } = this.ctx.config;
+    const { version } = this.ctx;
 
     // Parse release config
     if (release.bumpp.release === "prompt" && isCI) {
       this.logger.warn("Config `release.bumpp.release == 'prompt'` will do nothing because in CI enviroment.");
-      this.ctx.release.bumpp.release = version as VersionBumpRelease;
+      this.ctx.config.release.bumpp.release = version as VersionBumpRelease;
     }
 
     if (release.bumpp.confirm && isCI) {
       this.logger.warn("Config `release.bumpp.confirm` will do nothing because in CI enviroment.");
-      this.ctx.release.bumpp.confirm = false;
+      this.ctx.config.release.bumpp.confirm = false;
     }
 
-    const isBumpNeeded = this.ctx.release.bumpp.release !== version;
+    const isBumpNeeded = this.ctx.config.release.bumpp.release !== version;
     const isGitHubEnabled = this.isEnabled(release.github.enable);
     const isPublishNeeded = isGitHubEnabled;
 
     if (isPublishNeeded && !release.bumpp.execute) {
       this.logger.warn(`The current release needs to run the build after bumping the version number, please configure the build script in 'config.release.bumpp.execute'${isBumpNeeded ? "" : " or run build before run release"}.`);
-      this.ctx.release.bumpp.execute ||= "npm run build";
+      this.ctx.config.release.bumpp.execute ||= "npm run build";
     }
 
-    this.logger.debug(`Release config: ", ${this.ctx.release}`);
+    this.logger.debug(`Release config: ", ${this.ctx.config.release}`);
 
     // Releaser ready
     await this.ctx.hooks.callHook("release:init", this.ctx);
@@ -54,7 +55,7 @@ export class Releaser extends Base<ReleaseContext> {
     await this.ctx.hooks.callHook("release:push", this.ctx);
 
     // Get changelog
-    this.ctx.release.changelog = await this.getChangelog();
+    this.ctx.config.release.changelog = await this.getChangelog();
 
     // Publish to GitHub
     if (isGitHubEnabled) {
@@ -70,14 +71,14 @@ export class Releaser extends Base<ReleaseContext> {
   }
 
   async getChangelog(): Promise<string> {
-    const { commit, tag } = this.ctx.release.bumpp;
+    const { commit, tag } = this.ctx.config.release.bumpp;
     let changelog: string;
     const rawCommit = await getGitCommits(tag, commit);
     if (rawCommit.length === 0) {
       return "_No significant changes._";
     }
 
-    const changelogConfig = this.ctx.release.changelog;
+    const changelogConfig = this.ctx.config.release.changelog;
     if (typeof changelogConfig == "function") {
       changelog = changelogConfig(this.ctx, rawCommit);
     }
@@ -104,7 +105,7 @@ export class Releaser extends Base<ReleaseContext> {
   exit(): void {}
 
   get resolvedCommitMessage(): string {
-    return this.ctx.release.bumpp.commit.replace("%s", this.ctx.version);
+    return this.ctx.config.release.bumpp.commit.replace("%s", this.ctx.version);
   }
 }
 

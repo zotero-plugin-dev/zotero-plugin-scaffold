@@ -29,7 +29,7 @@ export class DevServer extends Base<CoreContext> {
       createProfileIfMissing,
       asProxy,
       prebuild,
-    } = this.ctx.devServer;
+    } = this.ctx.config.devServer;
 
     this.runner = new ZoteroRunner({
       binary: {
@@ -49,8 +49,8 @@ export class DevServer extends Base<CoreContext> {
       plugins: {
         list: [
           {
-            id: this.ctx.id,
-            sourceDir: join(this.ctx.dist, "addon"),
+            id: this.ctx.config.id,
+            sourceDir: join(this.ctx.config.dist, "addon"),
           },
         ],
         asProxy,
@@ -78,7 +78,7 @@ export class DevServer extends Base<CoreContext> {
    * watch source dir and build when file changed
    */
   async watch(): Promise<void> {
-    const { source, watchIgnore } = this.ctx;
+    const { source, watchIgnore } = this.ctx.config;
 
     watch(
       source,

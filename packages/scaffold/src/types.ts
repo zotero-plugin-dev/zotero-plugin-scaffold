@@ -1,13 +1,14 @@
-import type { BaseContext, BaseUserConfig } from "@zotero-plugin/config";
+import type { BaseConfig, BaseContext, BaseUserConfig } from "@zotero-plugin/config";
 import type {
+  BuildConfig,
   BuildHooks,
   BuildUserConfig,
-  CoreContext,
+  DevServerConfig,
   DevServerUserConfig,
   ServeHooks,
 } from "@zotero-plugin/core";
-import type { ReleaseContext, ReleaseHooks, ReleaseUserConfig } from "@zotero-plugin/releaser";
-import type { TestContext, TestHooks, TestUserConfig } from "@zotero-plugin/tester";
+import type { ReleaseConfig, ReleaseHooks, ReleaseUserConfig } from "@zotero-plugin/releaser";
+import type { TestConfig, TestHooks, TestUserConfig } from "@zotero-plugin/tester";
 import type { Hookable } from "hookable";
 
 /**
@@ -24,16 +25,20 @@ export interface UserConfig extends BaseUserConfig, BuildUserConfig, DevServerUs
 export interface Hooks extends BuildHooks, ServeHooks, TestHooks, ReleaseHooks {}
 
 /**
- * The fully resolved context handed to every command.
- *
- * Every slice context extends `BaseContext`, whose `hooks` member is
- * `Hookable<any>`. Intersecting the contexts directly would keep that member's
- * type wide, so `hooks` is stripped from each part and added back explicitly:
- * downstream `callHook` / `addHook` then keep their precise signatures.
+ * The fully resolved configuration, i.e. the base configuration plus every
+ * command slice.
  */
-type ContextParts = Omit<BaseContext, "hooks">
-  & Omit<CoreContext, "hooks">
-  & Omit<TestContext, "hooks">
-  & Omit<ReleaseContext, "hooks">;
+export interface ResolvedConfig extends BaseConfig {
+  build: BuildConfig;
+  devServer: DevServerConfig;
+  test: TestConfig;
+  release: ReleaseConfig;
+}
 
-export type Context = ContextParts & { hooks: Hookable<Hooks> };
+/**
+ * The fully resolved context handed to every command.
+ */
+export type Context = Omit<BaseContext, "config" | "hooks"> & {
+  config: ResolvedConfig;
+  hooks: Hookable<Hooks>;
+};

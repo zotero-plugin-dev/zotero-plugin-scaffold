@@ -1,4 +1,4 @@
-import type { BaseContext, Manifest, UpdateJSON } from "@zotero-plugin/config";
+import type { BaseConfig, BaseContext, Manifest, UpdateJSON } from "@zotero-plugin/config";
 import type { RecursivePartial } from "@zotero-plugin/utils";
 import type { BuildOptions } from "esbuild";
 
@@ -352,6 +352,8 @@ export interface DevServerUserConfig {
  * The context shared by the build and dev-server commands.
  */
 export interface CoreContext extends BaseContext {
-  build: BuildConfig;
-  devServer: DevServerConfig;
+  config: BaseConfig & {
+    build: BuildConfig;
+    devServer: DevServerConfig;
+  };
 }

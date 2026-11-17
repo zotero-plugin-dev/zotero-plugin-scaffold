@@ -5,10 +5,11 @@ import { toMerged } from "es-toolkit";
 import { outputJSON, pathExists, readJSON } from "fs-extra/esm";
 
 export default async function buildManifest(ctx: CoreContext): Promise<void> {
-  if (!ctx.build.makeManifest.enable)
+  if (!ctx.config.build.makeManifest.enable)
     return;
 
-  const { name, id, updateURL, dist, version } = ctx;
+  const { name, id, updateURL, dist } = ctx.config;
+  const { version } = ctx;
 
   const manifestPath = `${dist}/addon/manifest.json`;
   const manifestExists = await pathExists(manifestPath);

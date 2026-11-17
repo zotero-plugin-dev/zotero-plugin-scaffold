@@ -49,7 +49,8 @@ export class GitHub extends ReleaseBase {
    * @see https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/immutable-releases
    */
   async uploadXPI(): Promise<void> {
-    const { version, dist, xpiName } = this.ctx;
+    const { dist, xpiName } = this.ctx.config;
+    const { version } = this.ctx;
     const tag = this.versionTag;
     const assetName = `${xpiName}.xpi`;
     const assetPath = join(dist, assetName);
@@ -248,13 +249,13 @@ export class GitHub extends ReleaseBase {
   }
 
   async refreshUpdateManifest(): Promise<void> {
-    const updater = this.ctx.release.github.updater;
+    const updater = this.ctx.config.release.github.updater;
     if (!updater) {
       this.logger.debug(`Skip refresh update.json because release.github.updater = false`);
       return;
     }
 
-    const { dist } = this.ctx;
+    const { dist } = this.ctx.config;
 
     const manifests = (await glob(`${dist}/update*.json`))
       .map(p => basename(p));
@@ -327,7 +328,7 @@ export class GitHub extends ReleaseBase {
   }
 
   async getChangelog(): Promise<string> {
-    const { release } = this.ctx;
+    const { release } = this.ctx.config;
     const { github } = release;
     const { releaseNote } = github;
     return releaseNote(this.ctx);
@@ -348,7 +349,7 @@ export class GitHub extends ReleaseBase {
     owner: string;
     repo: string;
   } {
-    const [owner, repo] = this.ctx.release.github.repository.split("/");
+    const [owner, repo] = this.ctx.config.release.github.repository.split("/");
     return {
       owner,
       repo,
@@ -359,7 +360,7 @@ export class GitHub extends ReleaseBase {
    * The tag of the release of the current version, e.g. `v1.0.0`.
    */
   get versionTag(): string {
-    return this.ctx.release.bumpp
+    return this.ctx.config.release.bumpp
       .tag!
       .toString()
       .replaceAll("%s", this.ctx.version);

@@ -124,16 +124,18 @@ async function createReleaser(
 
   const ctx = {
     version: overrides.version ?? "1.2.3",
-    // tinyglobby requires POSIX separators in glob patterns on Windows.
-    dist: dist.replaceAll("\\", "/"),
-    xpiName: "my-plugin",
     logger,
-    release: {
-      bumpp: { tag: "v%s" },
-      github: {
-        repository: "owner/repo",
-        updater: "release",
-        releaseNote: () => "changelog",
+    config: {
+      // tinyglobby requires POSIX separators in glob patterns on Windows.
+      dist: dist.replaceAll("\\", "/"),
+      xpiName: "my-plugin",
+      release: {
+        bumpp: { tag: "v%s" },
+        github: {
+          repository: "owner/repo",
+          updater: "release",
+          releaseNote: () => "changelog",
+        },
       },
     },
   } as unknown as ReleaseContext;

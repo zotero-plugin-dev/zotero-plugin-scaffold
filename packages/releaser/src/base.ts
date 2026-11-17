@@ -15,7 +15,7 @@ export abstract class ReleaseBase extends Base<ReleaseContext> {
   exit(): void {}
 
   checkFiles(): void {
-    const { dist } = this.ctx;
+    const { dist } = this.ctx.config;
 
     if (globSync(`${dist}/*.xpi`).length === 0) {
       throw new Error("No xpi file found, are you sure you have run build?");

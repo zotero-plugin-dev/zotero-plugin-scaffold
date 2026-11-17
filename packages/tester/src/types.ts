@@ -1,4 +1,4 @@
-import type { BaseContext } from "@zotero-plugin/config";
+import type { BaseConfig, BaseContext } from "@zotero-plugin/config";
 import type { BuildConfig } from "@zotero-plugin/core";
 import type { RecursivePartial } from "@zotero-plugin/utils";
 
@@ -204,6 +204,8 @@ export interface TestRuntimeOptions {
  * dev-server configuration.
  */
 export interface TestContext extends BaseContext {
-  build: BuildConfig;
-  test: TestConfig;
+  config: BaseConfig & {
+    build: BuildConfig;
+    test: TestConfig;
+  };
 }

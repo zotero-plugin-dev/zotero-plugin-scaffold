@@ -216,7 +216,8 @@ export type ConfigTransform = (
  * The resolved base context: base configuration, runtime objects, and the
  * information collected from the user's package.json.
  */
-export interface BaseContext extends BaseConfig {
+export interface BaseContext {
+  config: BaseConfig;
   pkgUser: UserPackageJson;
   version: string;
   templateData: TemplateData;

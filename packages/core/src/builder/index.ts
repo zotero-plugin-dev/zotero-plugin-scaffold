@@ -26,7 +26,8 @@ export class Builder extends Base<CoreContext> {
    * Default build runner
    */
   async run(): Promise<void> {
-    const { dist, version } = this.ctx;
+    const { dist } = this.ctx.config;
+    const { version } = this.ctx;
     const t = new Date();
     this.buildTime = dateFormat("YYYY-mm-dd HH:MM:SS", t);
     this.logger.info(`Building version ${styleText("blue", version)} to ${styleText("blue", dist)} at ${styleText("blue", this.buildTime)} in ${styleText("blue", process.env.NODE_ENV)} mode.`);
@@ -50,7 +51,7 @@ export class Builder extends Base<CoreContext> {
   }
 
   private async prepareAssets() {
-    const { source, namespace, dist, build } = this.ctx;
+    const { source, namespace, dist, build } = this.ctx.config;
 
     await emptyDir(dist);
     await this.ctx.hooks.callHook("build:mkdir", this.ctx);
@@ -72,13 +73,13 @@ export class Builder extends Base<CoreContext> {
   }
 
   async bundle(): Promise<void> {
-    const { dist, build: { esbuildOptions } } = this.ctx;
+    const { dist, build: { esbuildOptions } } = this.ctx.config;
     await esbuild(dist, esbuildOptions);
     await this.ctx.hooks.callHook("build:bundle", this.ctx);
   }
 
   async buildInProduction(): Promise<void> {
-    const { dist, xpiName } = this.ctx;
+    const { dist, xpiName } = this.ctx.config;
 
     await pack(dist, xpiName);
     await this.ctx.hooks.callHook("build:pack", this.ctx);

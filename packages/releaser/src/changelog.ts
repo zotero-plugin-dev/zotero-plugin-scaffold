@@ -80,7 +80,7 @@ export async function getGitCommits(currentTag: string, commitMessageTemplate: s
       previousTag = tags[previousTagIndex];
   }
 
-  // const commitMessage = this.ctx.release.bumpp.commit;
+  // const commitMessage = this.ctx.config.release.bumpp.commit;
   const filterRegex = new RegExp(escapeRegExp(commitMessageTemplate));
   const rawCommits = (await getGitDiff(previousTag, currentTag)).filter(c => !filterRegex.test(c.message));
   // @ts-expect-error we know options only needs scopeMap
