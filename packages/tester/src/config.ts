@@ -3,6 +3,7 @@ import type { TestConfig } from "./types.js";
 import { relative, resolve } from "node:path";
 import process from "node:process";
 import { toArray, toPosix } from "@zotero-plugin/utils";
+import { isAgent, isCI } from "std-env";
 
 export const testDefaults: TestConfig = {
   test: {
@@ -48,4 +49,12 @@ export const testTransform: ConfigTransform<TestConfig> = (config) => {
   }
 
   test.entries = toArray(test.entries);
+
+  if (isCI) {
+    test.headless = true;
+    test.watch = false;
+  }
+
+  if (isAgent)
+    test.watch = false;
 };

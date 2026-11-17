@@ -5,9 +5,10 @@ export { loadConfig } from "./load-config.js";
 export type { Manifest } from "./manifest.js";
 export type {
   BaseConfig,
-  BaseContext,
+  BaseContextFields,
   BaseUserConfig,
   ConfigTransform,
+  ContextOf,
   LintConfig,
   PluginIdentity,
   ResolvedBaseConfig,

@@ -1,4 +1,4 @@
-import type { BaseContext, Manifest, ResolvedBaseConfig, UpdateJSON } from "@zotero-plugin/config";
+import type { ContextOf, Manifest, UpdateJSON } from "@zotero-plugin/config";
 import type { Merge } from "@zotero-plugin/utils";
 import type { BuildOptions } from "esbuild";
 
@@ -341,10 +341,6 @@ export interface ServeHooks {
   "serve:exit": (ctx: DevServerContext) => void;
 }
 
-export interface BuilderContext extends BaseContext {
-  config: ResolvedBaseConfig & ResolvedBuildConfig;
-}
+export type BuilderContext = ContextOf<ResolvedBuildConfig>;
 
-export interface DevServerContext extends BuilderContext {
-  config: BuilderContext["config"] & ResolvedDevServerConfig;
-}
+export type DevServerContext = ContextOf<ResolvedBuildConfig & ResolvedDevServerConfig>;

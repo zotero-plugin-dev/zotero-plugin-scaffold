@@ -360,10 +360,8 @@ export class GitHub extends ReleaseBase {
    * The tag of the release of the current version, e.g. `v1.0.0`.
    */
   get versionTag(): string {
-    return this.ctx.config.release.bumpp
-      .tag!
-      .toString()
-      .replaceAll("%s", this.ctx.version);
+    return this.ctx.tag
+      ?? this.ctx.config.release.bumpp.tag.replaceAll("%s", this.ctx.version);
   }
 
   get manifestBody(): string {

@@ -1,4 +1,4 @@
-import type { DeepPartial, Logger, LogLevelType, Merge } from "@zotero-plugin/utils";
+import type { DeepPartial, DeepReadonly, Logger, LogLevelType, Merge } from "@zotero-plugin/utils";
 import type { Hookable } from "hookable";
 
 /**
@@ -215,12 +215,7 @@ export type ConfigTransform<TConfig extends object = any> = (
   pkgUser: UserPackageJson,
 ) => void;
 
-/**
- * The resolved base context: base configuration, runtime objects, and the
- * information collected from the user's package.json.
- */
-export interface BaseContext {
-  config: BaseConfig;
+export interface BaseContextFields {
   pkgUser: UserPackageJson;
   version: string;
   templateData: TemplateData;
@@ -228,3 +223,17 @@ export interface BaseContext {
 
   hooks: Hookable<any>;
 }
+
+/** A slice that contributes nothing, so that the default is a no-op. */
+type NoSlice = Record<never, never>;
+
+/**
+ * Builds a command context from its resolved configuration slice and the
+ * runtime fields it flattens onto the context, next to `version`.
+ */
+export type ContextOf<
+  TResolvedConfig extends object = NoSlice,
+  TRuntime extends object = NoSlice,
+> = BaseContextFields & {
+  config: DeepReadonly<ResolvedBaseConfig & TResolvedConfig>;
+} & TRuntime;

@@ -1,14 +1,16 @@
 import type { DeepPartial } from "@zotero-plugin/utils";
-import type { BaseContext, BaseUserConfig, ConfigTransform, ResolvedBaseConfig, TemplateData, UserPackageJson } from "./types.js";
+import type { BaseUserConfig, ConfigTransform, ContextOf, ResolvedBaseConfig, TemplateData, UserPackageJson } from "./types.js";
 import { dateFormat, logger, parseRepoUrl, template, toArray } from "@zotero-plugin/utils";
 import { loadConfig as c12 } from "c12";
-import { isPlainObject, kebabCase } from "es-toolkit";
+import { deepFreeze, isPlainObject, kebabCase } from "es-toolkit";
 import { readJsonSync } from "fs-extra/esm";
 import { createHooks } from "hookable";
 
 /**
  * Loads the user configuration, resolves all defaults and slice-specific
  * transformations, and assembles the command context.
+ *
+ * The returned `ctx.config` is frozen: it is an input from here on.
  *
  * @param options Configuration engine options.
  * @param options.defaults Default configuration, usually a composition of the base defaults and all slice defaults.
@@ -17,7 +19,7 @@ import { createHooks } from "hookable";
  */
 export async function loadConfig<
   TUser extends BaseUserConfig = BaseUserConfig,
-  TCtx extends BaseContext = BaseContext,
+  TCtx extends ContextOf = ContextOf,
 >(options: {
   defaults: TUser;
   overrides?: DeepPartial<TUser>;
@@ -87,6 +89,10 @@ export async function loadConfig<
       continue;
     hooks.addHooks(value.hooks);
   }
+
+  // Freeze last: the c12 merge, the template interpolation and every transform
+  // still write to the configuration.
+  deepFreeze(config);
 
   return {
     config,

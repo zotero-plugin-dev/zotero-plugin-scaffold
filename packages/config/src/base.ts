@@ -1,12 +1,7 @@
 import type { Logger } from "@zotero-plugin/utils";
-import type { BaseContext, BaseUserConfig } from "./types.js";
+import type { BaseUserConfig, ContextOf } from "./types.js";
 
-/**
- * Base class for command drivers.
- *
- * Each command package extends this class with its own context slice.
- */
-export abstract class Base<TCtx extends BaseContext = BaseContext> {
+export abstract class Base<TCtx extends ContextOf = ContextOf> {
   ctx: TCtx;
   constructor(ctx: TCtx) {
     this.ctx = ctx;

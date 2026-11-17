@@ -1,3 +1,4 @@
+import type { BuildOptions } from "esbuild";
 import type { BuilderContext } from "../types.js";
 import process from "node:process";
 import { styleText } from "node:util";
@@ -56,7 +57,7 @@ export class Builder extends Base<BuilderContext> {
     await emptyDir(dist);
     await this.ctx.hooks.callHook("build:mkdir", this.ctx);
 
-    await copyAssets(source, dist, build.assets);
+    await copyAssets([...source], dist, [...build.assets]);
     await replaceDefine(dist, build.define);
     await this.ctx.hooks.callHook("build:copyAssets", this.ctx);
 
@@ -65,7 +66,10 @@ export class Builder extends Base<BuilderContext> {
     await this.ctx.hooks.callHook("build:makeManifest", this.ctx);
 
     this.logger.debug("Preparing locale files", { space: 2 });
-    await buildLocale(dist, namespace, build.fluent);
+    await buildLocale(dist, namespace, {
+      ...build.fluent,
+      ignore: [...build.fluent.ignore],
+    });
     await this.ctx.hooks.callHook("build:fluent", this.ctx);
 
     this.logger.debug("Preparing preference files", { space: 2 });
@@ -73,8 +77,8 @@ export class Builder extends Base<BuilderContext> {
   }
 
   async bundle(): Promise<void> {
-    const { dist, build: { esbuildOptions } } = this.ctx.config;
-    await esbuild(dist, esbuildOptions);
+    const { build: { esbuildOptions } } = this.ctx.config;
+    await esbuild([...esbuildOptions] as BuildOptions[]);
     await this.ctx.hooks.callHook("build:bundle", this.ctx);
   }
 

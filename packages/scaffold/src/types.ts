@@ -1,4 +1,4 @@
-import type { BaseConfig, BaseContext, ResolvedBaseConfig } from "@zotero-plugin/config";
+import type { BaseConfig, ContextOf, ResolvedBaseConfig } from "@zotero-plugin/config";
 import type {
   BuildConfig,
   BuildHooks,
@@ -7,7 +7,7 @@ import type {
   ResolvedDevServerConfig,
   ServeHooks,
 } from "@zotero-plugin/core";
-import type { ReleaseConfig, ReleaseHooks, ResolvedReleaseConfig } from "@zotero-plugin/releaser";
+import type { ReleaseConfig, ReleaseContext, ReleaseHooks, ResolvedReleaseConfig } from "@zotero-plugin/releaser";
 import type { ResolvedTestConfig, TestConfig, TestHooks } from "@zotero-plugin/tester";
 import type { DeepPartial } from "@zotero-plugin/utils";
 import type { Hookable } from "hookable";
@@ -44,7 +44,9 @@ export type ResolvedConfig = ResolvedBaseConfig
 /**
  * The fully resolved context handed to every command.
  */
-export type Context = Omit<BaseContext, "config" | "hooks"> & {
-  config: ResolvedConfig;
+export type Context = ContextOf<
+  ResolvedConfig,
+  Pick<ReleaseContext, "tag" | "commitMessage" | "changelog">
+> & {
   hooks: Hookable<Hooks>;
 };

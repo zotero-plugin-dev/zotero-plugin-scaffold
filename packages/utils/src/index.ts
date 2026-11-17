@@ -10,6 +10,7 @@ export type {
   DeepNonNullable,
   DeepPartial,
   DeepPickOptional,
+  DeepReadonly,
   DeepRequired,
   Merge,
 } from "./types.js";

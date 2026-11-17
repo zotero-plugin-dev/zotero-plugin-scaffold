@@ -1,4 +1,4 @@
-import type { BaseContext, ResolvedBaseConfig } from "@zotero-plugin/config";
+import type { ContextOf } from "@zotero-plugin/config";
 import type { ResolvedBuildConfig } from "@zotero-plugin/core";
 import type { Merge } from "@zotero-plugin/utils";
 
@@ -200,6 +200,4 @@ export interface TestRuntimeOptions {
  * It only takes `build` and `test`, so the test command is decoupled from the
  * dev-server configuration.
  */
-export interface TestContext extends BaseContext {
-  config: ResolvedBaseConfig & ResolvedBuildConfig & ResolvedTestConfig;
-}
+export type TestContext = ContextOf<ResolvedBuildConfig & ResolvedTestConfig>;

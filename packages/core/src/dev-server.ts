@@ -35,7 +35,7 @@ export class DevServer extends Base<DevServerContext> {
       binary: {
         path: this.zoteroBinPath,
         devtools,
-        args: startArgs,
+        args: [...startArgs],
         debugOutputWindow,
         debugOutputFile,
       },
@@ -81,8 +81,8 @@ export class DevServer extends Base<DevServerContext> {
     const { source, watchIgnore } = this.ctx.config;
 
     watch(
-      source,
-      watchIgnore,
+      [...source],
+      [...watchIgnore],
       {
         onReady: async () => {
           await this.ctx.hooks.callHook("serve:ready", this.ctx);

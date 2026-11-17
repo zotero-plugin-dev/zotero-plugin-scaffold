@@ -1,4 +1,4 @@
-import type { BaseContext, ResolvedBaseConfig } from "@zotero-plugin/config";
+import type { ContextOf } from "@zotero-plugin/config";
 import type { VersionBumpRelease } from "bumpp";
 import type { GitCommit } from "changelogen";
 
@@ -221,9 +221,14 @@ export interface ReleaseHooks {
   "release:done": (ctx: ReleaseContext) => void | Promise<void>;
 }
 
-/**
- * The context of the release command.
- */
-export interface ReleaseContext extends BaseContext {
-  config: ResolvedBaseConfig & ResolvedReleaseConfig;
-}
+export type ReleaseContext = ContextOf<
+  ResolvedReleaseConfig,
+  {
+    /** The tag bumpp created, e.g. `v1.2.3`. */
+    tag?: string;
+    /** The commit message bumpp created, with `%s` replaced. */
+    commitMessage?: string;
+    /** The changelog (Markdown) generated for this run. */
+    changelog?: string;
+  }
+>;

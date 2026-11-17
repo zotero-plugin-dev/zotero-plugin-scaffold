@@ -3,10 +3,9 @@ import { join, resolve } from "node:path";
 import process from "node:process";
 import { Base } from "@zotero-plugin/config";
 import { Builder } from "@zotero-plugin/core";
-import { toArray, watch } from "@zotero-plugin/utils";
+import { watch } from "@zotero-plugin/utils";
 import { ZoteroRunner } from "@zotero-plugin/zotero-runner";
 import { emptyDir } from "fs-extra/esm";
-import { isAgent, isCI } from "std-env";
 import { TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PROFILE_DIR } from "./constant.js";
 import { isTestFileName } from "./entries.js";
 import { prepareHeadless } from "./headless.js";
@@ -24,14 +23,6 @@ export class Tester extends Base<TestContext> {
     process.env.NODE_ENV ??= "test";
 
     this.builder = new Builder(ctx);
-
-    if (isCI) {
-      this.ctx.config.test.headless = true;
-      this.ctx.config.test.watch = false;
-    }
-
-    if (isAgent)
-      this.ctx.config.test.watch = false;
   }
 
   async run(): Promise<void> {
@@ -68,7 +59,7 @@ export class Tester extends Base<TestContext> {
   }
 
   async watch(): Promise<void> {
-    const source = toArray(this.ctx.config.source).map(p => resolve(p));
+    const source = this.ctx.config.source.map(p => resolve(p));
     function isSource(_path: string) {
       const path = resolve(_path);
       if (isTestFileName(path))
@@ -77,8 +68,13 @@ export class Tester extends Base<TestContext> {
     }
 
     watch(
-      [this.ctx.config.source, this.ctx.config.test.entries].flat(),
-      this.ctx.config.watchIgnore,
+      [
+        ...this.ctx.config.source,
+        ...this.ctx.config.test.entries,
+      ],
+      [
+        ...this.ctx.config.watchIgnore,
+      ],
       {
         onChange: async (path) => {
           if (isSource(path)) {
@@ -115,7 +111,7 @@ export class Tester extends Base<TestContext> {
       binary: {
         path: this.zoteroBinPath,
         devtools: this.ctx.config.test.devtools,
-        args: this.ctx.config.test.startArgs,
+        args: [...this.ctx.config.test.startArgs],
       },
       profile: {
         path: TESTER_PROFILE_DIR,

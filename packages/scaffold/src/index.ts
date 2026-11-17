@@ -5,9 +5,10 @@ export type { AllConfig, Context, Hooks, ResolvedConfig, UserConfig } from "./ty
 // Configuration engine
 export type {
   BaseConfig,
-  BaseContext,
+  BaseContextFields,
   BaseUserConfig,
   ConfigTransform,
+  ContextOf,
   LintConfig,
   Manifest,
   PluginIdentity,

@@ -25,10 +25,10 @@ export class Bump extends ReleaseBase {
 
     const result = await versionBump(bumppConfig);
     this.ctx.version = result.newVersion;
-    this.ctx.config.release.bumpp.tag = result.tag || this.ctx.config.release.bumpp.tag.toString().replace("%s", result.newVersion);
-    this.ctx.config.release.bumpp.commit = result.commit || this.ctx.config.release.bumpp.commit.toString().replace("%s", result.newVersion);
+    this.ctx.tag = result.tag || this.ctx.config.release.bumpp.tag.replaceAll("%s", result.newVersion);
+    this.ctx.commitMessage = result.commit || this.ctx.config.release.bumpp.commit.replaceAll("%s", result.newVersion);
 
-    this.logger.debug(`The release context after bump: ", ${this.ctx.config.release}`);
+    this.logger.debug(`The release context after bump: tag=${this.ctx.tag}, commitMessage=${this.ctx.commitMessage}`);
   }
 
   /**

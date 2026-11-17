@@ -3,7 +3,7 @@ import type { TestContext, TestRuntimeOptions } from "./types.js";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { logger, toArray } from "@zotero-plugin/utils";
+import { logger } from "@zotero-plugin/utils";
 import { build, context } from "esbuild";
 import { outputFile, outputJSON } from "fs-extra/esm";
 import { TEST_API_IDS } from "./apis.js";
@@ -234,18 +234,18 @@ export class TestBundler {
     // `*` and `**` in an entry point glob, and because the positional arguments
     // of the CLI narrow the result down afterwards.
     // https://esbuild.github.io/api/#glob-style-entry-points
-    const selected = await resolveTestEntries(this.ctx.config.test.entries, this.ctx.config.test.exclude);
+    const selected = await resolveTestEntries([...this.ctx.config.test.entries], [...this.ctx.config.test.exclude]);
     const filters = this.ctx.config.test.filter;
-    const entryPoints = selected.filter(createTestFileFilter(filters));
+    const entryPoints = selected.filter(createTestFileFilter([...filters]));
 
     if (entryPoints.length === 0) {
       // Say whether the filters or the entries themselves selected nothing.
       if (selected.length > 0 && filters.length > 0)
         throw new Error(`No test file matched ${filters.join(", ")}; test.entries selected ${selected.length} file(s).`);
 
-      const exclude = toArray(this.ctx.config.test.exclude);
+      const exclude = this.ctx.config.test.exclude;
       throw new Error(
-        `No test file matched ${toArray(this.ctx.config.test.entries).join(", ")}`
+        `No test file matched ${this.ctx.config.test.entries.join(", ")}`
         + `${
           exclude.length > 0
             ? ` after excluding ${exclude.join(", ")}`

@@ -1,4 +1,4 @@
-export type { DeepPartial, Merge } from "es-toolkit/types";
+export type { DeepPartial, DeepReadonly, Merge } from "es-toolkit/types";
 
 export type DeepRequired<T> = {
   // eslint-disable-next-line ts/no-unsafe-function-type

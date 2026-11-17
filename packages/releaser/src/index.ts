@@ -1,10 +1,9 @@
-import type { VersionBumpRelease } from "bumpp";
 import type { ReleaseContext } from "./types.js";
 import { execSync } from "node:child_process";
 import { Base } from "@zotero-plugin/config";
-import { isCI } from "std-env";
 import { Bump } from "./bump.js";
 import { getConventionalChangelog, getGitCommits } from "./changelog.js";
+import { isEnabled } from "./config.js";
 import { GitHub } from "./github.js";
 
 export class Releaser extends Base<ReleaseContext> {
@@ -22,28 +21,7 @@ export class Releaser extends Base<ReleaseContext> {
   async run(): Promise<void> {
     const t = new Date();
 
-    const { release } = this.ctx.config;
-    const { version } = this.ctx;
-
-    // Parse release config
-    if (release.bumpp.release === "prompt" && isCI) {
-      this.logger.warn("Config `release.bumpp.release == 'prompt'` will do nothing because in CI enviroment.");
-      this.ctx.config.release.bumpp.release = version as VersionBumpRelease;
-    }
-
-    if (release.bumpp.confirm && isCI) {
-      this.logger.warn("Config `release.bumpp.confirm` will do nothing because in CI enviroment.");
-      this.ctx.config.release.bumpp.confirm = false;
-    }
-
-    const isBumpNeeded = this.ctx.config.release.bumpp.release !== version;
-    const isGitHubEnabled = this.isEnabled(release.github.enable);
-    const isPublishNeeded = isGitHubEnabled;
-
-    if (isPublishNeeded && !release.bumpp.execute) {
-      this.logger.warn(`The current release needs to run the build after bumping the version number, please configure the build script in 'config.release.bumpp.execute'${isBumpNeeded ? "" : " or run build before run release"}.`);
-      this.ctx.config.release.bumpp.execute ||= "npm run build";
-    }
+    const isGitHubEnabled = isEnabled(this.ctx.config.release.github.enable);
 
     this.logger.debug(`Release config: ", ${this.ctx.config.release}`);
 
@@ -55,7 +33,7 @@ export class Releaser extends Base<ReleaseContext> {
     await this.ctx.hooks.callHook("release:push", this.ctx);
 
     // Get changelog
-    this.ctx.config.release.changelog = await this.getChangelog();
+    this.ctx.changelog = await this.getChangelog();
 
     // Publish to GitHub
     if (isGitHubEnabled) {
@@ -71,9 +49,11 @@ export class Releaser extends Base<ReleaseContext> {
   }
 
   async getChangelog(): Promise<string> {
-    const { commit, tag } = this.ctx.config.release.bumpp;
     let changelog: string;
-    const rawCommit = await getGitCommits(tag, commit);
+    const rawCommit = await getGitCommits(
+      this.ctx.tag ?? this.ctx.config.release.bumpp.tag.replaceAll("%s", this.ctx.version),
+      this.resolvedCommitMessage,
+    );
     if (rawCommit.length === 0) {
       return "_No significant changes._";
     }
@@ -92,20 +72,11 @@ export class Releaser extends Base<ReleaseContext> {
     return changelog;
   }
 
-  private isEnabled(enable: string) {
-    if (enable === "always")
-      return true;
-    if (enable === "ci" && isCI)
-      return true;
-    if (enable === "local" && !isCI)
-      return true;
-    return false;
-  }
-
   exit(): void {}
 
   get resolvedCommitMessage(): string {
-    return this.ctx.config.release.bumpp.commit.replace("%s", this.ctx.version);
+    return this.ctx.commitMessage
+      ?? this.ctx.config.release.bumpp.commit.replaceAll("%s", this.ctx.version);
   }
 }
 
