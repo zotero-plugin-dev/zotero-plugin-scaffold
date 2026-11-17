@@ -1,4 +1,4 @@
-import type { CoreContext } from "../types.js";
+import type { BuilderContext } from "../types.js";
 import process from "node:process";
 import { styleText } from "node:util";
 import { Base } from "@zotero-plugin/config";
@@ -14,9 +14,9 @@ import replaceDefine from "./replace.js";
 import buildUpdateJson from "./update-json.js";
 import pack from "./zip.js";
 
-export class Builder extends Base<CoreContext> {
+export class Builder extends Base<BuilderContext> {
   private buildTime: string;
-  constructor(ctx: CoreContext) {
+  constructor(ctx: BuilderContext) {
     super(ctx);
     process.env.NODE_ENV ??= "production";
     this.buildTime = "";

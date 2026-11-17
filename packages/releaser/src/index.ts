@@ -116,6 +116,6 @@ export type {
   ReleaseConfig,
   ReleaseContext,
   ReleaseHooks,
-  ReleaseUserConfig,
+  ResolvedReleaseConfig,
 } from "./types.js";
 export type { VersionBumpRelease } from "bumpp";

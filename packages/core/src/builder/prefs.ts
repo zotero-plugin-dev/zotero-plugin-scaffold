@@ -9,7 +9,7 @@ import { PrefsManager } from "@zotero-plugin/zotero-runner";
 import { outputFile } from "fs-extra/esm";
 import { glob } from "tinyglobby";
 
-export default async function buildPrefs(dist: string, options: BuildConfig["prefs"]): Promise<void> {
+export default async function buildPrefs(dist: string, options: BuildConfig["build"]["prefs"]): Promise<void> {
   const { dts, prefixPrefKeys, prefix } = options;
 
   // Skip if not enable this builder

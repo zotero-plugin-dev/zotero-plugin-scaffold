@@ -11,7 +11,7 @@ import { glob } from "tinyglobby";
 export default async function buildLocale(
   dist: string,
   namespace: string,
-  options: BuildConfig["fluent"],
+  options: BuildConfig["build"]["fluent"],
 ): Promise<void> {
   const ignores = toArray(options.ignore);
   const localeNames = await getLocales(dist);

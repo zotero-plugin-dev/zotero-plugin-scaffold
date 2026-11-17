@@ -14,7 +14,7 @@ function transform(
   const config: Record<string, any> = {
     ...base,
     test: {
-      ...testDefaults,
+      ...testDefaults.test,
       ...test,
     },
   };
@@ -24,15 +24,15 @@ function transform(
 
 describe("testDefaults", () => {
   it("runs the tests below `test`", () => {
-    expect(testDefaults.entries).toBe("test");
+    expect(testDefaults.test.entries).toBe("test");
   });
 
   it("skips node_modules and the VCS directory, like Vitest and Rstest", () => {
-    expect(testDefaults.exclude).toEqual(["**/node_modules/**", "**/.git/**"]);
+    expect(testDefaults.test.exclude).toEqual(["**/node_modules/**", "**/.git/**"]);
   });
 
   it("starts without a filter, which the CLI positional arguments fill", () => {
-    expect(testDefaults.filter).toEqual([]);
+    expect(testDefaults.test.filter).toEqual([]);
   });
 });
 

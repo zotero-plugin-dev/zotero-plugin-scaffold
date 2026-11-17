@@ -1,4 +1,4 @@
-import type { Base, OverrideConfig } from "@zotero-plugin/config";
+import type { Base } from "@zotero-plugin/config";
 import type { VersionBumpRelease } from "@zotero-plugin/releaser";
 import type { Context, UserConfig } from "./types.js";
 
@@ -127,7 +127,7 @@ type Constructor<T> = new (ctx: Context) => T;
 
 export async function runCommand<T extends Base>(
   CommandClass: Constructor<T>,
-  config: OverrideConfig<UserConfig>,
+  config: UserConfig,
 ): Promise<void> {
   const ctx = await loadConfig(config);
   const instance = new CommandClass(ctx);

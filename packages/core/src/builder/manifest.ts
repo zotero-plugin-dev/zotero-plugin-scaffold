@@ -1,10 +1,10 @@
 import type { Manifest } from "@zotero-plugin/config";
-import type { CoreContext } from "../types.js";
+import type { BuilderContext } from "../types.js";
 import { logger } from "@zotero-plugin/utils";
 import { toMerged } from "es-toolkit";
 import { outputJSON, pathExists, readJSON } from "fs-extra/esm";
 
-export default async function buildManifest(ctx: CoreContext): Promise<void> {
+export default async function buildManifest(ctx: BuilderContext): Promise<void> {
   if (!ctx.config.build.makeManifest.enable)
     return;
 

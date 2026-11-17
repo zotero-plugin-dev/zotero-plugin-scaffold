@@ -1,83 +1,63 @@
 import type { ConfigTransform } from "@zotero-plugin/config";
 import type { BuildConfig, DevServerConfig } from "./types.js";
-import { template } from "@zotero-plugin/utils";
-import { mapValues, toMerged } from "es-toolkit";
+import { template, toArray } from "@zotero-plugin/utils";
+import { mapValues } from "es-toolkit";
 
 export const buildDefaults: BuildConfig = {
-  assets: "addon/**/*.*",
-  define: {},
-  fluent: {
-    prefixFluentMessages: true,
-    prefixLocaleFiles: true,
-    ignore: [],
-    dts: "typings/i10n.d.ts",
-  },
-  prefs: {
-    prefix: "",
-    prefixPrefKeys: true,
-    dts: "typings/prefs.d.ts",
-  },
-  esbuildOptions: [],
-  makeManifest: {
-    enable: true,
-    template: {
-      manifest_version: 2,
-      name: "",
-      version: "",
-      applications: {
-        zotero: {
-          id: "",
-          update_url: "",
-        },
-      },
+  build: {
+    assets: "addon/**/*.*",
+    define: {},
+    fluent: {
+      prefixFluentMessages: true,
+      prefixLocaleFiles: true,
+      ignore: [],
+      dts: "typings/i10n.d.ts",
     },
+    prefs: {
+      prefix: "",
+      prefixPrefKeys: true,
+      dts: "typings/prefs.d.ts",
+    },
+    esbuildOptions: [],
+    makeManifest: {
+      enable: true,
+    },
+    makeUpdateJson: {
+      updates: [],
+      hash: true,
+    },
+    hooks: {},
   },
-  makeUpdateJson: {
-    updates: [],
-    hash: true,
-  },
-  hooks: {},
 };
 
 export const devServerDefaults: DevServerConfig = {
-  devtools: true,
-  startArgs: [],
-  debugOutputWindow: false,
-  debugOutputFile: true,
-  prefs: {},
-  asProxy: false,
-  prebuild: true,
-  // keepProfileChanges: true,
-  createProfileIfMissing: true,
-  hooks: {},
+  devServer: {
+    devtools: true,
+    startArgs: [],
+    debugOutputWindow: false,
+    debugOutputFile: true,
+    prefs: {},
+    asProxy: false,
+    prebuild: true,
+    // keepProfileChanges: true,
+    createProfileIfMissing: true,
+    hooks: {},
+  },
 };
 
 /**
- * Patches the build configuration: preference prefix fallback and template interpolation.
+ * Patches the build configuration: preference prefix fallback and template
+ * interpolation.
  */
-export const buildTransform: ConfigTransform = (config, templateData, pkgUser) => {
+export const buildTransform: ConfigTransform<BuildConfig> = (config, templateData, pkgUser) => {
   if (!config.build)
     return;
 
+  const { build } = config;
+
   // Patch to maintain compatibility for zotero-plugin-template users
-  config.build.prefs.prefix ||= pkgUser.config?.prefsPrefix || `extensions.${config.namespace}`;
-  config.build.define = mapValues(config.build.define, v => template(v, templateData));
-};
+  build.prefs.prefix ||= pkgUser.config?.prefsPrefix || `extensions.${config.namespace}`;
+  build.define = mapValues(build.define, v => template(v, templateData));
 
-/**
- * Patches the dev-server configuration.
- *
- * The `server` key was renamed to `devServer`; the deprecated key is migrated
- * here, then defaults are applied.
- */
-export const devServerTransform: ConfigTransform = (config) => {
-  let userConfig = config.devServer;
-
-  if (config.server) {
-    // `devServer` wins when both keys are present.
-    userConfig = toMerged(config.server, userConfig ?? {});
-    delete config.server;
-  }
-
-  config.devServer = toMerged(devServerDefaults, userConfig ?? {});
+  build.assets = toArray(build.assets);
 };

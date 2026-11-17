@@ -1,5 +1,5 @@
 import type { Manifest, UpdateJSON } from "@zotero-plugin/config";
-import type { CoreContext } from "../types.js";
+import type { BuilderContext } from "../types.js";
 import { createHash } from "node:crypto";
 import { createReadStream, readFileSync } from "node:fs";
 import { logger } from "@zotero-plugin/utils";
@@ -37,7 +37,7 @@ export function generateHashSync(
   return `${algorithm}:${hash}`;
 }
 
-export default async function buildUpdateJson(ctx: CoreContext): Promise<void> {
+export default async function buildUpdateJson(ctx: BuilderContext): Promise<void> {
   const { dist, xpiName, id, xpiDownloadLink, build } = ctx.config;
   const { version } = ctx;
 

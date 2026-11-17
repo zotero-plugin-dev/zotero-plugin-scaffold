@@ -1,6 +1,6 @@
 import { defineConfig, loadConfig } from "./config.js";
 
-export type { Context, Hooks, ResolvedConfig, UserConfig } from "./types.js";
+export type { AllConfig, Context, Hooks, ResolvedConfig, UserConfig } from "./types.js";
 
 // Configuration engine
 export type {
@@ -11,12 +11,12 @@ export type {
   LintConfig,
   Manifest,
   PluginIdentity,
+  ResolvedBaseConfig,
   TemplateData,
   UpdateJSON,
   UserPackageJson,
 } from "@zotero-plugin/config";
 export { BASE_DIR, baseDefaults, CACHE_DIR } from "@zotero-plugin/config";
-export type { OverrideConfig } from "@zotero-plugin/config";
 
 // Build & dev server
 export {
@@ -26,17 +26,17 @@ export {
   DEFAULT_DIST_TEMP_DIR,
   DevServer,
   devServerDefaults,
-  devServerTransform,
   replace,
   replaceInFile,
 } from "@zotero-plugin/core";
 export type {
   BuildConfig,
+  BuilderContext,
   BuildHooks,
-  BuildUserConfig,
-  CoreContext,
   DevServerConfig,
-  DevServerUserConfig,
+  DevServerContext,
+  ResolvedBuildConfig,
+  ResolvedDevServerConfig,
   ServeHooks,
 } from "@zotero-plugin/core";
 
@@ -55,7 +55,7 @@ export type {
   ReleaseConfig,
   ReleaseContext,
   ReleaseHooks,
-  ReleaseUserConfig,
+  ResolvedReleaseConfig,
   VersionBumpRelease,
 } from "@zotero-plugin/releaser";
 
@@ -67,7 +67,12 @@ export { defineConfig, loadConfig };
 export { Releaser as Release } from "@zotero-plugin/releaser";
 // Test
 export { testDefaults, Tester } from "@zotero-plugin/tester";
-export type { TestConfig, TestContext, TestHooks, TestUserConfig } from "@zotero-plugin/tester";
+export type {
+  ResolvedTestConfig,
+  TestConfig,
+  TestContext,
+  TestHooks,
+} from "@zotero-plugin/tester";
 /**
  * @deprecated Use {@link Tester} instead.
  */

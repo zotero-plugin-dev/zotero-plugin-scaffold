@@ -1,4 +1,4 @@
-import type { CoreContext } from "./types.js";
+import type { DevServerContext } from "./types.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
@@ -7,13 +7,13 @@ import { watch } from "@zotero-plugin/utils";
 import { ZoteroRunner } from "@zotero-plugin/zotero-runner";
 import { Builder } from "./builder/index.js";
 
-export class DevServer extends Base<CoreContext> {
+export class DevServer extends Base<DevServerContext> {
   private builder: Builder;
   private runner?: ZoteroRunner;
 
   private _zoteroBinPath?: string;
 
-  constructor(ctx: CoreContext) {
+  constructor(ctx: DevServerContext) {
     super(ctx);
     process.env.NODE_ENV ??= "development";
     this.builder = new Builder(ctx);

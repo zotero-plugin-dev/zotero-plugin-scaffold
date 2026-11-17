@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { logger } from "@zotero-plugin/utils";
 import { build as buildAsync } from "esbuild";
 
-export function resolveConfig(dist: string, esbuildOptions: BuildConfig["esbuildOptions"]): BuildOptions[] {
+export function resolveConfig(dist: string, esbuildOptions: BuildConfig["build"]["esbuildOptions"]): BuildOptions[] {
   const distAbsolute = resolve(dist);
 
   // ensure outfile and outdir are in dist folder
@@ -21,7 +21,7 @@ export function resolveConfig(dist: string, esbuildOptions: BuildConfig["esbuild
   });
 }
 
-export default async function esbuild(dist: string, esbuildOptions: BuildConfig["esbuildOptions"]): Promise<BuildResult<BuildOptions>[] | undefined> {
+export default async function esbuild(dist: string, esbuildOptions: BuildConfig["build"]["esbuildOptions"]): Promise<BuildResult<BuildOptions>[] | undefined> {
   if (esbuildOptions.length === 0)
     return;
 

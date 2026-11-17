@@ -36,7 +36,7 @@ export async function replaceInFile({ files, from, to, isGlob = true }: {
   }));
 }
 
-export default async function replaceDefine(dist: string, define: BuildConfig["define"]): Promise<void> {
+export default async function replaceDefine(dist: string, define: BuildConfig["build"]["define"]): Promise<void> {
   // Replace all `placeholder.key` to `placeholder.value` for all files in `dist`
   const replaceMap = new Map(
     Object.keys(define).map(key => [

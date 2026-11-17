@@ -1,6 +1,4 @@
-export type RecursivePartial<T> = {
-  [P in keyof T]?: T[P] extends object ? RecursivePartial<T[P]> : T[P];
-};
+export type { Merge, DeepPartial as RecursivePartial } from "es-toolkit/types";
 
 export type RecursiveRequired<T> = {
   // eslint-disable-next-line ts/no-unsafe-function-type

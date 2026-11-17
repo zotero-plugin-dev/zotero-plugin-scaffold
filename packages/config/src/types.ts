@@ -1,4 +1,4 @@
-import type { Logger, LogLevelType, RecursivePartial } from "@zotero-plugin/utils";
+import type { Logger, LogLevelType, Merge, RecursivePartial } from "@zotero-plugin/utils";
 import type { Hookable } from "hookable";
 
 /**
@@ -113,7 +113,7 @@ export interface BaseConfig extends PluginIdentity {
    *
    * @default []
    */
-  watchIgnore: string | string[] | RegExp | RegExp[];
+  watchIgnore: string | RegExp | (string | RegExp)[];
 
   /**
    * The build directories.
@@ -179,7 +179,10 @@ export interface BaseConfig extends PluginIdentity {
  */
 export type BaseUserConfig = RecursivePartial<BaseConfig>;
 
-export type OverrideConfig<T extends BaseUserConfig = BaseUserConfig> = RecursivePartial<T>;
+export type ResolvedBaseConfig = Merge<BaseConfig, {
+  source: string[];
+  watchIgnore: (string | RegExp)[];
+}>;
 
 export interface TemplateData {
   /**
@@ -189,7 +192,7 @@ export interface TemplateData {
   repo: string;
   version: string;
   isPreRelease: boolean;
-  updateJson: "update-beta.json" | "update.json" | string;
+  updateJson: string;
   xpiName: string;
   buildTime: string;
 }
@@ -205,9 +208,9 @@ export interface TemplateData {
  * transforms are applied, the engine scans top-level config objects and
  * registers their `hooks` field, e.g. `build.hooks` or `devServer.hooks`.
  */
-export type ConfigTransform = (
+export type ConfigTransform<TConfig extends object = any> = (
 
-  config: any,
+  config: BaseConfig & TConfig,
   templateData: TemplateData,
   pkgUser: UserPackageJson,
 ) => void;

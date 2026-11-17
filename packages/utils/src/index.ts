@@ -7,6 +7,7 @@ export { toPosix } from "./path.js";
 export { ExitSignals, isRunning, whenExit } from "./process.js";
 export { dateFormat, parseRepoUrl, template, toArray } from "./string.js";
 export type {
+  Merge,
   RecursiveNonNullable,
   RecursivePartial,
   RecursivePickOptional,

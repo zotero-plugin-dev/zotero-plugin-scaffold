@@ -9,8 +9,8 @@ export type {
   BaseUserConfig,
   ConfigTransform,
   LintConfig,
-  OverrideConfig,
   PluginIdentity,
+  ResolvedBaseConfig,
   TemplateData,
   UserPackageJson,
 } from "./types.js";

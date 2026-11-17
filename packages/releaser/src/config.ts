@@ -3,33 +3,35 @@ import type { ReleaseConfig } from "./types.js";
 import { template } from "@zotero-plugin/utils";
 
 export const releaseDefaults: ReleaseConfig = {
-  bumpp: {
-    release: "prompt",
-    preid: "beta",
-    confirm: true,
-    execute: "",
-    all: false,
-    commit: "chore(publish): release v%s",
-    noVerify: false,
-    tag: "v%s",
-  },
-  changelog: "",
-  github: {
-    enable: "ci",
-    repository: "{{owner}}/{{repo}}",
-    updater: "release",
-    comment: false,
-    releaseNote: (ctx) => {
-      return ctx.config.release.changelog as string;
+  release: {
+    bumpp: {
+      release: "prompt",
+      preid: "beta",
+      confirm: true,
+      execute: "",
+      all: false,
+      commit: "chore(publish): release v%s",
+      noVerify: false,
+      tag: "v%s",
     },
+    changelog: "",
+    github: {
+      enable: "ci",
+      repository: "{{owner}}/{{repo}}",
+      updater: "release",
+      comment: false,
+      releaseNote: (ctx) => {
+        return ctx.config.release.changelog as string;
+      },
+    },
+    hooks: {},
   },
-  hooks: {},
 };
 
 /**
  * Patches the release configuration: interpolates the GitHub repository template.
  */
-export const releaseTransform: ConfigTransform = (config, templateData) => {
+export const releaseTransform: ConfigTransform<ReleaseConfig> = (config, templateData) => {
   if (!config.release?.github)
     return;
 

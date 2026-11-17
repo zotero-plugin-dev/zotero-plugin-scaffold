@@ -1,6 +1,6 @@
 import type { RecursivePartial } from "@zotero-plugin/utils";
-import type { BaseConfig, BaseContext, BaseUserConfig, ConfigTransform, TemplateData, UserPackageJson } from "./types.js";
-import { dateFormat, logger, parseRepoUrl, template } from "@zotero-plugin/utils";
+import type { BaseContext, BaseUserConfig, ConfigTransform, ResolvedBaseConfig, TemplateData, UserPackageJson } from "./types.js";
+import { dateFormat, logger, parseRepoUrl, template, toArray } from "@zotero-plugin/utils";
 import { loadConfig as c12 } from "c12";
 import { isPlainObject, kebabCase } from "es-toolkit";
 import { readJsonSync } from "fs-extra/esm";
@@ -32,7 +32,7 @@ export async function loadConfig<
     overrides: options.overrides as TUser | undefined,
   });
 
-  const config = result.config as unknown as BaseConfig & Record<string, any>;
+  const config = result.config as unknown as ResolvedBaseConfig & Record<string, any>;
 
   if (config.logLevel)
     logger.setLogLevel(config.logLevel);
@@ -71,6 +71,11 @@ export async function loadConfig<
   for (const transform of options.transforms ?? []) {
     transform(config, templateData, pkgUser);
   }
+
+  config.source = toArray<string>(config.source);
+  config.watchIgnore = [
+    ...toArray<string | RegExp>(config.watchIgnore),
+  ];
 
   // Convention: every top-level module config keeps its hook registry under
   // `hooks`, e.g. `build.hooks`, `devServer.hooks`, `test.hooks` and
