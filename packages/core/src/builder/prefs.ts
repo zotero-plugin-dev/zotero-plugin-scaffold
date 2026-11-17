@@ -1,5 +1,5 @@
 import type { Prefs } from "@zotero-plugin/zotero-runner";
-import type { BuildConfig } from "../types.js";
+import type { PrefsConfig } from "../types.js";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -9,7 +9,7 @@ import { PrefsManager } from "@zotero-plugin/zotero-runner";
 import { outputFile } from "fs-extra/esm";
 import { glob } from "tinyglobby";
 
-export default async function buildPrefs(dist: string, options: BuildConfig["build"]["prefs"]): Promise<void> {
+export default async function buildPrefs(dist: string, options: PrefsConfig): Promise<void> {
   const { dts, prefixPrefKeys, prefix } = options;
 
   // Skip if not enable this builder

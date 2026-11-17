@@ -1,5 +1,5 @@
 import type { BaseNode, Message, MessageReference, Resource } from "@fluent/syntax";
-import type { BuildConfig } from "../types.js";
+import type { FluentConfig } from "../types.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { basename, dirname } from "node:path";
 import { styleText } from "node:util";
@@ -11,7 +11,7 @@ import { glob } from "tinyglobby";
 export default async function buildLocale(
   dist: string,
   namespace: string,
-  options: BuildConfig["build"]["fluent"],
+  options: FluentConfig,
 ): Promise<void> {
   const ignores = toArray(options.ignore);
   const localeNames = await getLocales(dist);

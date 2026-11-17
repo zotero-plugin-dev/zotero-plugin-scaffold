@@ -2,6 +2,145 @@ import type { BaseContext, Manifest, ResolvedBaseConfig, UpdateJSON } from "@zot
 import type { Merge } from "@zotero-plugin/utils";
 import type { BuildOptions } from "esbuild";
 
+export interface DefineConfig {
+  [key: string]: string;
+}
+
+export interface FluentConfig {
+  /**
+   * Add plugin namespace prefixes to all FTL files to avoid conflicts.
+   *
+   * The default prefix is `${namespace}-`.
+   *
+   * 为所有 FTL 文件添加插件前缀以避免冲突。
+   *
+   * 默认前缀为 `${namespace}-`。
+   *
+   * @default true
+   */
+  prefixLocaleFiles: boolean;
+  /**
+   * Add plugin namespace prefixes to all FTL messages to avoid conflicts.
+   *
+   * The default prefix is `${namespace}-`.
+   *
+   * 为所有 FTL message 添加插件前缀以避免冲突。
+   *
+   * 默认前缀为 `${namespace}-`。
+   *
+   * @default true
+   */
+  prefixFluentMessages: boolean;
+  /**
+   * Messages to ignore.
+   *
+   * 需要忽略的 Fluent Messages。
+   *
+   * @default []
+   */
+  ignore: string[];
+  /**
+   * Generate i10n.d.ts form fluent messages.
+   *
+   * - false: disable
+   * - string: path of dts file
+   *
+   * 为 Fluent messages 生成类型声明文件。
+   *
+   * - false: 禁用
+   * - string：dts 文件路径
+   *
+   * @default 'typings/i10n.d.ts'
+   */
+  dts: string | false;
+}
+
+export interface PrefsConfig {
+  /**
+   * Prefixes the keys of preferences in `prefs.js` and
+   * the value of the `preference` attribute in XHTML files.
+   *
+   * 为 `prefs.js` 中的首选项键和 XHTML 文件中的 `preference` 属性的值
+   * 添加前缀。
+   *
+   * @default true
+   */
+  prefixPrefKeys: boolean;
+  /**
+   * Prefixes for Preference Keys, no dot at the end.
+   *
+   * 首选项键的前缀，结尾不需要加点号。
+   *
+   * @default 'extensions.${namespace}'
+   */
+  prefix: string;
+  /**
+   * Generate prefs.d.ts form prefs.js.
+   *
+   * - false: disable
+   * - string: path of dts file
+   *
+   * 为首选项生成类型声明文件。
+   *
+   * - false: 禁用
+   * - string：dts 文件路径
+   *
+   * @default 'typings/prefs.d.ts'
+   */
+  dts: false | string;
+}
+
+export interface MakeManifestConfig {
+  /**
+   * Whether to manage manifest.json automatically.
+   *
+   * If false, the developer is expected to provide `manifest.json` themselves.
+   *
+   * 是否自动管理 `manifest.json`。
+   *
+   * 如果此项为 false，则开发者应自行准备 `manifest.json`。
+   *
+   * @default true
+   */
+  enable: boolean;
+  /**
+   * Template of manifest.
+   *
+   * manifest 模板。
+   *
+   * @deprecated
+   */
+  template?: Manifest;
+}
+
+export interface MakeUpdateJsonConfig {
+  /**
+   * Historical update data.
+   *
+   * This can be useful if you need to distribute different plugin versions
+   * for different versions of Zotero.
+   *
+   * 已有的更新数据。
+   *
+   * 如果你需要为不同版本的 Zotero 分发不同的插件版本，这可能会很有用。
+   *
+   * @see {@link https://www.zotero.org/support/dev/zotero_7_for_developers#updaterdf_updatesjson | Zotero 7 for developers}
+   * @see {@link https://extensionworkshop.com/documentation/manage/updating-your-extension/ | Updating your extension}
+   * @see {@link https://zotero-chinese.com/plugin-dev-guide/reference/update | 更新清单 (In chinese)}
+   *
+   * @default []
+   */
+  updates: UpdateJSON["addons"][string]["updates"];
+  /**
+   * Whether or not to write the hash of the xpi file to update.json.
+   *
+   * 是否向 `update.json` 中写入 xpi 文件的 hash。
+   *
+   * @default true
+   */
+  hash: boolean;
+}
+
 export interface BuildConfig {
   build: {
     /**
@@ -35,91 +174,9 @@ export interface BuildConfig {
      * - 在构建时，脚手架使用占位符的 key 建立正则模式 `/__${key}__/g`，并将匹配到的内容替换为 `value`。
      * - 替换发生在 `assets` 下的所有文件。
      */
-    define: {
-      [key: string]: string;
-    };
-    fluent: {
-      /**
-       * Add plugin namespace prefixes to all FTL files to avoid conflicts.
-       *
-       * The default prefix is `${namespace}-`.
-       *
-       * 为所有 FTL 文件添加插件前缀以避免冲突。
-       *
-       * 默认前缀为 `${namespace}-`。
-       *
-       * @default true
-       */
-      prefixLocaleFiles: boolean;
-      /**
-       * Add plugin namespace prefixes to all FTL messages to avoid conflicts.
-       *
-       * The default prefix is `${namespace}-`.
-       *
-       * 为所有 FTL message 添加插件前缀以避免冲突。
-       *
-       * 默认前缀为 `${namespace}-`。
-       *
-       * @default true
-       */
-      prefixFluentMessages: boolean;
-      /**
-       * Messages to ignore.
-       *
-       * 需要忽略的 Fluent Messages。
-       *
-       * @default []
-       */
-      ignore: string[];
-      /**
-       * Generate i10n.d.ts form fluent messages.
-       *
-       * - false: disable
-       * - string: path of dts file
-       *
-       * 为 Fluent messages 生成类型声明文件。
-       *
-       * - false: 禁用
-       * - string：dts 文件路径
-       *
-       * @default 'typings/i10n.d.ts'
-       */
-      dts: string | false;
-    };
-    prefs: {
-      /**
-       * Prefixes the keys of preferences in `prefs.js` and
-       * the value of the `preference` attribute in XHTML files.
-       *
-       * 为 `prefs.js` 中的首选项键和 XHTML 文件中的 `preference` 属性的值
-       * 添加前缀。
-       *
-       * @default true
-       */
-      prefixPrefKeys: boolean;
-      /**
-       * Prefixes for Preference Keys, no dot at the end.
-       *
-       * 首选项键的前缀，结尾不需要加点号。
-       *
-       * @default 'extensions.${namespace}'
-       */
-      prefix: string;
-      /**
-       * Generate prefs.d.ts form prefs.js.
-       *
-       * - false: disable
-       * - string: path of dts file
-       *
-       * 为首选项生成类型声明文件。
-       *
-       * - false: 禁用
-       * - string：dts 文件路径
-       *
-       * @default 'typings/prefs.d.ts'
-       */
-      dts: false | string;
-    };
+    define: DefineConfig;
+    fluent: FluentConfig;
+    prefs: PrefsConfig;
     /**
      * Configurations of esbuild.
      *
@@ -141,60 +198,13 @@ export interface BuildConfig {
      *
      * 生成 `manifest.json`。
      */
-    makeManifest: {
-      /**
-       * Whether to manage manifest.json automatically.
-       *
-       * If false, the developer is expected to provide `manifest.json` themselves.
-       *
-       * 是否自动管理 `manifest.json`。
-       *
-       * 如果此项为 false，则开发者应自行准备 `manifest.json`。
-       *
-       * @default true
-       */
-      enable: boolean;
-      /**
-       * Template of manifest.
-       *
-       * manifest 模板。
-       *
-       * @deprecated
-       */
-      template?: Manifest;
-    };
+    makeManifest: MakeManifestConfig;
     /**
      * Make update manifest.
      *
      * 生成 `update.json`。
      */
-    makeUpdateJson: {
-      /**
-       * Historical update data.
-       *
-       * This can be useful if you need to distribute different plugin versions
-       * for different versions of Zotero.
-       *
-       * 已有的更新数据。
-       *
-       * 如果你需要为不同版本的 Zotero 分发不同的插件版本，这可能会很有用。
-       *
-       * @see {@link https://www.zotero.org/support/dev/zotero_7_for_developers#updaterdf_updatesjson | Zotero 7 for developers}
-       * @see {@link https://extensionworkshop.com/documentation/manage/updating-your-extension/ | Updating your extension}
-       * @see {@link https://zotero-chinese.com/plugin-dev-guide/reference/update | 更新清单 (In chinese)}
-       *
-       * @default []
-       */
-      updates: UpdateJSON["addons"][string]["updates"];
-      /**
-       * Whether or not to write the hash of the xpi file to update.json.
-       *
-       * 是否向 `update.json` 中写入 xpi 文件的 hash。
-       *
-       * @default true
-       */
-      hash: boolean;
-    };
+    makeUpdateJson: MakeUpdateJsonConfig;
     /**
      * The lifecycle hooks.
      *

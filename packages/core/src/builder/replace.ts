@@ -1,4 +1,4 @@
-import type { BuildConfig } from "../types.js";
+import type { DefineConfig } from "../types.js";
 import { readFile, writeFile } from "node:fs/promises";
 import { logger, toArray } from "@zotero-plugin/utils";
 import { glob } from "tinyglobby";
@@ -36,7 +36,7 @@ export async function replaceInFile({ files, from, to, isGlob = true }: {
   }));
 }
 
-export default async function replaceDefine(dist: string, define: BuildConfig["build"]["define"]): Promise<void> {
+export default async function replaceDefine(dist: string, define: DefineConfig): Promise<void> {
   // Replace all `placeholder.key` to `placeholder.value` for all files in `dist`
   const replaceMap = new Map(
     Object.keys(define).map(key => [
