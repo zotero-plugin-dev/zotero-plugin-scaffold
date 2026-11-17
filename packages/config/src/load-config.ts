@@ -1,4 +1,4 @@
-import type { RecursivePartial } from "@zotero-plugin/utils";
+import type { DeepPartial } from "@zotero-plugin/utils";
 import type { BaseContext, BaseUserConfig, ConfigTransform, ResolvedBaseConfig, TemplateData, UserPackageJson } from "./types.js";
 import { dateFormat, logger, parseRepoUrl, template, toArray } from "@zotero-plugin/utils";
 import { loadConfig as c12 } from "c12";
@@ -20,7 +20,7 @@ export async function loadConfig<
   TCtx extends BaseContext = BaseContext,
 >(options: {
   defaults: TUser;
-  overrides?: RecursivePartial<TUser>;
+  overrides?: DeepPartial<TUser>;
   transforms?: ConfigTransform[];
 }): Promise<TCtx> {
   const result = await c12<TUser>({

@@ -9,7 +9,7 @@ import type {
 } from "@zotero-plugin/core";
 import type { ReleaseConfig, ReleaseHooks, ResolvedReleaseConfig } from "@zotero-plugin/releaser";
 import type { ResolvedTestConfig, TestConfig, TestHooks } from "@zotero-plugin/tester";
-import type { RecursivePartial } from "@zotero-plugin/utils";
+import type { DeepPartial } from "@zotero-plugin/utils";
 import type { Hookable } from "hookable";
 
 export type AllConfig = BaseConfig
@@ -24,7 +24,7 @@ export type AllConfig = BaseConfig
  * It is the composition of the base configuration and all command slices, and
  * every field is deeply optional.
  */
-export type UserConfig = RecursivePartial<AllConfig>;
+export type UserConfig = DeepPartial<AllConfig>;
 
 /**
  * All hook events exposed by scaffold.

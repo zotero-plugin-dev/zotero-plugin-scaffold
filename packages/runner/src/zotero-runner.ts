@@ -1,4 +1,4 @@
-import type { RecursivePickOptional, RecursiveRequired } from "@zotero-plugin/utils";
+import type { DeepPickOptional, DeepRequired } from "@zotero-plugin/utils";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import { execSync, spawn } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
@@ -47,8 +47,8 @@ interface PluginInfo {
   sourceDir: string;
 }
 
-type InternalZoteroRunnerOptions = RecursiveRequired<ZoteroRunnerOptions>;
-type DefaultZoteroRunnerOptions = RecursivePickOptional<ZoteroRunnerOptions>;
+type InternalZoteroRunnerOptions = DeepRequired<ZoteroRunnerOptions>;
+type DefaultZoteroRunnerOptions = DeepPickOptional<ZoteroRunnerOptions>;
 
 const default_options = {
   binary: {

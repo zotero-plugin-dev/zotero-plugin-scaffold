@@ -1,4 +1,4 @@
-import type { Logger, LogLevelType, Merge, RecursivePartial } from "@zotero-plugin/utils";
+import type { DeepPartial, Logger, LogLevelType, Merge } from "@zotero-plugin/utils";
 import type { Hookable } from "hookable";
 
 /**
@@ -177,7 +177,7 @@ export interface BaseConfig extends PluginIdentity {
  * User-facing base configuration. All fields are deeply optional, matching the
  * historic `UserConfig extends RecursivePartial<Config>` shape.
  */
-export type BaseUserConfig = RecursivePartial<BaseConfig>;
+export type BaseUserConfig = DeepPartial<BaseConfig>;
 
 export type ResolvedBaseConfig = Merge<BaseConfig, {
   source: string[];
