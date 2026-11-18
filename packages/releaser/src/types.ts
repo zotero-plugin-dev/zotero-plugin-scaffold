@@ -232,3 +232,12 @@ export type ReleaseContext = ContextOf<
     changelog?: string;
   }
 >;
+
+export type GitHubConfig = ReleaseConfig["release"]["github"];
+
+export interface ReleaseProvider {
+  /** The key under `release` that holds this provider's options. */
+  readonly name: string;
+  isEnabled: (ctx: ReleaseContext) => boolean;
+  run: (ctx: ReleaseContext) => Promise<void>;
+}

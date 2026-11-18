@@ -7,6 +7,8 @@ export type {
   BaseConfig,
   BaseContextFields,
   BaseUserConfig,
+  Command,
+  CommandFactory,
   ConfigTransform,
   ContextOf,
   LintConfig,
@@ -22,18 +24,21 @@ export { BASE_DIR, baseDefaults, CACHE_DIR } from "@zotero-plugin/config";
 // Build & dev server
 export {
   buildDefaults,
-  Builder,
   buildTransform,
+  createBuilder,
+  createDevServer,
   DEFAULT_DIST_TEMP_DIR,
-  DevServer,
   devServerDefaults,
   replace,
   replaceInFile,
 } from "@zotero-plugin/core";
 export type {
   BuildConfig,
+  Builder,
   BuilderContext,
   BuildHooks,
+  BuildRunOptions,
+  DevServer,
   DevServerConfig,
   DevServerContext,
   ResolvedBuildConfig,
@@ -41,51 +46,27 @@ export type {
   ServeHooks,
 } from "@zotero-plugin/core";
 
-/**
- * @deprecated Use {@link Builder} instead.
- */
-export { Builder as Build } from "@zotero-plugin/core";
-/**
- * @deprecated Use {@link DevServer} instead.
- */
-export { DevServer as Serve } from "@zotero-plugin/core";
-
 // Release
-export { releaseDefaults, Releaser, releaseTransform } from "@zotero-plugin/releaser";
+export { createReleaser, releaseDefaults, releaseProviders, releaseTransform } from "@zotero-plugin/releaser";
 export type {
+  GitHubConfig,
   ReleaseConfig,
   ReleaseContext,
   ReleaseHooks,
+  ReleaseProvider,
+  Releaser,
   ResolvedReleaseConfig,
   VersionBumpRelease,
 } from "@zotero-plugin/releaser";
 
-export { defineConfig, loadConfig };
-
-/**
- * @deprecated Use {@link Releaser} instead.
- */
-export { Releaser as Release } from "@zotero-plugin/releaser";
 // Test
-export { testDefaults, Tester } from "@zotero-plugin/tester";
+export { createTester, testDefaults } from "@zotero-plugin/tester";
 export type {
   ResolvedTestConfig,
   TestConfig,
   TestContext,
+  Tester,
   TestHooks,
 } from "@zotero-plugin/tester";
-/**
- * @deprecated Use {@link Tester} instead.
- */
-export { Tester as Test } from "@zotero-plugin/tester";
 
-/**
- * @deprecated Use `defineConfig` and `loadConfig` directly.
- */
-export const Config: {
-  defineConfig: typeof defineConfig;
-  loadConfig: typeof loadConfig;
-} = {
-  defineConfig,
-  loadConfig,
-};
+export { defineConfig, loadConfig };

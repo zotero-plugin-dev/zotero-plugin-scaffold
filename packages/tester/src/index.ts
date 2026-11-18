@@ -1,8 +1,9 @@
+import type { Command } from "@zotero-plugin/config";
+import type { Builder } from "@zotero-plugin/core";
 import type { TestContext } from "./types.js";
 import { join, resolve } from "node:path";
 import process from "node:process";
-import { Base } from "@zotero-plugin/config";
-import { Builder } from "@zotero-plugin/core";
+import { createBuilder } from "@zotero-plugin/core";
 import { watch } from "@zotero-plugin/utils";
 import { ZoteroRunner } from "@zotero-plugin/zotero-runner";
 import { emptyDir } from "fs-extra/esm";
@@ -12,117 +13,111 @@ import { prepareHeadless } from "./headless.js";
 import { TestHttpReporter } from "./http-reporter.js";
 import { TestBundler } from "./test-bundler.js";
 
-export class Tester extends Base<TestContext> {
-  private builder: Builder;
-  private zotero?: ZoteroRunner;
-  private reporter: TestHttpReporter = new TestHttpReporter();
-  private testBundler?: TestBundler;
+export interface Tester extends Command {
+  run: () => Promise<void>;
+  stop: () => Promise<void>;
+}
 
-  constructor(ctx: TestContext) {
-    super(ctx);
-    process.env.NODE_ENV ??= "test";
+export async function createTester(ctx: TestContext): Promise<Tester> {
+  const { logger } = ctx;
+  const builder: Builder = await createBuilder(ctx);
+  const reporter = new TestHttpReporter();
 
-    this.builder = new Builder(ctx);
+  let testBundler: TestBundler | undefined;
+  let zotero: ZoteroRunner | undefined;
+  let watcher: ReturnType<typeof watch> | undefined;
+  let stopping: Promise<void> | undefined;
+  let resolveRun: (() => void) | undefined;
+
+  async function stop(): Promise<void> {
+    stopping ??= (async () => {
+      await watcher?.close();
+      watcher = undefined;
+
+      reporter.stop();
+
+      await testBundler?.dispose();
+      testBundler = undefined;
+
+      zotero?.exit();
+      zotero = undefined;
+
+      await builder.stop();
+      resolveRun?.();
+    })();
+
+    return stopping;
   }
 
-  async run(): Promise<void> {
-    // Empty dirs
-    await emptyDir(TESTER_PROFILE_DIR);
-    await emptyDir(TESTER_DATA_DIR);
-    await emptyDir(TESTER_PLUGIN_DIR);
-    await this.ctx.hooks.callHook("test:init", this.ctx);
+  function isSourceFile(path: string): boolean {
+    if (isTestFileName(path))
+      return false;
 
-    // prebuild
-    await this.builder.run();
-    await this.ctx.hooks.callHook("test:prebuild", this.ctx);
-
-    // Start a HTTP server to receive test results
-    // This is useful for CI/CD environments
-    await this.reporter.start();
-
-    // Create proxy plugin to run tests
-    this.testBundler = new TestBundler(
-      this.ctx,
-      this.reporter.port,
-    );
-    await this.testBundler.generate();
-    await this.ctx.hooks.callHook("test:bundleTests", this.ctx);
-
-    // Start Zotero
-    await this.startZotero();
-    await this.ctx.hooks.callHook("test:run", this.ctx);
-
-    // Watch mode
-    if (this.ctx.config.test.watch) {
-      this.watch();
-    }
+    const absolute = resolve(path);
+    return ctx.config.source
+      .map(p => resolve(p))
+      .some(s => absolute === s || absolute.startsWith(`${s}/`) || absolute.startsWith(`${s}\\`));
   }
 
-  async watch(): Promise<void> {
-    const source = this.ctx.config.source.map(p => resolve(p));
-    function isSource(_path: string) {
-      const path = resolve(_path);
-      if (isTestFileName(path))
-        return false;
-      return source.some(s => path === s || path.startsWith(`${s}/`) || path.startsWith(`${s}\\`));
-    }
-
-    watch(
+  function watchSources(): void {
+    watcher = watch(
       [
-        ...this.ctx.config.source,
-        ...this.ctx.config.test.entries,
+        ...ctx.config.source,
+        ...ctx.config.test.entries,
       ],
       [
-        ...this.ctx.config.watchIgnore,
+        ...ctx.config.watchIgnore,
       ],
       {
         onChange: async (path) => {
-          if (isSource(path)) {
-            await this.builder.run();
-            await this.testBundler?.regenerate(path);
-            await this.zotero?.reloadAllPlugins();
+          if (isSourceFile(path)) {
+            await builder.run({ pack: false });
+            await testBundler?.regenerate(path);
+            await zotero?.reloadAllPlugins();
           }
           else {
-            await this.testBundler?.regenerate(path);
-            await this.zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
+            await testBundler?.regenerate(path);
+            await zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
           }
         },
         onAdd: async (path) => {
-          if (isSource(path)) {
-            await this.builder.run();
-            await this.testBundler?.regenerate(path);
-            await this.zotero?.reloadAllPlugins();
+          if (isSourceFile(path)) {
+            await builder.run({ pack: false });
+            await testBundler?.regenerate(path);
+            await zotero?.reloadAllPlugins();
           }
           else {
-            await this.testBundler?.generate();
-            await this.zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
+            await testBundler?.generate();
+            await zotero?.reloadTemporaryPluginBySourceDir(TESTER_PLUGIN_DIR);
           }
         },
       },
     );
   }
 
-  async startZotero(): Promise<void> {
-    if (this.ctx.config.test.headless && !process.env.ZOTERO_SETUP_COMPLETE) {
+  async function startZotero(): Promise<void> {
+    if (ctx.config.test.headless && !process.env.ZOTERO_SETUP_COMPLETE)
       await prepareHeadless();
-    }
 
-    this.zotero = new ZoteroRunner({
+    zotero = new ZoteroRunner({
       binary: {
-        path: this.zoteroBinPath,
-        devtools: this.ctx.config.test.devtools,
-        args: [...this.ctx.config.test.startArgs],
+        path: zoteroBinPath(),
+        devtools: ctx.config.test.devtools,
+        args: [...ctx.config.test.startArgs],
       },
       profile: {
         path: TESTER_PROFILE_DIR,
         dataDir: TESTER_DATA_DIR,
-        customPrefs: this.prefs,
+        customPrefs: {
+          ...testPrefs(),
+          ...ctx.config.test.prefs,
+        },
       },
       plugins: {
         list: [
           {
-            id: this.ctx.config.id,
-            sourceDir: join(this.ctx.config.dist, "addon"),
+            id: ctx.config.id,
+            sourceDir: join(ctx.config.dist, "addon"),
           },
           {
             id: TESTER_PLUGIN_ID,
@@ -132,70 +127,82 @@ export class Tester extends Base<TestContext> {
       },
     });
 
-    await this.zotero.run();
+    await zotero.run();
 
-    this.zotero.zotero?.on("close", () => this.onZoteroExit());
+    zotero.zotero?.on("close", () => {
+      logger.info("Zotero terminated.");
+      void stop();
+    });
   }
 
-  private onZoteroExit = () => {
-    this.reporter.stop();
-    this.ctx.hooks.callHook("test:exit", this.ctx);
+  async function run(): Promise<void> {
+    const done = new Promise<void>((resolve) => {
+      resolveRun = resolve;
+    });
 
-    if (this.reporter.failed)
-      process.exit(1);
-    else
-      process.exit(0);
+    await emptyDir(TESTER_PROFILE_DIR);
+    await emptyDir(TESTER_DATA_DIR);
+    await emptyDir(TESTER_PLUGIN_DIR);
+    await ctx.hooks.callHook("test:init", ctx);
+
+    await builder.run({ pack: false });
+    await ctx.hooks.callHook("test:prebuild", ctx);
+
+    await reporter.start();
+
+    testBundler = new TestBundler(ctx, reporter.port);
+    await testBundler.generate();
+    await ctx.hooks.callHook("test:bundleTests", ctx);
+
+    await startZotero();
+    await ctx.hooks.callHook("test:run", ctx);
+
+    if (ctx.config.test.watch)
+      watchSources();
+
+    await done;
+
+    process.exitCode = reporter.failed ? 1 : 0;
+  }
+
+  return { run, stop };
+}
+
+function zoteroBinPath(): string {
+  const path = process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH;
+  if (!path)
+    throw new Error("No Zotero Found.");
+
+  return path;
+}
+
+function testPrefs(): Record<string, string | number | boolean> {
+  return {
+    "extensions.experiments.enabled": true,
+    "extensions.autoDisableScopes": 0,
+    "devtools.debugger.remote-enabled": true,
+    "devtools.debugger.remote-websocket": true,
+    "devtools.debugger.prompt-connection": false,
+    "app.update.enabled": false,
+    "extensions.zotero.sync.server.compressData": false,
+    "extensions.zotero.automaticScraperUpdates": false,
+    "extensions.zotero.debug.log": 5,
+    "extensions.zotero.debug.level": 5,
+    "extensions.zotero.debug.time": 5,
+    "extensions.zotero.firstRun.skipFirefoxProfileAccessCheck": true,
+    "extensions.zotero.firstRunGuidance": false,
+    "extensions.zotero.firstRun2": false,
+    "extensions.zotero.reportTranslationFailure": false,
+    "extensions.zotero.httpServer.enabled": true,
+    "extensions.zotero.httpServer.port": 23124,
+    "extensions.zotero.httpServer.localAPI.enabled": true,
+    "extensions.zotero.backup.numBackups": 0,
+    "extensions.zotero.sync.autoSync": false,
+    "extensions.zoteroMacWordIntegration.installed": true,
+    "extensions.zoteroMacWordIntegration.skipInstallation": true,
+    "extensions.zoteroWinWordIntegration.skipInstallation": true,
+    "extensions.zoteroOpenOfficeIntegration.skipInstallation": true,
   };
-
-  exit = (code?: string | number): never => {
-    if (code === "SIGINT") {
-      this.logger.info("Tester shutdown by user request");
-    }
-
-    this.reporter.stop();
-    this.zotero?.exit();
-    this.ctx.hooks.callHook("test:exit", this.ctx);
-    process.exit();
-  };
-
-  private get zoteroBinPath() {
-    if (!process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH)
-      throw new Error("No Zotero Found.");
-    return process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH;
-  }
-
-  private get prefs() {
-    const defaultPref = {
-      "extensions.experiments.enabled": true,
-      "extensions.autoDisableScopes": 0,
-      // Enable remote-debugging
-      "devtools.debugger.remote-enabled": true,
-      "devtools.debugger.remote-websocket": true,
-      "devtools.debugger.prompt-connection": false,
-      // Inherit the default test settings from Zotero
-      "app.update.enabled": false,
-      "extensions.zotero.sync.server.compressData": false,
-      "extensions.zotero.automaticScraperUpdates": false,
-      "extensions.zotero.debug.log": 5,
-      "extensions.zotero.debug.level": 5,
-      "extensions.zotero.debug.time": 5,
-      "extensions.zotero.firstRun.skipFirefoxProfileAccessCheck": true,
-      "extensions.zotero.firstRunGuidance": false,
-      "extensions.zotero.firstRun2": false,
-      "extensions.zotero.reportTranslationFailure": false,
-      "extensions.zotero.httpServer.enabled": true,
-      "extensions.zotero.httpServer.port": 23124,
-      "extensions.zotero.httpServer.localAPI.enabled": true,
-      "extensions.zotero.backup.numBackups": 0,
-      "extensions.zotero.sync.autoSync": false,
-      "extensions.zoteroMacWordIntegration.installed": true,
-      "extensions.zoteroMacWordIntegration.skipInstallation": true,
-      "extensions.zoteroWinWordIntegration.skipInstallation": true,
-      "extensions.zoteroOpenOfficeIntegration.skipInstallation": true,
-    };
-
-    return Object.assign(defaultPref, this.ctx.config.test.prefs || {});
-  }
 }
 
 export { testDefaults, testTransform } from "./config.js";

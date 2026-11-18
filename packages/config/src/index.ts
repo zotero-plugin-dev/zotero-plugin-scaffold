@@ -1,4 +1,5 @@
-export { Base, defineConfig } from "./base.js";
+export { defineConfig } from "./base.js";
+export type { Command, CommandFactory } from "./command.js";
 export { BASE_DIR, CACHE_DIR } from "./constant.js";
 export { baseDefaults } from "./defaults.js";
 export { loadConfig } from "./load-config.js";

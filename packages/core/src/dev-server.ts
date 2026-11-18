@@ -1,25 +1,66 @@
+import type { Command } from "@zotero-plugin/config";
+import type { Builder } from "./builder/index.js";
 import type { DevServerContext } from "./types.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
-import { Base } from "@zotero-plugin/config";
 import { watch } from "@zotero-plugin/utils";
 import { ZoteroRunner } from "@zotero-plugin/zotero-runner";
-import { Builder } from "./builder/index.js";
+import { createBuilder } from "./builder/index.js";
 
-export class DevServer extends Base<DevServerContext> {
-  private builder: Builder;
-  private runner?: ZoteroRunner;
+export interface DevServer extends Command {
+  run: () => Promise<void>;
+  stop: () => Promise<void>;
+}
 
-  private _zoteroBinPath?: string;
+export async function createDevServer(ctx: DevServerContext): Promise<DevServer> {
+  const { logger } = ctx;
+  const builder: Builder = await createBuilder(ctx);
 
-  constructor(ctx: DevServerContext) {
-    super(ctx);
-    process.env.NODE_ENV ??= "development";
-    this.builder = new Builder(ctx);
+  let runner: ZoteroRunner | undefined;
+  let watcher: ReturnType<typeof watch> | undefined;
+  let stopping: Promise<void> | undefined;
+  let resolveRun: (() => void) | undefined;
+
+  async function stop(): Promise<void> {
+    stopping ??= (async () => {
+      await watcher?.close();
+      watcher = undefined;
+
+      runner?.exit();
+      runner = undefined;
+
+      await builder.stop();
+      resolveRun?.();
+    })();
+
+    return stopping;
   }
 
-  async run(): Promise<void> {
+  async function reload(): Promise<void> {
+    logger.tip("Reloading...");
+    await runner?.reloadAllPlugins();
+    await ctx.hooks.callHook("serve:onReloaded", ctx);
+  }
+
+  function watchSources(): void {
+    watcher = watch(
+      [...ctx.config.source],
+      [...ctx.config.watchIgnore],
+      {
+        onReady: async () => {
+          await ctx.hooks.callHook("serve:ready", ctx);
+        },
+        onChange: async (path) => {
+          await ctx.hooks.callHook("serve:onChanged", ctx, path);
+          await builder.rebuild(path);
+          await reload();
+        },
+      },
+    );
+  }
+
+  async function run(): Promise<void> {
     const {
       devtools,
       debugOutputWindow,
@@ -29,115 +70,65 @@ export class DevServer extends Base<DevServerContext> {
       createProfileIfMissing,
       asProxy,
       prebuild,
-    } = this.ctx.config.devServer;
+    } = ctx.config.devServer;
 
-    this.runner = new ZoteroRunner({
+    const done = new Promise<void>((resolve) => {
+      resolveRun = resolve;
+    });
+
+    runner = new ZoteroRunner({
       binary: {
-        path: this.zoteroBinPath,
+        path: zoteroBinPath(),
         devtools,
         args: [...startArgs],
         debugOutputWindow,
         debugOutputFile,
       },
       profile: {
-        path: this.profilePath,
-        dataDir: this.dataDir,
-        // keepChanges: this.ctx.server.keepProfileChanges,
+        path: process.env.ZOTERO_PLUGIN_PROFILE_PATH,
+        dataDir: process.env.ZOTERO_PLUGIN_DATA_DIR,
         createIfMissing: createProfileIfMissing,
         customPrefs: prefs,
       },
       plugins: {
         list: [
           {
-            id: this.ctx.config.id,
-            sourceDir: join(this.ctx.config.dist, "addon"),
+            id: ctx.config.id,
+            sourceDir: join(ctx.config.dist, "addon"),
           },
         ],
         asProxy,
       },
     });
 
-    await this.ctx.hooks.callHook("serve:init", this.ctx);
+    await ctx.hooks.callHook("serve:init", ctx);
 
-    // prebuild
     if (prebuild) {
-      await this.builder.run();
-      await this.ctx.hooks.callHook("serve:prebuild", this.ctx);
+      await builder.run({ pack: false });
+      await ctx.hooks.callHook("serve:prebuild", ctx);
     }
 
-    // start Zotero
-    await this.runner.run();
-    this.runner.zotero?.on("exit", this.onZoteroExit);
-    this.runner.zotero?.on("close", this.onZoteroExit);
+    await runner.run();
 
-    // watch
-    await this.watch();
+    const onZoteroExit = (): void => {
+      logger.info("Zotero terminated.");
+      void stop();
+    };
+    runner.zotero?.on("exit", onZoteroExit);
+    runner.zotero?.on("close", onZoteroExit);
+
+    watchSources();
+
+    await done;
   }
 
-  /**
-   * watch source dir and build when file changed
-   */
-  async watch(): Promise<void> {
-    const { source, watchIgnore } = this.ctx.config;
+  return { run, stop };
+}
 
-    watch(
-      [...source],
-      [...watchIgnore],
-      {
-        onReady: async () => {
-          await this.ctx.hooks.callHook("serve:ready", this.ctx);
-        },
-        onChange: async (path) => {
-          await this.ctx.hooks.callHook("serve:onChanged", this.ctx, path);
+function zoteroBinPath(): string {
+  const path = process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH;
+  if (!path || !existsSync(path))
+    throw new Error("The Zotero binary not found.");
 
-          if (path.endsWith(".ts") || path.endsWith(".tsx")) {
-            await this.builder.bundle();
-          }
-          else {
-            await this.builder.run();
-          }
-
-          await this.reload();
-        },
-      },
-    );
-  }
-
-  async reload(): Promise<void> {
-    this.logger.tip("Reloading...");
-    await this.runner?.reloadAllPlugins();
-    await this.ctx.hooks.callHook("serve:onReloaded", this.ctx);
-  }
-
-  // Use arrow functions to keep `this`
-  exit = (): never => {
-    this.logger.info("Server shutdown by user request.");
-    this.runner?.exit();
-    this.ctx.hooks.callHook("serve:exit", this.ctx);
-    process.exit();
-  };
-
-  private onZoteroExit = (_code?: number | null, _signal?: any) => {
-    this.logger.info(`Zotero terminated.`);
-    process.exit();
-  };
-
-  get zoteroBinPath(): string {
-    if (this._zoteroBinPath)
-      return this._zoteroBinPath;
-
-    this._zoteroBinPath = process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH;
-    if (!this._zoteroBinPath || !existsSync(this._zoteroBinPath))
-      throw new Error("The Zotero binary not found.");
-
-    return this._zoteroBinPath;
-  }
-
-  get profilePath(): string | undefined {
-    return process.env.ZOTERO_PLUGIN_PROFILE_PATH;
-  }
-
-  get dataDir(): string | undefined {
-    return process.env.ZOTERO_PLUGIN_DATA_DIR;
-  }
+  return path;
 }

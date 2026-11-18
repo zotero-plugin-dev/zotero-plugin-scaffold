@@ -1,11 +1,11 @@
 import type { Octokit } from "@octokit/rest";
-import type { ReleaseContext } from "./types.js";
+import type { ReleaseContext } from "../types.js";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { logger } from "@zotero-plugin/utils";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { GitHub } from "./github.js";
+import { refreshUpdateManifest, uploadXPI } from "./github.js";
 
 interface ReleaseStub {
   id: number;
@@ -112,10 +112,10 @@ function createOctokitStub(options: OctokitStubOptions = {}) {
 const originalToken = process.env.GITHUB_TOKEN;
 const tempDirs: string[] = [];
 
-async function createReleaser(
+async function createContext(
   stub: ReturnType<typeof createOctokitStub>,
   overrides: { version?: string } = {},
-): Promise<GitHub> {
+): Promise<{ ctx: ReleaseContext; client: Octokit }> {
   const dist = await mkdtemp(join(tmpdir(), "scaffold-releaser-"));
   tempDirs.push(dist);
   await writeFile(join(dist, "my-plugin.xpi"), "xpi");
@@ -140,9 +140,7 @@ async function createReleaser(
     },
   } as unknown as ReleaseContext;
 
-  const releaser = new GitHub(ctx);
-  releaser.client = stub.client;
-  return releaser;
+  return { ctx, client: stub.client };
 }
 
 describe("releaser/github", () => {
@@ -167,9 +165,9 @@ describe("releaser/github", () => {
   describe("uploadXPI", () => {
     it("creates a draft, uploads the XPI, then publishes the release", async () => {
       const stub = createOctokitStub();
-      const releaser = await createReleaser(stub);
+      const { ctx, client } = await createContext(stub);
 
-      await releaser.uploadXPI();
+      await uploadXPI(ctx, client);
 
       expect(stub.calls).toEqual([
         "create:v1.2.3:draft=true",
@@ -189,9 +187,9 @@ describe("releaser/github", () => {
 
     it("does not mark a prerelease as latest", async () => {
       const stub = createOctokitStub();
-      const releaser = await createReleaser(stub, { version: "1.3.0-beta.1" });
+      const { ctx, client } = await createContext(stub, { version: "1.3.0-beta.1" });
 
-      await releaser.uploadXPI();
+      await uploadXPI(ctx, client);
 
       expect(stub.createRelease).toHaveBeenCalledWith(expect.objectContaining({
         prerelease: true,
@@ -209,9 +207,9 @@ describe("releaser/github", () => {
           { id: 13, name: "my-plugin.xpi" },
         ],
       });
-      const releaser = await createReleaser(stub);
+      const { ctx, client } = await createContext(stub);
 
-      await releaser.uploadXPI();
+      await uploadXPI(ctx, client);
 
       expect(stub.createRelease).not.toHaveBeenCalled();
       expect(stub.calls).toEqual([
@@ -228,9 +226,9 @@ describe("releaser/github", () => {
           { id: 6, name: "my-plugin.xpi" },
         ],
       });
-      const releaser = await createReleaser(stub);
+      const { ctx, client } = await createContext(stub);
 
-      await releaser.uploadXPI();
+      await uploadXPI(ctx, client);
 
       expect(stub.calls).toEqual([]);
     });
@@ -239,9 +237,9 @@ describe("releaser/github", () => {
       const stub = createOctokitStub({
         releaseByTag: { id: 5, draft: false, immutable: false },
       });
-      const releaser = await createReleaser(stub);
+      const { ctx, client } = await createContext(stub);
 
-      await releaser.uploadXPI();
+      await uploadXPI(ctx, client);
 
       expect(stub.calls).toEqual(["upload:my-plugin.xpi"]);
       expect(stub.createRelease).not.toHaveBeenCalled();
@@ -251,9 +249,9 @@ describe("releaser/github", () => {
       const stub = createOctokitStub({
         releaseByTag: { id: 5, draft: false, immutable: true },
       });
-      const releaser = await createReleaser(stub);
+      const { ctx, client } = await createContext(stub);
 
-      await expect(releaser.uploadXPI()).rejects.toThrow(/immutable release "v1.2.3"/);
+      await expect(uploadXPI(ctx, client)).rejects.toThrow(/immutable release "v1.2.3"/);
       expect(stub.calls).toEqual([]);
     });
   });
@@ -261,9 +259,9 @@ describe("releaser/github", () => {
   describe("refreshUpdateManifest", () => {
     it("creates the manifest release as a draft and publishes it after uploading", async () => {
       const stub = createOctokitStub();
-      const releaser = await createReleaser(stub);
+      const { ctx, client } = await createContext(stub);
 
-      await releaser.refreshUpdateManifest();
+      await refreshUpdateManifest(ctx, client);
 
       expect(stub.createRelease).toHaveBeenCalledWith(expect.objectContaining({
         tag_name: "release",
@@ -284,9 +282,9 @@ describe("releaser/github", () => {
           { id: 8, name: "update.json" },
         ],
       });
-      const releaser = await createReleaser(stub);
+      const { ctx, client } = await createContext(stub);
 
-      await releaser.refreshUpdateManifest();
+      await refreshUpdateManifest(ctx, client);
 
       expect(stub.deleteReleaseAsset).toHaveBeenCalledTimes(1);
       expect(stub.deleteReleaseAsset).toHaveBeenCalledWith(expect.objectContaining({ asset_id: 8 }));
@@ -297,9 +295,9 @@ describe("releaser/github", () => {
       const stub = createOctokitStub({
         releaseByTag: { id: 7, draft: false, immutable: true },
       });
-      const releaser = await createReleaser(stub);
+      const { ctx, client } = await createContext(stub);
 
-      await expect(releaser.refreshUpdateManifest()).rejects.toThrow(/immutable release "release"/);
+      await expect(refreshUpdateManifest(ctx, client)).rejects.toThrow(/immutable release "release"/);
       expect(stub.deleteReleaseAsset).not.toHaveBeenCalled();
       expect(stub.uploadReleaseAsset).not.toHaveBeenCalled();
     });
