@@ -94,8 +94,8 @@ export async function createDevServer(ctx: DevServerContext): Promise<DevServer>
       logger.info("Zotero terminated.");
       void dispose();
     };
-    runner.zotero?.on("exit", onZoteroExit);
-    runner.zotero?.on("close", onZoteroExit);
+    runner.process?.on("exit", onZoteroExit);
+    runner.process?.on("close", onZoteroExit);
 
     watcher = watch(
       [...ctx.config.source],
