@@ -123,10 +123,15 @@ pnpm run build
 You can also use `zotero-plugin-scaffold` programmatically in your Node.js scripts:
 
 ```ts
-import { Builder, loadConfig } from "zotero-plugin-scaffold";
+import { createBuilder, loadConfig } from "zotero-plugin-scaffold";
 
-const config = await loadConfig();
+const ctx = await loadConfig();
 
-const builder = new Builder(config);
-await builder.run();
+const builder = await createBuilder(ctx);
+try {
+  await builder.run();
+}
+finally {
+  await builder.stop();
+}
 ```
