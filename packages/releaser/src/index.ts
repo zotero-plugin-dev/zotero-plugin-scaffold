@@ -79,7 +79,7 @@ function resolvedCommitMessage(ctx: ReleaseContext): string {
 
 export { bump } from "./bump.js";
 export { releaseDefaults, releaseTransform } from "./config.js";
-export { githubProvider } from "./providers/github.js";
+export { GitHub, githubProvider } from "./providers/github.js";
 export type {
   GitHubConfig,
   ReleaseConfig,

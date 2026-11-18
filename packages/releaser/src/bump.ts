@@ -3,6 +3,8 @@ import type { ReleaseContext } from "./types.js";
 import { ProgressEvent, versionBump } from "bumpp";
 
 export async function bump(ctx: ReleaseContext): Promise<void> {
+  const { logger } = ctx;
+
   const bumppConfig: VersionBumpOptions = {
     ...ctx.config.release.bumpp,
     push: true,
@@ -11,7 +13,7 @@ export async function bump(ctx: ReleaseContext): Promise<void> {
 
   const { version } = ctx;
   if (bumppConfig.release === version) {
-    ctx.logger.debug("Commit, tag, and push are disabled because new version = old version.");
+    logger.debug("Commit, tag, and push are disabled because new version = old version.");
     bumppConfig.commit = false;
     bumppConfig.tag = false;
     bumppConfig.push = false;
@@ -22,7 +24,7 @@ export async function bump(ctx: ReleaseContext): Promise<void> {
   ctx.tag = result.tag || ctx.config.release.bumpp.tag.replaceAll("%s", result.newVersion);
   ctx.commitMessage = result.commit || ctx.config.release.bumpp.commit.replaceAll("%s", result.newVersion);
 
-  ctx.logger.debug(`The release context after bump: tag=${ctx.tag}, commitMessage=${ctx.commitMessage}`);
+  logger.debug(`The release context after bump: tag=${ctx.tag}, commitMessage=${ctx.commitMessage}`);
 }
 
 /**
