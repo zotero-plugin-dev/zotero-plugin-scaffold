@@ -108,7 +108,7 @@ export async function createTester(ctx: TestContext): Promise<Tester> {
 
     await zotero.run();
 
-    zotero.zotero?.on("close", () => {
+    zotero.process?.on("close", () => {
       logger.info("Zotero terminated.");
       void dispose();
     });
