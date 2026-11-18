@@ -126,7 +126,7 @@ const aborted = false;
 function print(str: string): void {
   const output = document.querySelector<HTMLElement>("#mocha");
   if (output)
-    output.textContent += str;
+    output.appendChild(document.createTextNode(str));
 }
 
 /**
