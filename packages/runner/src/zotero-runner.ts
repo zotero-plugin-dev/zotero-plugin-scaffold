@@ -392,8 +392,19 @@ export class ZoteroRunner {
       await this.reloadAllTemporaryPlugins();
   }
 
+  /**
+   * Stop the Zotero instance this runner started.
+   *
+   * If the process is already gone (the user closed Zotero, for example) there
+   * is nothing left to kill, so the machine-wide `killZotero()` fallback is
+   * skipped rather than reporting that no instance is running.
+   */
   public exit(): void {
-    this.zotero?.kill();
+    const child = this.zotero;
+    if (!child || child.exitCode !== null || child.signalCode !== null)
+      return;
+
+    child.kill();
     // Sometimes `process.kill()` cannot kill the Zotero,
     // so we force kill it.
     killZotero();
