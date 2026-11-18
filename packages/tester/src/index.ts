@@ -18,33 +18,6 @@ export interface Tester extends Command {
   stop: () => Promise<void>;
 }
 
-const DEFAULT_TEST_PREFS: Record<string, string | number | boolean> = {
-  "extensions.experiments.enabled": true,
-  "extensions.autoDisableScopes": 0,
-  "devtools.debugger.remote-enabled": true,
-  "devtools.debugger.remote-websocket": true,
-  "devtools.debugger.prompt-connection": false,
-  "app.update.enabled": false,
-  "extensions.zotero.sync.server.compressData": false,
-  "extensions.zotero.automaticScraperUpdates": false,
-  "extensions.zotero.debug.log": 5,
-  "extensions.zotero.debug.level": 5,
-  "extensions.zotero.debug.time": 5,
-  "extensions.zotero.firstRun.skipFirefoxProfileAccessCheck": true,
-  "extensions.zotero.firstRunGuidance": false,
-  "extensions.zotero.firstRun2": false,
-  "extensions.zotero.reportTranslationFailure": false,
-  "extensions.zotero.httpServer.enabled": true,
-  "extensions.zotero.httpServer.port": 23124,
-  "extensions.zotero.httpServer.localAPI.enabled": true,
-  "extensions.zotero.backup.numBackups": 0,
-  "extensions.zotero.sync.autoSync": false,
-  "extensions.zoteroMacWordIntegration.installed": true,
-  "extensions.zoteroMacWordIntegration.skipInstallation": true,
-  "extensions.zoteroWinWordIntegration.skipInstallation": true,
-  "extensions.zoteroOpenOfficeIntegration.skipInstallation": true,
-};
-
 export async function createTester(ctx: TestContext): Promise<Tester> {
   const { logger } = ctx;
   const builder: Builder = await createBuilder(ctx);
@@ -64,6 +37,7 @@ export async function createTester(ctx: TestContext): Promise<Tester> {
       path: TESTER_PROFILE_DIR,
       dataDir: TESTER_DATA_DIR,
       customPrefs: {
+        // eslint-disable-next-line ts/no-use-before-define -- the Zotero defaults are listed at the end of the file
         ...DEFAULT_TEST_PREFS,
         ...ctx.config.test.prefs,
       },
@@ -184,6 +158,33 @@ export async function createTester(ctx: TestContext): Promise<Tester> {
 
   return { run, stop };
 }
+
+const DEFAULT_TEST_PREFS: Record<string, string | number | boolean> = {
+  "extensions.experiments.enabled": true,
+  "extensions.autoDisableScopes": 0,
+  "devtools.debugger.remote-enabled": true,
+  "devtools.debugger.remote-websocket": true,
+  "devtools.debugger.prompt-connection": false,
+  "app.update.enabled": false,
+  "extensions.zotero.sync.server.compressData": false,
+  "extensions.zotero.automaticScraperUpdates": false,
+  "extensions.zotero.debug.log": 5,
+  "extensions.zotero.debug.level": 5,
+  "extensions.zotero.debug.time": 5,
+  "extensions.zotero.firstRun.skipFirefoxProfileAccessCheck": true,
+  "extensions.zotero.firstRunGuidance": false,
+  "extensions.zotero.firstRun2": false,
+  "extensions.zotero.reportTranslationFailure": false,
+  "extensions.zotero.httpServer.enabled": true,
+  "extensions.zotero.httpServer.port": 23124,
+  "extensions.zotero.httpServer.localAPI.enabled": true,
+  "extensions.zotero.backup.numBackups": 0,
+  "extensions.zotero.sync.autoSync": false,
+  "extensions.zoteroMacWordIntegration.installed": true,
+  "extensions.zoteroMacWordIntegration.skipInstallation": true,
+  "extensions.zoteroWinWordIntegration.skipInstallation": true,
+  "extensions.zoteroOpenOfficeIntegration.skipInstallation": true,
+};
 
 function zoteroBinPath(): string {
   const path = process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH;

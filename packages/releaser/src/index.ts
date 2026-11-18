@@ -52,7 +52,7 @@ async function getChangelog(ctx: ReleaseContext): Promise<string> {
   let changelog: string;
   const rawCommit = await getGitCommits(
     ctx.tag ?? ctx.config.release.bumpp.tag.replaceAll("%s", ctx.version),
-    resolvedCommitMessage(ctx),
+    ctx.commitMessage ?? ctx.config.release.bumpp.commit.replaceAll("%s", ctx.version),
   );
   if (rawCommit.length === 0) {
     return "_No significant changes._";
@@ -70,11 +70,6 @@ async function getChangelog(ctx: ReleaseContext): Promise<string> {
   }
   ctx.logger.debug(`Got changelog:\n${changelog}\n`);
   return changelog;
-}
-
-function resolvedCommitMessage(ctx: ReleaseContext): string {
-  return ctx.commitMessage
-    ?? ctx.config.release.bumpp.commit.replaceAll("%s", ctx.version);
 }
 
 export { bump } from "./bump.js";
