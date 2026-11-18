@@ -15,23 +15,60 @@ export interface DevServer extends Command {
 
 export async function createDevServer(ctx: DevServerContext): Promise<DevServer> {
   const { logger } = ctx;
+  const {
+    devtools,
+    debugOutputWindow,
+    debugOutputFile,
+    startArgs,
+    prefs,
+    createProfileIfMissing,
+    asProxy,
+    prebuild,
+  } = ctx.config.devServer;
+
   const builder: Builder = await createBuilder(ctx);
 
-  let runner: ZoteroRunner | undefined;
+  const runner = new ZoteroRunner({
+    binary: {
+      path: zoteroBinPath(),
+      devtools,
+      args: [...startArgs],
+      debugOutputWindow,
+      debugOutputFile,
+    },
+    profile: {
+      path: process.env.ZOTERO_PLUGIN_PROFILE_PATH,
+      dataDir: process.env.ZOTERO_PLUGIN_DATA_DIR,
+      createIfMissing: createProfileIfMissing,
+      customPrefs: prefs,
+    },
+    plugins: {
+      list: [
+        {
+          id: ctx.config.id,
+          sourceDir: join(ctx.config.dist, "addon"),
+        },
+      ],
+      asProxy,
+    },
+  });
+
   let watcher: ReturnType<typeof watch> | undefined;
   let stopping: Promise<void> | undefined;
-  let resolveRun: (() => void) | undefined;
+  let settleRun!: () => void;
+  const settled = new Promise<void>((resolve) => {
+    settleRun = resolve;
+  });
 
   async function stop(): Promise<void> {
     stopping ??= (async () => {
       await watcher?.close();
       watcher = undefined;
 
-      runner?.exit();
-      runner = undefined;
+      runner.exit();
 
       await builder.stop();
-      resolveRun?.();
+      settleRun();
     })();
 
     return stopping;
@@ -39,68 +76,11 @@ export async function createDevServer(ctx: DevServerContext): Promise<DevServer>
 
   async function reload(): Promise<void> {
     logger.tip("Reloading...");
-    await runner?.reloadAllPlugins();
+    await runner.reloadAllPlugins();
     await ctx.hooks.callHook("serve:onReloaded", ctx);
   }
 
-  function watchSources(): void {
-    watcher = watch(
-      [...ctx.config.source],
-      [...ctx.config.watchIgnore],
-      {
-        onReady: async () => {
-          await ctx.hooks.callHook("serve:ready", ctx);
-        },
-        onChange: async (path) => {
-          await ctx.hooks.callHook("serve:onChanged", ctx, path);
-          await builder.rebuild(path);
-          await reload();
-        },
-      },
-    );
-  }
-
   async function run(): Promise<void> {
-    const {
-      devtools,
-      debugOutputWindow,
-      debugOutputFile,
-      startArgs,
-      prefs,
-      createProfileIfMissing,
-      asProxy,
-      prebuild,
-    } = ctx.config.devServer;
-
-    const done = new Promise<void>((resolve) => {
-      resolveRun = resolve;
-    });
-
-    runner = new ZoteroRunner({
-      binary: {
-        path: zoteroBinPath(),
-        devtools,
-        args: [...startArgs],
-        debugOutputWindow,
-        debugOutputFile,
-      },
-      profile: {
-        path: process.env.ZOTERO_PLUGIN_PROFILE_PATH,
-        dataDir: process.env.ZOTERO_PLUGIN_DATA_DIR,
-        createIfMissing: createProfileIfMissing,
-        customPrefs: prefs,
-      },
-      plugins: {
-        list: [
-          {
-            id: ctx.config.id,
-            sourceDir: join(ctx.config.dist, "addon"),
-          },
-        ],
-        asProxy,
-      },
-    });
-
     await ctx.hooks.callHook("serve:init", ctx);
 
     if (prebuild) {
@@ -117,9 +97,22 @@ export async function createDevServer(ctx: DevServerContext): Promise<DevServer>
     runner.zotero?.on("exit", onZoteroExit);
     runner.zotero?.on("close", onZoteroExit);
 
-    watchSources();
+    watcher = watch(
+      [...ctx.config.source],
+      [...ctx.config.watchIgnore],
+      {
+        onReady: async () => {
+          await ctx.hooks.callHook("serve:ready", ctx);
+        },
+        onChange: async (path) => {
+          await ctx.hooks.callHook("serve:onChanged", ctx, path);
+          await builder.rebuild(path);
+          await reload();
+        },
+      },
+    );
 
-    await done;
+    await settled;
   }
 
   return { run, stop };
