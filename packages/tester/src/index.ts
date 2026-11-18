@@ -15,7 +15,7 @@ import { TestBundler } from "./test-bundler.js";
 
 export interface Tester extends Command {
   run: () => Promise<void>;
-  stop: () => Promise<void>;
+  dispose: () => Promise<void>;
 }
 
 export async function createTester(ctx: TestContext): Promise<Tester> {
@@ -57,14 +57,14 @@ export async function createTester(ctx: TestContext): Promise<Tester> {
   });
 
   let watcher: ReturnType<typeof watch> | undefined;
-  let stopping: Promise<void> | undefined;
+  let disposing: Promise<void> | undefined;
   let settleRun!: () => void;
   const settled = new Promise<void>((resolve) => {
     settleRun = resolve;
   });
 
-  async function stop(): Promise<void> {
-    stopping ??= (async () => {
+  async function dispose(): Promise<void> {
+    disposing ??= (async () => {
       await watcher?.close();
       watcher = undefined;
 
@@ -74,11 +74,11 @@ export async function createTester(ctx: TestContext): Promise<Tester> {
 
       zotero.exit();
 
-      await builder.stop();
+      await builder.dispose();
       settleRun();
     })();
 
-    return stopping;
+    return disposing;
   }
 
   function isSourceFile(path: string): boolean {
@@ -110,7 +110,7 @@ export async function createTester(ctx: TestContext): Promise<Tester> {
 
     zotero.zotero?.on("close", () => {
       logger.info("Zotero terminated.");
-      void stop();
+      void dispose();
     });
 
     await ctx.hooks.callHook("test:run", ctx);
@@ -156,7 +156,7 @@ export async function createTester(ctx: TestContext): Promise<Tester> {
     process.exitCode = reporter.failed ? 1 : 0;
   }
 
-  return { run, stop };
+  return { run, dispose };
 }
 
 const DEFAULT_TEST_PREFS: Record<string, string | number | boolean> = {

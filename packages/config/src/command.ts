@@ -4,10 +4,10 @@ export interface Command {
   run: () => void | Promise<void>;
   /**
    * Release the resources the command created (esbuild contexts, watchers,
-   * servers, child processes). Idempotent, safe before `run()`, and never
+   * HTTP servers, child processes). Idempotent, safe before `run()`, and never
    * exits the process.
    */
-  stop?: () => void | Promise<void>;
+  dispose?: () => void | Promise<void>;
 }
 
 export type CommandFactory<

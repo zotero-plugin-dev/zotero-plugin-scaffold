@@ -129,12 +129,12 @@ export async function runCommand<TCommand extends Command>(
 ): Promise<void> {
   const ctx = await loadConfig(config);
   const command = await create(ctx);
-  const stop = command.stop?.bind(command);
+  const dispose = command.dispose?.bind(command);
 
-  const onSignal = stop
+  const onSignal = dispose
     ? () => {
         ctx.logger.info("Shutting down by user request.");
-        void Promise.resolve(stop()).finally(() => process.exit());
+        void Promise.resolve(dispose()).finally(() => process.exit());
       }
     : undefined;
 
@@ -147,7 +147,7 @@ export async function runCommand<TCommand extends Command>(
   finally {
     if (onSignal)
       process.off("SIGINT", onSignal);
-    await stop?.();
+    await dispose?.();
   }
 }
 

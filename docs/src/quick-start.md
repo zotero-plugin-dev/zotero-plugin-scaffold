@@ -132,6 +132,6 @@ try {
   await builder.run();
 }
 finally {
-  await builder.stop();
+  await builder.dispose();
 }
 ```

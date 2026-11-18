@@ -10,7 +10,7 @@ import { createBuilder } from "./builder/index.js";
 
 export interface DevServer extends Command {
   run: () => Promise<void>;
-  stop: () => Promise<void>;
+  dispose: () => Promise<void>;
 }
 
 export async function createDevServer(ctx: DevServerContext): Promise<DevServer> {
@@ -54,24 +54,24 @@ export async function createDevServer(ctx: DevServerContext): Promise<DevServer>
   });
 
   let watcher: ReturnType<typeof watch> | undefined;
-  let stopping: Promise<void> | undefined;
+  let disposing: Promise<void> | undefined;
   let settleRun!: () => void;
   const settled = new Promise<void>((resolve) => {
     settleRun = resolve;
   });
 
-  async function stop(): Promise<void> {
-    stopping ??= (async () => {
+  async function dispose(): Promise<void> {
+    disposing ??= (async () => {
       await watcher?.close();
       watcher = undefined;
 
       runner.exit();
 
-      await builder.stop();
+      await builder.dispose();
       settleRun();
     })();
 
-    return stopping;
+    return disposing;
   }
 
   async function reload(): Promise<void> {
@@ -92,7 +92,7 @@ export async function createDevServer(ctx: DevServerContext): Promise<DevServer>
 
     const onZoteroExit = (): void => {
       logger.info("Zotero terminated.");
-      void stop();
+      void dispose();
     };
     runner.zotero?.on("exit", onZoteroExit);
     runner.zotero?.on("close", onZoteroExit);
@@ -115,7 +115,7 @@ export async function createDevServer(ctx: DevServerContext): Promise<DevServer>
     await settled;
   }
 
-  return { run, stop };
+  return { run, dispose };
 }
 
 function zoteroBinPath(): string {

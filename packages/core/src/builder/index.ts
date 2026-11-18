@@ -27,7 +27,7 @@ export interface Builder extends Command {
    * re-runs the full pipeline.
    */
   rebuild: (changedFile?: string) => Promise<void>;
-  stop: () => Promise<void>;
+  dispose: () => Promise<void>;
 }
 
 export async function createBuilder(ctx: BuilderContext): Promise<Builder> {
@@ -39,7 +39,7 @@ export async function createBuilder(ctx: BuilderContext): Promise<Builder> {
 
   function assertUsable(): void {
     if (disposed)
-      throw new Error("This builder has been stopped, create a new one.");
+      throw new Error("This builder has been disposed, create a new one.");
   }
 
   function enqueue<T>(work: () => Promise<T>): Promise<T> {
@@ -127,7 +127,7 @@ export async function createBuilder(ctx: BuilderContext): Promise<Builder> {
       );
     },
 
-    async stop() {
+    async dispose() {
       if (disposed)
         return;
 
