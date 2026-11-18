@@ -1,11 +1,11 @@
 import type { Octokit } from "@octokit/rest";
-import type { ReleaseContext } from "./types.js";
+import type { ReleaseContext } from "../types.js";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { logger } from "@zotero-plugin/utils";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { GitHub } from "./github.js";
+import { GitHub } from "../providers/github.js";
 
 interface ReleaseStub {
   id: number;

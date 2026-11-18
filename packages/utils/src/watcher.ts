@@ -1,9 +1,17 @@
+import type { FSWatcher } from "chokidar";
 import type { Stats } from "node:fs";
 import chokidar from "chokidar";
 import { debounce } from "es-toolkit";
 import { logger } from "./logger.js";
 import { toArray } from "./string.js";
 
+/**
+ * Watch files and run the given handlers on change.
+ *
+ * The returned watcher is owned by the caller and must be closed with
+ * `watcher.close()`: until then the process keeps observing the paths, so a
+ * second watcher would run every handler twice.
+ */
 export function watch(
   source: string | string[],
   ignore: string | RegExp | (string | RegExp)[],
@@ -13,7 +21,7 @@ export function watch(
     onAdd?: (path: string, stats: Stats) => any | Promise<any>;
     onError?: (err: unknown) => any;
   },
-): void {
+): FSWatcher {
   const watcher = chokidar.watch(source, {
     ignored: [
       /(^|[/\\])\../, // ignore dotfiles
@@ -54,7 +62,7 @@ export function watch(
       logger.error(err);
     });
 
-  // return watcher;
+  return watcher;
 }
 
 function safeDebounce(fn?: (...args: any[]) => void) {

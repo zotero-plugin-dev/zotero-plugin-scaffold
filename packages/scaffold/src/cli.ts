@@ -1,13 +1,13 @@
-import type { Base } from "@zotero-plugin/config";
+import type { Command, CommandFactory } from "@zotero-plugin/config";
 import type { VersionBumpRelease } from "@zotero-plugin/releaser";
 import type { Context, UserConfig } from "./types.js";
 
 import process from "node:process";
 import { checkGitIgnore, logger } from "@zotero-plugin/utils";
-import { Command } from "commander";
+import { Command as Commander } from "commander";
 import { name, version } from "../package.json" with { type: "json" };
 import { loadConfig } from "./config.js";
-import { Builder, DevServer, Releaser, Tester } from "./index.js";
+import { createBuilder, createDevServer, createReleaser, createTester } from "./index.js";
 import { updateNotifier } from "./updater.js";
 
 async function main(presetCommand?: string) {
@@ -17,7 +17,7 @@ async function main(presetCommand?: string) {
   // For example, "zotero-plugin build" overrides them to "production"
   process.env.NODE_ENV ??= "development";
 
-  const cli = new Command();
+  const cli = new Commander();
 
   cli
     .version(version)
@@ -40,7 +40,7 @@ async function main(presetCommand?: string) {
     .option("--dist <dir>", "The relative path for the new output directory (default: build)")
     .action(async (options) => {
       process.env.NODE_ENV = options.dev ? "development" : "production";
-      await runCommand(Builder, {
+      await runCommand(createBuilder, {
         dist: options.dist,
       });
     });
@@ -58,7 +58,7 @@ async function main(presetCommand?: string) {
     //   "skip building website before deploy it (default: false)",
     // )
     .action(async (_options) => {
-      await runCommand(DevServer, {});
+      await runCommand(createDevServer, {});
     });
 
   cli.command("test")
@@ -69,7 +69,7 @@ async function main(presetCommand?: string) {
     .option("--no-watch", "Exit the test suite after all tests have run")
     .action(async (filters: string[], options) => {
       process.env.NODE_ENV = "test";
-      await runCommand(Tester, {
+      await runCommand(createTester, {
         test: {
           abortOnFail: options.abortOnFail,
           watch: !options.exitOnFinish && options.watch,
@@ -94,7 +94,7 @@ async function main(presetCommand?: string) {
     .option("-y, --yes", "Skip confirmation")
     .action(async (version, options) => {
       process.env.NODE_ENV = "production";
-      await runCommand(Releaser, {
+      await runCommand(createReleaser, {
         release: {
           bumpp: {
             release: version as VersionBumpRelease,
@@ -123,16 +123,32 @@ async function main(presetCommand?: string) {
   );
 }
 
-type Constructor<T> = new (ctx: Context) => T;
-
-export async function runCommand<T extends Base>(
-  CommandClass: Constructor<T>,
+export async function runCommand<TCommand extends Command>(
+  create: CommandFactory<TCommand, Context>,
   config: UserConfig,
 ): Promise<void> {
   const ctx = await loadConfig(config);
-  const instance = new CommandClass(ctx);
-  process.on("SIGINT", instance.exit.bind(instance));
-  await instance.run();
+  const command = await create(ctx);
+  const dispose = command.dispose?.bind(command);
+
+  const onSignal = dispose
+    ? () => {
+        ctx.logger.info("Shutting down by user request.");
+        void Promise.resolve(dispose()).finally(() => process.exit());
+      }
+    : undefined;
+
+  if (onSignal)
+    process.once("SIGINT", onSignal);
+
+  try {
+    await command.run();
+  }
+  finally {
+    if (onSignal)
+      process.off("SIGINT", onSignal);
+    await dispose?.();
+  }
 }
 
 /**

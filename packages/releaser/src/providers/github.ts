@@ -1,11 +1,12 @@
-import type { ReleaseContext } from "./types.js";
+import type { Logger } from "@zotero-plugin/utils";
+import type { ReleaseContext, ReleaseProvider } from "../types.js";
 import { readFile, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import process from "node:process";
 import { Octokit } from "@octokit/rest";
 import { getMimeTypeByFileName } from "@zotero-plugin/utils";
-import { glob } from "tinyglobby";
-import { ReleaseBase } from "./base.js";
+import { glob, globSync } from "tinyglobby";
+import { isEnabled } from "../config.js";
 
 /**
  * The subset of the GitHub release object used by the releaser.
@@ -21,11 +22,15 @@ interface GitHubReleaseAsset {
   name: string;
 }
 
-export class GitHub extends ReleaseBase {
+export class GitHub {
   client: Octokit;
-  constructor(ctx: ReleaseContext) {
-    super(ctx);
+
+  constructor(protected ctx: ReleaseContext) {
     this.client = this.getClient();
+  }
+
+  get logger(): Logger {
+    return this.ctx.logger;
   }
 
   async run(): Promise<void> {
@@ -36,6 +41,13 @@ export class GitHub extends ReleaseBase {
 
     this.logger.info("Refreshing update manifest...");
     await this.refreshUpdateManifest();
+  }
+
+  checkFiles(): void {
+    const { dist } = this.ctx.config;
+
+    if (globSync(`${dist}/*.xpi`).length === 0)
+      throw new Error("No xpi file found, are you sure you have run build?");
   }
 
   /**
@@ -402,3 +414,11 @@ function isImmutableReleaseError(error: unknown): boolean {
     && typeof message === "string"
     && message.includes("immutable release");
 }
+
+export const githubProvider: ReleaseProvider = {
+  name: "github",
+  isEnabled: ctx => isEnabled(ctx.config.release.github.enable),
+  run: async (ctx) => {
+    await new GitHub(ctx).run();
+  },
+};

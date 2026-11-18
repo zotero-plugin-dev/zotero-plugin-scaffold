@@ -183,6 +183,18 @@ export class TestBundler {
     await this.createTestHtml(tests);
   }
 
+  /**
+   * Release the esbuild context owned by this bundler.
+   *
+   * Idempotent: safe to call when no bundle was built yet, and safe to call
+   * while watching (the next `generate()` creates a fresh context).
+   */
+  async dispose(): Promise<void> {
+    const esbuildContext = this.esbuildContext;
+    this.esbuildContext = undefined;
+    await esbuildContext?.dispose();
+  }
+
   private async generateTestResources(): Promise<void> {
     // bootstrap
     const manifest = generateManifest();
@@ -257,6 +269,11 @@ export class TestBundler {
     // Bundle all test files, including both JavaScript and TypeScript.
     // The test API plugin is only attached here: the test runtime needs to
     // resolve mocha/chai for real.
+    //
+    // `generate()` can run more than once (adding a file while watching), so
+    // the previous context is disposed first: an abandoned context keeps its
+    // esbuild service process alive.
+    await this.dispose();
     this.esbuildContext = await context({
       entryPoints,
       outdir: `${TESTER_PLUGIN_DIR}/content/units`,
