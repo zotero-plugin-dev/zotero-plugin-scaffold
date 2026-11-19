@@ -2,7 +2,6 @@ import type { Project } from "../helpers/project";
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import process from "node:process";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runCli } from "../helpers/cli";
@@ -11,21 +10,20 @@ import { createProject, TMP_ROOT } from "../helpers/project";
 
 const execFileAsync = promisify(execFile);
 
-/** A fixed identity, so a developer's global git config cannot leak in. */
 async function git(dir: string, args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync("git", args, {
-    cwd: dir,
-    env: {
-      ...process.env,
-      GIT_AUTHOR_NAME: "e2e",
-      GIT_AUTHOR_EMAIL: "e2e@example.com",
-      GIT_COMMITTER_NAME: "e2e",
-      GIT_COMMITTER_EMAIL: "e2e@example.com",
-      GIT_CONFIG_GLOBAL: "/dev/null",
-      GIT_CONFIG_NOSYSTEM: "1",
-    },
-  });
+  const { stdout } = await execFileAsync("git", args, { cwd: dir });
   return stdout.trim();
+}
+
+/**
+ * Repo-local, because the CLI runs its own `git commit`: a bare CI runner has no
+ * identity, and a developer's `commit.gpgsign` would fail that commit too.
+ */
+async function setIdentity(dir: string): Promise<void> {
+  await git(dir, ["config", "user.name", "e2e"]);
+  await git(dir, ["config", "user.email", "e2e@example.com"]);
+  await git(dir, ["config", "commit.gpgsign", "false"]);
+  await git(dir, ["config", "tag.gpgsign", "false"]);
 }
 
 async function createRemote(): Promise<string> {
@@ -42,6 +40,7 @@ async function initRepo(project: Project): Promise<string> {
   await project.write(".gitignore", "node_modules\n.env\n.scaffold\ndist\ntypings\n");
 
   await git(project.dir, ["init", "-b", "main"]);
+  await setIdentity(project.dir);
   await git(project.dir, ["remote", "add", "origin", remote]);
   await git(project.dir, ["add", "-A"]);
   await git(project.dir, ["commit", "-m", "feat: initial commit"]);
@@ -173,6 +172,7 @@ describe("release: push failure", () => {
     project = await createProject("release-push-failure");
     await project.write(".gitignore", "node_modules\n.env\n.scaffold\ndist\ntypings\n");
     await git(project.dir, ["init", "-b", "main"]);
+    await setIdentity(project.dir);
     await git(project.dir, ["add", "-A"]);
     await git(project.dir, ["commit", "-m", "feat: initial commit"]);
     await git(project.dir, ["tag", `v${await pkgVersion(project)}`]);
