@@ -1,0 +1,20 @@
+{
+  "name": "scaffold-playground",
+  "type": "module",
+  "version": "0.9.4",
+  "private": true,
+  "description": "A real Zotero plugin to debug scaffold by hand: `pnpm play dev`, `pnpm play build`, `pnpm play test`.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git"
+  },
+  "scripts": {
+    "dev": "zodev",
+    "build": "zobuild",
+    "test": "zotest",
+    "release": "zorelease"
+  },
+  "devDependencies": {
+    "zotero-plugin-scaffold": "workspace:*"
+  }
+}

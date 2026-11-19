@@ -1,0 +1,14 @@
+{
+  "manifest_version": 2,
+  "name": "Scaffold Fixture Plugin",
+  "description": "A minimal but real Zotero plugin, used by the scaffold e2e suite.",
+  "applications": {
+    "zotero": {
+      "id": "scaffold-fixture@example.com",
+      "update_url": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold/releases/download/release/update.json",
+      "strict_min_version": "6.999",
+      "strict_max_version": "8.*"
+    }
+  },
+  "version": "<version>"
+}

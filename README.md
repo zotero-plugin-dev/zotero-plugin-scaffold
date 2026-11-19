@@ -28,8 +28,6 @@ This repository is a pnpm workspace. The published packages are:
 | [`@zotero-plugin/tester`](./packages/tester)        | Test command                            |
 | [`@zotero-plugin/releaser`](./packages/releaser)    | Release command                         |
 
-`zotero-plugin-scaffold` re-exports the public API, so downstream projects that depend on it keep working unchanged.
-
 ## Documentation
 
 [Read the Docs to Learn More](https://zotero-plugin-dev.github.io/zotero-plugin-scaffold).
@@ -37,35 +35,37 @@ This repository is a pnpm workspace. The published packages are:
 ## Contributing
 
 ```bash
-# Git Clone
+# Git clone
 git clone https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git
 cd zotero-plugin-scaffold/
 
 # Install deps
-corepack enable
+npx get-pnpm  # https://pnpm.io/installation
 pnpm install
 
-# Build all packages
-pnpm run build
-
-# link local scaffold to your plugin
-cd your-plugin-work-dir/
-pnpm link ../zotero-plugin-scaffold/packages/scaffold/
-cd zotero-plugin-scaffold/
+# Development mode
+pnpm dev
 ```
 
-Now you can make changes to Scaffold and test them in your plugin.
+Next, you can modify the scaffold code and run the scaffold in the [`playground/`](./playground) to test it, this is a minimal Zotero plugin:
 
-When you're done modifying, make sure that you can pass the build and that the code style meets the requirements of this repository.
+```bash
+# Needs playground/.env with the Zotero path, see playground/.env.example
+pnpm play dev    # run zotero-plugin dev
+pnpm play build  # run zotero-plugin build
+pnpm play test   # run zotero-plugin test
+```
+
+When you're done, make sure the build, the unit tests, the e2e suite and the lint pass.
 
 ```bash
 # Build
-pnpm run build
+pnpm build
 
-# Test
+# Run tests
 pnpm test
 
-# ES Lint
+# Run lint
 pnpm run lint:fix
 ```
 

@@ -1,0 +1,27 @@
+{
+  "addons": {
+    "scaffold-fixture@example.com": {
+      "updates": [
+        {
+          "version": "0.4.5",
+          "update_link": "https://example.com/example.xpi",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "60.0"
+            }
+          }
+        },
+        {
+          "version": "<version>",
+          "update_link": "https://github.com/zotero-plugin-dev/zotero-plugin-scaffold/releases/download/v<version>/scaffold-fixture.xpi",
+          "applications": {
+            "zotero": {
+              "strict_min_version": "6.999",
+              "strict_max_version": "8.*"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

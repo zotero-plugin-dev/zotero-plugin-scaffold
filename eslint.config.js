@@ -13,4 +13,11 @@ export default antfu({
     quotes: "double",
   },
   formatters: true,
+  ignores: [
+    // Zotero's bootstrap scope: `pref()` is defined by the host, and the files are
+    // copied as assets rather than compiled.
+    "e2e/fixture/static/**",
+    "playground/static/**",
+    "e2e/.tmp/**",
+  ],
 });

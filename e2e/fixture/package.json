@@ -1,0 +1,11 @@
+{
+  "name": "scaffold-fixture-plugin",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The plugin the e2e suite builds: the smallest plugin that installs, runs and uninstalls.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zotero-plugin-dev/zotero-plugin-scaffold.git"
+  }
+}

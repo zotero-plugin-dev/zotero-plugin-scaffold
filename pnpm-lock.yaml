@@ -273,9 +273,6 @@ catalogs:
     tsdown:
       specifier: ^0.23.7
       version: 0.23.7
-    tsx:
-      specifier: ^4.23.15
-      version: 4.23.15
     typescript:
       specifier: ~6.0.3
       version: 6.0.3
@@ -347,6 +344,34 @@ importers:
       zotero-plugin-scaffold:
         specifier: workspace:^
         version: link:../packages/scaffold
+
+  e2e:
+    dependencies:
+      zotero-plugin-scaffold:
+        specifier: workspace:*
+        version: link:../packages/scaffold
+    devDependencies:
+      '@types/fs-extra':
+        specifier: catalog:dev
+        version: 11.0.4
+      '@types/node':
+        specifier: catalog:dev
+        version: 26.6.6
+      adm-zip:
+        specifier: 'catalog:'
+        version: 0.6.1
+      fs-extra:
+        specifier: 'catalog:'
+        version: 11.4.1
+      tinyglobby:
+        specifier: 'catalog:'
+        version: 0.2.17
+      typescript:
+        specifier: catalog:dev
+        version: 6.0.3
+      vitest:
+        specifier: catalog:dev
+        version: 5.1.0(@types/node@26.6.6)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/config:
     dependencies:
@@ -651,21 +676,11 @@ importers:
         specifier: catalog:dev
         version: 5.1.0(@types/node@26.6.6)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
-  test/e2e:
-    dependencies:
-      tinyglobby:
-        specifier: 'catalog:'
-        version: 0.2.17
+  playground:
     devDependencies:
-      tsx:
-        specifier: catalog:dev
-        version: 4.23.15
-      vitest:
-        specifier: catalog:dev
-        version: 5.1.0(@types/node@26.6.6)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
       zotero-plugin-scaffold:
         specifier: workspace:*
-        version: link:../../packages/scaffold
+        version: link:../packages/scaffold
 
 packages:
 
@@ -7071,6 +7086,7 @@ snapshots:
       esbuild: 0.28.2
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   twoslash-protocol@0.3.9: {}
 

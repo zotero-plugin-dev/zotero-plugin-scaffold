@@ -6,7 +6,10 @@ packages:
   - packages/*
   - "!**/dist/**"
   - docs
-  - test/e2e
+  # Precise paths, not `e2e/*`: `e2e/.tmp/` holds copies of the fixture at run
+  # time, and a glob would treat each of them as a workspace member.
+  - e2e
+  - playground
 
 overrides:
   vite: ^8.3.5
@@ -55,7 +58,6 @@ catalogs:
     lint-staged: ^17.6.0
     oxc-minify: ^0.156.0
     tsdown: ^0.23.7
-    tsx: ^4.23.15
     typescript: ~6.0.3
     unplugin-raw: ^0.8.0
     vitepress: 2.0.0-alpha.21
