@@ -43,6 +43,11 @@ cd zotero-plugin-scaffold/
 npx get-pnpm  # https://pnpm.io/installation
 pnpm install
 
+# Set environment variables,
+# add the path to Zotero binary to .env
+cp e2e/.env.example e2e/.env
+cp playground/.env.example playground/.env
+
 # Development mode
 pnpm dev
 ```
@@ -50,7 +55,6 @@ pnpm dev
 Next, you can modify the scaffold code and run the scaffold in the [`playground/`](./playground) to test it, this is a minimal Zotero plugin:
 
 ```bash
-# Needs playground/.env with the Zotero path, see playground/.env.example
 pnpm play dev    # run zotero-plugin dev
 pnpm play build  # run zotero-plugin build
 pnpm play test   # run zotero-plugin test
