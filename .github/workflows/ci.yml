@@ -27,7 +27,7 @@ jobs:
             **/dist/
             !**/node_modules
 
-  test:
+  test-unit:
     needs:
       - build
     runs-on: ubuntu-latest
@@ -43,7 +43,7 @@ jobs:
       - name: Test
         run: pnpm test:unit
 
-  e2e:
+  test-e2e:
     needs:
       - build
     runs-on: ubuntu-latest
