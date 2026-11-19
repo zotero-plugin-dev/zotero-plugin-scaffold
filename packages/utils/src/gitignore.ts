@@ -3,10 +3,10 @@ import { pathExists } from "fs-extra";
 import { logger } from "./logger.js";
 
 export async function checkGitIgnore(): Promise<void> {
-  if (!pathExists(".git"))
+  if (!await pathExists(".git"))
     return;
 
-  if (!pathExists(".gitignore")) {
+  if (!await pathExists(".gitignore")) {
     logger.warn("No .gitignore file found");
     return;
   }

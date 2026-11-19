@@ -138,15 +138,18 @@ export async function runCommand<TCommand extends Command>(
       }
     : undefined;
 
+  // `SIGINT` is Ctrl-C, `SIGTERM` a supervisor or CI teardown: both must dispose.
+  const signals = ["SIGINT", "SIGTERM"] as const;
+
   if (onSignal)
-    process.once("SIGINT", onSignal);
+    signals.forEach(signal => process.once(signal, onSignal));
 
   try {
     await command.run();
   }
   finally {
     if (onSignal)
-      process.off("SIGINT", onSignal);
+      signals.forEach(signal => process.off(signal, onSignal));
     await dispose?.();
   }
 }

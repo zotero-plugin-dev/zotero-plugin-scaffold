@@ -1,0 +1,3 @@
+Copied as an asset, never bundled: this file proves `build.assets` covers `static/**`.
+version=__version__
+buildTime=__buildTime__

@@ -15,10 +15,22 @@ rfcs/
 **/.vitepress/dist
 **/.vitepress/cache
 
-# e2e
-test/e2e/fixtures/dist
-test/e2e/fixtures/.scaffold
-test/e2e/fixtures/typings
-test/e2e/fixtures/.gitignore
-!test/e2e/snap/dist
+# e2e and playground
+# Two real projects whose commands write into their own directory. The fixture
+# is copied into `e2e/.tmp/<case>/` before every run, so nothing it writes is
+# tracked either.
+e2e/.env
+e2e/.tmp/
+e2e/fixture/dist
+e2e/fixture/.scaffold
+e2e/fixture/typings
+playground/.env
+playground/dist
+playground/.scaffold
+playground/typings
 **/.scaffold
+
+# The recorded snapshots are part of the suite, so they stay tracked despite the
+# `dist` rule above.
+!e2e/snap/dist
+!e2e/snap/typings

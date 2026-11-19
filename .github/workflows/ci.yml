@@ -27,7 +27,7 @@ jobs:
             **/dist/
             !**/node_modules
 
-  test:
+  test-unit:
     needs:
       - build
     runs-on: ubuntu-latest
@@ -41,7 +41,26 @@ jobs:
           name: build-result
 
       - name: Test
-        run: pnpm test
+        run: pnpm test:unit
+
+  test-e2e:
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup JS
+        uses: zotero-plugin-dev/workflows/setup-js@main
+
+      - name: Setup Zotero
+        uses: zotero-plugin-dev/setup-zotero@main
+
+      - name: Restore Build Result
+        uses: actions/download-artifact@v8
+        with:
+          name: build-result
+
+      - name: Test
+        run: pnpm test:e2e
 
   docs:
     runs-on: ubuntu-latest

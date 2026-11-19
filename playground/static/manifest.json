@@ -1,0 +1,14 @@
+{
+  "manifest_version": 2,
+  "name": "Scaffold Playground Plugin",
+  "version": "0.0.1",
+  "description": "A real Zotero plugin, used to debug scaffold by hand.",
+  "applications": {
+    "zotero": {
+      "id": "scaffold-playground@example.com",
+      "update_url": "https://example.com/update.json",
+      "strict_min_version": "6.999",
+      "strict_max_version": "8.*"
+    }
+  }
+}

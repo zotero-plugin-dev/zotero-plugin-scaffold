@@ -1,0 +1,21 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "types": [
+      "node",
+      "vitest/globals"
+    ],
+    "noEmit": true,
+    "outDir": "dist",
+    "isolatedDeclarations": false
+  },
+  "include": [
+    "**/*.ts"
+  ],
+  "exclude": [
+    "**/dist/**",
+    "fixture/**",
+    ".tmp/**"
+  ]
+}

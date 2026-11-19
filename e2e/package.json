@@ -1,0 +1,24 @@
+{
+  "name": "zotero-plugin-scaffold-e2e",
+  "type": "module",
+  "version": "0.9.4",
+  "private": true,
+  "description": "End-to-end tests for zotero-plugin-scaffold: every command is run through its published bin and dist.",
+  "scripts": {
+    "build:tsc": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
+  },
+  "dependencies": {
+    "zotero-plugin-scaffold": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "adm-zip": "catalog:",
+    "fs-extra": "catalog:",
+    "tinyglobby": "catalog:",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev"
+  }
+}

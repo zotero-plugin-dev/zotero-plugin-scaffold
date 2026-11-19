@@ -1,0 +1,4 @@
+# Written by `pnpm play build` / `pnpm play dev`.
+dist
+.scaffold
+typings

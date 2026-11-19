@@ -1,0 +1,16 @@
+# Normalize line endings on checkout, whatever the platform.
+#
+# This matters more than usual here: two e2e cases edit a copy of the fixture's
+# `zotero-plugin.config.ts` as *text* (adding a hook, removing a block). A CRLF
+# checkout would make their literal matches silently miss, and the cases would
+# then assert against the old configuration and still pass — a green test that
+# tests nothing. Forcing LF removes that failure mode instead of guarding
+# against it in every case.
+* text=auto eol=lf
+
+# Assets that must keep their bytes.
+*.png binary
+*.jpg binary
+*.gif binary
+*.xpi binary
+*.zip binary

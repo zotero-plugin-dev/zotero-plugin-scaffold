@@ -21,16 +21,19 @@
   "scripts": {
     "dev": "tsdown --watch",
     "build": "pnpm build:tsdown && pnpm build:tsc",
+    "build:tsdown": "tsdown",
+    "build:tsc": "pnpm -r build:tsc",
+    "test": "vitest",
+    "test:unit": "vitest run --project=!e2e",
+    "test:e2e": "vitest run --project=e2e",
     "lint:check": "eslint .",
     "lint:fix": "eslint . --fix",
     "docs:dev": "pnpm -C docs run dev",
     "docs:build": "pnpm -C docs run build",
     "release": "bumpp -r --commit \"chore(release): publish v%s\"",
     "update:deps": "pnpx taze minor -w -f -l -r",
-    "test": "vitest",
-    "prepare": "husky",
-    "build:tsdown": "tsdown",
-    "build:tsc": "pnpm -r build:tsc"
+    "play": "pnpm -C playground",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@antfu/eslint-config": "catalog:dev",
