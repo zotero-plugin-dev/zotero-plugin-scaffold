@@ -1,4 +1,5 @@
 import { appendFileSync, mkdirSync } from "node:fs";
+import process from "node:process";
 import { defineConfig } from "zotero-plugin-scaffold";
 
 /** Records a hook; the suite asserts the sequence, not log text. */
@@ -8,6 +9,11 @@ function ev(name: string) {
     appendFileSync(".scaffold/events.jsonl", `${name}\n`);
   };
 }
+
+// Zotero 10 takes `-headless`: no window, same behaviour. `E2E_HEADED=1` shows one.
+const zoteroArgs = process.env.E2E_HEADED
+  ? []
+  : ["-headless"];
 
 export default defineConfig({
   name: "Scaffold Fixture Plugin",
@@ -78,6 +84,7 @@ export default defineConfig({
 
   devServer: {
     devtools: false,
+    startArgs: zoteroArgs,
     hooks: {
       "serve:init": ev("serve:init"),
       "serve:prebuild": ev("serve:prebuild"),
@@ -89,6 +96,7 @@ export default defineConfig({
 
   test: {
     entries: ["test"],
+    startArgs: zoteroArgs,
     watch: false,
     startupDelay: 500,
     waitForPlugin: "() => !!Zotero.ScaffoldFixture",

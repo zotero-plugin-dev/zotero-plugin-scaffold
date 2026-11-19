@@ -41,7 +41,7 @@ jobs:
           name: build-result
 
       - name: Test
-        run: pnpm test
+        run: pnpm test:unit
 
   e2e:
     needs:

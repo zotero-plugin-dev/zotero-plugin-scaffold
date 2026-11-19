@@ -13,8 +13,8 @@ pnpm -C e2e test                     # the same suite, from this package
 
 | Script           | What it does                                   |
 | ---------------- | ---------------------------------------------- |
-| `pnpm test`      | Every project, unit tests and this suite       |
-| `pnpm test:unit` | Unit tests only (`vitest --project=!e2e`)      |
+| `pnpm test`      | Every project: unit tests, then this suite     |
+| `pnpm test:unit` | Unit tests only (`vitest run --project=!e2e`)  |
 | `pnpm test:e2e`  | This project only (`vitest run --project=e2e`) |
 
 The project is defined in [`vitest.config.ts`](./vitest.config.ts) here, and the root config lists `e2e` as a project directory, so both entry points run the same suite. It carries `sequence.groupOrder: 1` because Vitest requires every project of one group to share `maxWorkers`, and this one caps them at 4. Without that file Vitest falls back to its defaults in this package: `**/*.test.ts` also collects `fixture/test/**` (which only runs inside Zotero) and the copies in `.tmp/`, and `hookTimeout` becomes 10 s instead of the minutes a Zotero launch needs.
@@ -32,6 +32,8 @@ cp e2e/.env.example e2e/.env   # then fill ZOTERO_PLUGIN_ZOTERO_BIN_PATH
 ```
 
 `helpers/cli.ts` reads `e2e/.env` and drops `ZOTERO_PLUGIN_PROFILE_PATH`/`_DATA_DIR`, so a run never touches your own profile. In CI, `setup-zotero` provides the same variable.
+
+The fixture passes `-headless` (Zotero 10), so a run opens no window, and `E2E_HEADED=1 pnpm test:e2e` brings the window back when you want to watch. `playground/` is the other way round: it exists to be looked at.
 
 ### Parallelism
 

@@ -62,8 +62,13 @@ When you're done, make sure the build, the unit tests, the e2e suite and the lin
 # Build
 pnpm build
 
-# Run tests
+# Every test: unit tests, then the e2e suite, which launches a headless Zotero
+# and needs a fresh `dist` (`pnpm build:tsdown`)
 pnpm test
+
+# One half, while iterating / debugging
+pnpm test:unit
+pnpm test:e2e
 
 # Run lint
 pnpm run lint:fix
