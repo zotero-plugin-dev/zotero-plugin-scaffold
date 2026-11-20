@@ -23,9 +23,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: build-result
-          path: |
-            **/dist/
-            !**/node_modules
+          path: packages/*/dist/
 
   test-unit:
     needs:
@@ -39,6 +37,9 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: build-result
+          # The artifact root is `packages/`, so restore it there to keep the
+          # `packages/*/dist` layout that the workspace packages link against.
+          path: packages
 
       - name: Test
         run: pnpm test:unit
@@ -58,6 +59,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: build-result
+          path: packages
 
       - name: Test
         run: pnpm test:e2e
@@ -82,6 +84,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: build-result
+          path: packages
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
