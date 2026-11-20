@@ -1,7 +1,6 @@
 import type { Command } from "@zotero-plugin/config";
 import type { Builder } from "./builder/index.js";
 import type { DevServerContext } from "./types.js";
-import { existsSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 import { watch } from "@zotero-plugin/utils";
@@ -30,7 +29,6 @@ export async function createDevServer(ctx: DevServerContext): Promise<DevServer>
 
   const runner = new ZoteroRunner({
     binary: {
-      path: zoteroBinPath(),
       devtools,
       args: [...startArgs],
       debugOutputWindow,
@@ -52,6 +50,12 @@ export async function createDevServer(ctx: DevServerContext): Promise<DevServer>
       asProxy,
     },
   });
+
+  const { channel, version } = runner.binaryInfo;
+  const label = `Using Zotero ${version ?? "unknown version"} (${channel ?? "unknown channel"}).`;
+  logger.info(channel === "beta"
+    ? label
+    : `${label} The beta channel is recommended for plugin development.`);
 
   let watcher: ReturnType<typeof watch> | undefined;
   let disposing: Promise<void> | undefined;
@@ -116,12 +120,4 @@ export async function createDevServer(ctx: DevServerContext): Promise<DevServer>
   }
 
   return { run, dispose };
-}
-
-function zoteroBinPath(): string {
-  const path = process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH;
-  if (!path || !existsSync(path))
-    throw new Error("The Zotero binary not found.");
-
-  return path;
 }

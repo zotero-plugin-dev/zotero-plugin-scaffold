@@ -9,11 +9,13 @@ When source code changes are detected, the plugin is automatically recompiled an
 Define the paths for the Zotero binary, profile, and data in a `.env` file:
 
 ```ini
-# Path to the Zotero binary file.
-# For macOS, the path is typically `*/Zotero.app/Contents/MacOS/zotero`.
+# Path to the Zotero binary file. Optional: left empty, it is detected.
+# Linux: `/path/to/zotero`;
+# macOS: `/Applications/Zotero.app/Contents/MacOS/zotero`;
+# Windows: # `D:/Program Files/Zotero/zotero.exe`.
 ZOTERO_PLUGIN_ZOTERO_BIN_PATH=/path/to/zotero.exe
 
-# Path to the profile used for development.
+# Path to the profile used for development. Optional, a blank profile will be created if left blank.
 # To create a profile for development, start the profile manager with `/path/to/zotero.exe -p`.
 # More info: https://www.zotero.org/support/kb/profile_directory
 ZOTERO_PLUGIN_PROFILE_PATH=/path/to/profile
@@ -22,7 +24,7 @@ ZOTERO_PLUGIN_PROFILE_PATH=/path/to/profile
 ZOTERO_PLUGIN_DATA_DIR=/path/to/data
 ```
 
-- `ZOTERO_PLUGIN_ZOTERO_BIN_PATH` is required.
+- `ZOTERO_PLUGIN_ZOTERO_BIN_PATH` is optional, when it is missing or empty, an installed Zotero is used. We recommend that you explicitly set the path to the beta version of the Zotero binary here.
 - `ZOTERO_PLUGIN_PROFILE_PATH` and `ZOTERO_PLUGIN_DATA_DIR` are optional, a blank profile will be automatically created if not provided.
 - If you manage multiple plugins, these paths can be stored in system/user environment variables. However, paths defined in `.env` currently do not override system/user-level variables. This behavior may change in future versions.
 

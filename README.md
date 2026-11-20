@@ -43,8 +43,7 @@ cd zotero-plugin-scaffold/
 npx get-pnpm  # https://pnpm.io/installation
 pnpm install
 
-# Set environment variables,
-# add the path to Zotero binary to .env
+# Set environment variables. The Zotero binary path may stay empty: it is detected when it is not given.
 cp e2e/.env.example e2e/.env
 cp playground/.env.example playground/.env
 

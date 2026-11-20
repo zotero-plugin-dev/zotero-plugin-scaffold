@@ -77,17 +77,9 @@ describe("cli: missing prerequisites", () => {
   });
 
   /** Resolved while the command is created, so no build starts. */
-  it("exits 1 with a message when the Zotero binary is missing", async () => {
-    const result = await runCli("zodev", [], {
-      cwd: project.dir,
-      env: { ZOTERO_PLUGIN_ZOTERO_BIN_PATH: "" },
-    });
-
-    expect(result.code).toBe(1);
-    expect(result.stdout).toContain("Zotero binary not found");
-  });
-
   it("exits 1 with a message when the Zotero binary is not a file", async () => {
+    // An explicit path is validated and never replaced by a detected install:
+    // a stale or mistyped value has to be an error, not a silent detour.
     const result = await runCli("zodev", [], {
       cwd: project.dir,
       env: {
@@ -97,5 +89,6 @@ describe("cli: missing prerequisites", () => {
 
     expect(result.code).toBe(1);
     expect(result.stdout).toContain("Zotero binary not found");
+    expect(result.stdout).toContain("ZOTERO_PLUGIN_ZOTERO_BIN_PATH");
   });
 });

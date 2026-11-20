@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import process from "node:process";
 import { CACHE_DIR } from "@zotero-plugin/config";
 import { LOG_LEVEL, logger } from "@zotero-plugin/utils";
+import { findZoteroBinary } from "@zotero-plugin/zotero-runner";
 import { isDebug, isLinux } from "std-env";
 import { Xvfb } from "xvfb-ts";
 
@@ -81,8 +82,11 @@ export async function installDepsForUbuntu24(): Promise<void> {
 }
 
 export async function installZoteroLinux(): Promise<void> {
-  if (process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH) {
-    logger.debug("Local Zotero found, skip to download.");
+  // A Zotero already on this machine is the one to test against; only a
+  // machine without one pays for the download.
+  const installed = findZoteroBinary();
+  if (installed) {
+    logger.warn(`Using the Zotero installed at ${installed.path}, skip to download.`);
     return;
   }
 

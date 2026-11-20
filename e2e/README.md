@@ -33,6 +33,8 @@ cp e2e/.env.example e2e/.env   # then fill ZOTERO_PLUGIN_ZOTERO_BIN_PATH
 
 `helpers/cli.ts` reads `e2e/.env` and drops `ZOTERO_PLUGIN_PROFILE_PATH`/`_DATA_DIR`, so a run never touches your own profile. In CI, `setup-zotero` provides the same variable.
 
+Without it the CLI detects an installed Zotero itself (see [Dev Server](/serve#the-zotero-binary)); `cli.test.ts` covers the miss by pointing the variable at a path that does not exist.
+
 The fixture passes `-headless` (Zotero 10), so a run opens no window, and `E2E_HEADED=1 pnpm test:e2e` brings the window back when you want to watch. `playground/` is the other way round: it exists to be looked at.
 
 ### Parallelism

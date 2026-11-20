@@ -9,7 +9,7 @@ Its sibling [`e2e/`](../e2e) is the automated suite; this one is for what a test
 pnpm i
 pnpm build          # at the repository root: refreshes every packages/*/dist
 cp .env.example .env
-# then fill ZOTERO_PLUGIN_ZOTERO_BIN_PATH
+# set ZOTERO_PLUGIN_ZOTERO_BIN_PATH
 ```
 
 No `pnpm link`: `package.json` depends on `zotero-plugin-scaffold: workspace:*`, so the bins resolve to this repository's `packages/scaffold/bin/*.mjs`.
