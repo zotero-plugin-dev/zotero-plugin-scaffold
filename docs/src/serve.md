@@ -10,10 +10,12 @@ Define the paths for the Zotero binary, profile, and data in a `.env` file:
 
 ```ini
 # Path to the Zotero binary file. Optional: left empty, it is detected.
-# For macOS, the path is typically `*/Zotero.app/Contents/MacOS/zotero`.
+# Linux: `/path/to/zotero`;
+# macOS: `/Applications/Zotero.app/Contents/MacOS/zotero`;
+# Windows: # `D:/Program Files/Zotero/zotero.exe`.
 ZOTERO_PLUGIN_ZOTERO_BIN_PATH=/path/to/zotero.exe
 
-# Path to the profile used for development.
+# Path to the profile used for development. Optional, a blank profile will be created if left blank.
 # To create a profile for development, start the profile manager with `/path/to/zotero.exe -p`.
 # More info: https://www.zotero.org/support/kb/profile_directory
 ZOTERO_PLUGIN_PROFILE_PATH=/path/to/profile
