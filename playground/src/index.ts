@@ -1,10 +1,23 @@
 import { PREF_PREFIX } from "./config";
 
-declare const __buildTime__: string;
-
-(globalThis as { ScaffoldPlayground?: unknown }).ScaffoldPlayground = {
+// @ts-expect-error ScaffoldPlayground not typed
+globalThis.ScaffoldPlayground = {
   initialized: true,
   prefsPrefix: PREF_PREFIX,
-  // Replaced by `build.define`.
-  buildTime: __buildTime__,
+
+  onStartup() {
+    Zotero.debug(`Calling onStartup hook`);
+  },
+
+  onMainWindowLoad(win: Window) {
+    win.MozXULElement.insertFTLIfNeeded("scaffold-playground-prefs.ftl");
+  },
+
+  onMainWindowUnload(win: Window) {
+    win.document.querySelector("[href=\"scaffold-playground-prefs.ftl\"]")?.remove();
+  },
+
+  onShutdown() {
+    //
+  },
 };

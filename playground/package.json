@@ -15,6 +15,7 @@
     "release": "zorelease"
   },
   "devDependencies": {
-    "zotero-plugin-scaffold": "workspace:*"
+    "zotero-plugin-scaffold": "workspace:*",
+    "zotero-types": "catalog:playground"
   }
 }

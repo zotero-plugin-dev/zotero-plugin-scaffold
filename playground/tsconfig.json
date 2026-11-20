@@ -1,16 +1,8 @@
 {
-  // For the editor: the playground is a scratchpad, not a package.
-  //
-  // `test/` is left out on purpose — those files run inside a Zotero tab, where
-  // `Zotero` and its friends are globals provided by the host, not by any
-  // installed type package. Linting still covers them.
-  "extends": "../tsconfig.base.json",
+  "extends": "zotero-types/entries/sandbox/tsconfig.json",
   "compilerOptions": {
-    "types": ["node"],
-    "declaration": false,
-    "noEmit": true,
-    "isolatedDeclarations": false
+    "noEmit": true
   },
-  "include": ["src", "zotero-plugin.config.ts"],
-  "exclude": ["dist", ".scaffold"]
+  "include": ["src", "typings"],
+  "exclude": ["static", "dist", ".scaffold"]
 }

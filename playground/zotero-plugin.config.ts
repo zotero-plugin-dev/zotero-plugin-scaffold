@@ -3,7 +3,7 @@ import { defineConfig } from "zotero-plugin-scaffold";
 /** Hooks talk to the console here; nothing asserts them. */
 function ev(name: string) {
   return (): void => {
-    console.log(`[hook] ${name}`);
+    console.log(`  [hook] ${name}`);
   };
 }
 
@@ -18,7 +18,7 @@ export default defineConfig({
   xpiDownloadLink: "https://github.com/{{owner}}/{{repo}}/releases/download/v{{version}}/{{xpiName}}.xpi",
 
   // Uncomment to follow every step of a command.
-  // logLevel: "trace",
+  logLevel: "TRACE",
 
   build: {
     assets: ["static/**/*.*"],

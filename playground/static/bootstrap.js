@@ -7,32 +7,37 @@ function install(data, reason) {}
 async function startup({ id, version, rootURI }, reason) {
   await Zotero.initializationPromise;
 
-  ScaffoldPlayground = {
+  const ctx = {
     id,
     version,
     rootURI,
-    initialized: true,
   };
-  Zotero.ScaffoldPlayground = ScaffoldPlayground;
+  
+  Services.scriptloader.loadSubScript(`${rootURI}content/scripts/index.js`, { ctx });
+  
+  ScaffoldPlayground = ScaffoldPlayground;
+  ScaffoldPlayground.onStartup()
 
-  Services.scriptloader.loadSubScript(`${rootURI}content/scripts/index.js`, { ScaffoldPlayground });
-  Zotero.debug(`ScaffoldPlayground ${version} started.`);
+  Zotero.debug(`Scaffold playground v${version}-__buildTime__ started.`);
 }
 
 function onMainWindowLoad({ window: win }) {
-  win.MozXULElement.insertFTLIfNeeded("scaffold-playground-prefs.ftl");
+  ScaffoldPlayground.onMainWindowLoad(win)
 }
 
 function onMainWindowUnload({ window: win }) {
-  win.document.querySelector('[href="scaffold-playground-prefs.ftl"]')?.remove();
+  ScaffoldPlayground.onMainWindowUnload(win)
 }
 
 function shutdown({ id, version, rootURI }, reason) {
   if (reason === APP_SHUTDOWN)
     return;
 
+  ScaffoldPlayground.onShutdown()
+
   ScaffoldPlayground = undefined;
-  delete Zotero.ScaffoldPlayground;
+
+  Zotero.debug(`Scaffold playground v${version} shutdown.`);
 }
 
 function uninstall(data, reason) {}

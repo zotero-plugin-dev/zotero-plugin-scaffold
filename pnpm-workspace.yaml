@@ -1,3 +1,5 @@
+# playground -> zotero-types -> epubjs (resolved via git-repository)
+blockExoticSubdeps: false
 minimumReleaseAgeExcludePrune: true
 trustPolicy: no-downgrade
 shellEmulator: true
@@ -16,6 +18,7 @@ overrides:
 
 allowBuilds:
   "@swc/core": false
+  es5-ext: false
   esbuild: false
 
 catalog:
@@ -62,3 +65,6 @@ catalogs:
     unplugin-raw: ^0.8.0
     vitepress: 2.0.0-alpha.21
     vitest: ^5.1.0
+
+  playground:
+    zotero-types: ^4.1.3
