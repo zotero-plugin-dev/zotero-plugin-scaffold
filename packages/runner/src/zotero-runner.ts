@@ -1,5 +1,6 @@
 import type { DeepPickOptional, DeepRequired } from "@zotero-plugin/utils";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
+import type { ZoteroBinaryInfo } from "./zotero/binary-locator.js";
 import { Buffer } from "node:buffer";
 import { execSync, spawn } from "node:child_process";
 import { closeSync, openSync, writeSync } from "node:fs";
@@ -12,6 +13,7 @@ import { ensureDir, ensureDirSync, outputFile, outputJSON, pathExists, readJSON,
 import { isLinux, isMacOS, isWindows } from "std-env";
 import { ZOTERO_LOG_DIR } from "./constant.js";
 import { PrefsManager } from "./prefs-manager.js";
+import { findZoteroBinary, validate, zoteroBinaryCandidates } from "./zotero/binary-locator.js";
 import { ANSI_ESCAPE_RE, createMessageNormalizer } from "./zotero/log-normalizer.js";
 import { prefs as defaultPrefs } from "./zotero/preference.js";
 import { findFreeTcpPort, RemoteFirefox } from "./zotero/remote-zotero.js";
@@ -38,7 +40,10 @@ interface ProfileOptions {
 }
 
 interface BinaryOptions {
-  path: string;
+  /** An absolute path taken as is. When omitted, the installed Zotero is detected. */
+  path?: string;
+  /** Detection still happens when no `path` is given. Defaults to true. */
+  autoDetect?: boolean;
   args?: string[];
   devtools?: boolean;
   debugOutputWindow?: boolean;
@@ -61,6 +66,7 @@ type DefaultZoteroRunnerOptions = DeepPickOptional<ZoteroRunnerOptions>;
 const default_options = {
   binary: {
     // path: "",
+    autoDetect: true,
     args: [],
     devtools: true,
     debugOutputWindow: false,
@@ -90,12 +96,17 @@ export class ZoteroRunner {
   private remoteFirefox = new RemoteFirefox();
   /** The spawned Zotero process, once `run()` has started it. */
   public process?: ChildProcessWithoutNullStreams;
+  /** Which Zotero this runner will start, and what its install says about itself. */
+  public readonly binaryInfo: ZoteroBinaryInfo;
 
   constructor(options: ZoteroRunnerOptions) {
-    this.options = toMerged(default_options, options);
+    this.binaryInfo = resolveBinary(options.binary);
 
-    if (!options.binary.path)
-      throw new Error("Binary path must be provided.");
+    const merged = toMerged(default_options, options);
+    this.options = {
+      ...merged,
+      binary: { ...merged.binary, path: this.binaryInfo.path },
+    };
 
     // if (options.profile.path === this.default_profile_path && !options.profile.keepChanges)
     //   logger.warn("Profile at '.scaffold/profile' does not support discarding changes.");
@@ -217,9 +228,6 @@ export class ZoteroRunner {
       XPCOM_DEBUG_BREAK: "stack",
       NS_TRACE_MALLOC_DISABLE_STACKS: "1",
     };
-
-    if (!await pathExists(this.options.binary.path))
-      throw new Error("The Zotero binary not found.");
 
     // Using `spawn` so we can stream logging as they come in, rather than
     // buffer them up until the end, which can easily hit the max buffer size.
@@ -456,6 +464,39 @@ export class ZoteroRunner {
       }
     }
   }
+}
+
+/**
+ * An explicit path is never replaced by another install: a wrong one has to be
+ * an error, or a typo would silently start a different Zotero.
+ */
+function resolveBinary(binary: ZoteroRunnerOptions["binary"]): ZoteroBinaryInfo {
+  const explicitPath = binary.path?.trim();
+  if (explicitPath) {
+    const info = validate(explicitPath);
+    if (!info)
+      throw new Error(zoteroNotFoundMessage([explicitPath]));
+    return { ...info, source: "explicit" };
+  }
+
+  if (binary.autoDetect === false)
+    throw new Error("No Zotero binary path provided, and auto-detection is disabled.");
+
+  const found = findZoteroBinary();
+  if (!found)
+    throw new Error(zoteroNotFoundMessage(zoteroBinaryCandidates()));
+
+  return found;
+}
+
+/** The only "not found" text in the project. The search list is what makes it actionable. */
+function zoteroNotFoundMessage(searched: string[]): string {
+  return [
+    "Zotero binary not found.",
+    "Looked in:",
+    ...searched.map(candidate => `  - ${candidate}`),
+    "Set ZOTERO_PLUGIN_ZOTERO_BIN_PATH to point at your Zotero executable.",
+  ].join("\n");
 }
 
 /** True while the OS still reports the given PID. */

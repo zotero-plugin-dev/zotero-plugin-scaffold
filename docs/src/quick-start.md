@@ -69,7 +69,7 @@ For a full list of configuration options, refer to the [type definitions](https:
 
 ### 03. Create an Environment File
 
-Define Zotero’s runtime configuration (e.g., binary paths, profile paths, and environment variables) in a `.env` file.
+Define Zotero’s runtime configuration (e.g., binary paths, profile paths, and environment variables) in a `.env` file. The file is optional: without it, an installed Zotero is found automatically — see [The Zotero Binary](/serve#the-zotero-binary).
 
 ::: warning
 
@@ -82,7 +82,7 @@ Do not commit this file to your repository!
 ```
 
 ```ini
-# Path to the Zotero binary file.
+# Path to the Zotero binary file. Optional: left empty, it is detected.
 # For macOS, the path is typically `*/Zotero.app/Contents/MacOS/zotero`.
 ZOTERO_PLUGIN_ZOTERO_BIN_PATH=/path/to/zotero.exe
 

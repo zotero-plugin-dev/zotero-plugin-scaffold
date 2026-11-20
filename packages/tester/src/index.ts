@@ -29,7 +29,6 @@ export async function createTester(ctx: TestContext): Promise<Tester> {
 
   const zotero = new ZoteroRunner({
     binary: {
-      path: zoteroBinPath(),
       devtools: ctx.config.test.devtools,
       args: [...ctx.config.test.startArgs],
     },
@@ -185,14 +184,6 @@ const DEFAULT_TEST_PREFS: Record<string, string | number | boolean> = {
   "extensions.zoteroWinWordIntegration.skipInstallation": true,
   "extensions.zoteroOpenOfficeIntegration.skipInstallation": true,
 };
-
-function zoteroBinPath(): string {
-  const path = process.env.ZOTERO_PLUGIN_ZOTERO_BIN_PATH;
-  if (!path)
-    throw new Error("No Zotero Found.");
-
-  return path;
-}
 
 export { testDefaults, testTransform } from "./config.js";
 export { TESTER_BASE_PATH, TESTER_DATA_DIR, TESTER_PLUGIN_DIR, TESTER_PLUGIN_ID, TESTER_PLUGIN_REF, TESTER_PROFILE_DIR } from "./constant.js";

@@ -30,7 +30,15 @@ jobs:
   test-unit:
     needs:
       - build
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Windows only for its own sake: the Zotero detection has a Windows-only
+        # branch (registry, App Paths, `%ProgramFiles%`), and unit tests for it
+        # are skipped on ubuntu. Running the suite here is what covers it.
+        os:
+          - ubuntu-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Setup JS
         uses: zotero-plugin-dev/workflows/setup-js@main
